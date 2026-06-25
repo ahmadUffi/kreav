@@ -47,7 +47,7 @@ describe('configuration', () => {
       const { error } = validationSchema.validate({
         NODE_ENV: 'staging', // not in the allow-list
         PORT: 3000,
-        DATABASE_URL: '',
+        DATABASE_URL: 'postgresql://localhost/kreav',
       });
       expect(error).toBeDefined();
       expect(error!.message).toContain('NODE_ENV');
@@ -57,19 +57,30 @@ describe('configuration', () => {
       const { error } = validationSchema.validate({
         NODE_ENV: 'development',
         PORT: 99999,
-        DATABASE_URL: '',
+        DATABASE_URL: 'postgresql://localhost/kreav',
       });
       expect(error).toBeDefined();
       expect(error!.message).toContain('PORT');
     });
 
-    it('allows empty DATABASE_URL (loosened until BE-002 wires the DB)', () => {
+    it('rejects an empty DATABASE_URL (DB is required since BE-002)', () => {
       const { error } = validationSchema.validate({
         NODE_ENV: 'development',
         PORT: 3000,
         DATABASE_URL: '',
       });
-      expect(error).toBeUndefined();
+      expect(error).toBeDefined();
+      expect(error!.message).toContain('DATABASE_URL');
+    });
+
+    it('rejects a non-postgresql DATABASE_URL', () => {
+      const { error } = validationSchema.validate({
+        NODE_ENV: 'development',
+        PORT: 3000,
+        DATABASE_URL: 'mysql://localhost/kreav',
+      });
+      expect(error).toBeDefined();
+      expect(error!.message).toContain('DATABASE_URL');
     });
   });
 
@@ -77,7 +88,7 @@ describe('configuration', () => {
     it('boots when env is valid', async () => {
       process.env.NODE_ENV = 'development';
       process.env.PORT = '3000';
-      process.env.DATABASE_URL = '';
+      process.env.DATABASE_URL = 'postgresql://localhost/kreav';
 
       const moduleRef = await Test.createTestingModule({
         imports: [

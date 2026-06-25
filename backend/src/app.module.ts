@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { configuration, validationSchema } from './config';
 import { HealthModule } from './common/health/health.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { HealthModule } from './common/health/health.module';
         abortEarly: false,
       },
     }),
+    PrismaModule,
     HealthModule,
   ],
 })
