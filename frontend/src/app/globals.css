@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-anton: var(--font-anton-var), sans-serif;
+  --font-mono: var(--font-mono-var), ui-monospace, monospace;
+  --font-pixel: var(--font-pixel-var), monospace;
+
+  --color-yellow: #FFE600;
+  --color-ink: #0A0A0A;
+  --color-chalk: #F5F5F0;
+  --color-magenta: #FF3BFF;
+  --color-cyan: #00F5FF;
+  --color-orange: #FF4D00;
+  --color-muted: #3a3a3a;
+}
+
+:root {
+  --bg: #F5F5F0;
+  --text: #0A0A0A;
+  --card: #ffffff;
+  --card-text: #0A0A0A;
+  --muted: #3a3a3a;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0A0A0A;
+  --text: #ffffff;
+  --card: #111111;
+  --card-text: #ffffff;
+  --muted: #b8b8b8;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+::selection {
+  background: #ff3bff;
+  color: #0a0a0a;
+}
+
+@keyframes kv-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.kv-blink {
+  animation: kv-blink 1s steps(1) infinite;
+}
+
+.kv-spot::-webkit-scrollbar {
+  height: 10px;
+}
+.kv-spot::-webkit-scrollbar-track {
+  background: transparent;
+  border-top: 2px solid #0a0a0a;
+}
+.kv-spot::-webkit-scrollbar-thumb {
+  background: #0a0a0a;
+  border: 2px solid #0a0a0a;
+}
+
+.neo-btn {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.neo-btn:hover {
+  transform: translate(2px, 2px);
+}
+
+.neo-btn:active {
+  transform: translate(4px, 4px);
+}
+
+.neo-shadow {
+  box-shadow: 6px 6px 0 #0a0a0a;
+}
+
+.neo-shadow-sm {
+  box-shadow: 4px 4px 0 #0a0a0a;
+}
+
+.neo-shadow-lg {
+  box-shadow: 8px 8px 0 #0a0a0a;
+}
+
+.checker {
+  background-image: repeating-conic-gradient(
+    #ffe600 0 25%,
+    #f3d600 0 50%
+  );
+  background-size: 26px 26px;
+}
