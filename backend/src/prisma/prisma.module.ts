@@ -1,7 +1,15 @@
+import { Global, Module } from '@nestjs/common';
+import { PrismaService } from './prisma.service';
+
 /**
- * Prisma Module — PRD Section 7.
- * Global module exposing PrismaService to the rest of the app.
+ * Global module exposing {@link PrismaService} to every feature module without
+ * requiring each one to re-import it.
  *
- * Stub only in BE-001; PrismaService + Postgres wired in BE-002.
+ * Source: Kreav Backend PRD v3 — Section 7.
  */
+@Global()
+@Module({
+  providers: [PrismaService],
+  exports: [PrismaService],
+})
 export class PrismaModule {}

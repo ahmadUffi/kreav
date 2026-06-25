@@ -20,10 +20,9 @@ export const validationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().port().default(3000),
   DATABASE_URL: Joi.string()
-    // DB is wired up in BE-002; tests/e2e don't need it, so allow it to be
-    // empty for now and tighten in BE-002.
-    .allow('')
-    .default(''),
+    // PostgreSQL connection string — required now that Prisma/DB is wired (BE-002).
+    .uri({ scheme: ['postgresql', 'postgres'] })
+    .required(),
 });
 
 export default () => ({

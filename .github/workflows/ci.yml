@@ -15,6 +15,26 @@ jobs:
     name: Backend (lint / build / test)
     runs-on: ubuntu-latest
 
+    # Postgres service container for e2e tests + migrate verification.
+    services:
+      kreav-db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kreav
+          POSTGRES_PASSWORD: kreav
+          POSTGRES_DB: kreav
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kreav -d kreav"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kreav:kreav@localhost:5432/kreav?schema=public
+      NODE_ENV: test
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +53,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Apply migrations
+        run: pnpm prisma migrate deploy
 
       - name: Lint
         run: pnpm lint:check

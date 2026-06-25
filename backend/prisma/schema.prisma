@@ -1,0 +1,13 @@
+// Kreav — Prisma schema
+// Source of truth: Kreav Backend PRD v3, Section 8 (Data Model).
+// Entities are added in BE-003; this baseline just establishes the datasource
+// and generator so the migrate workflow is proven.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

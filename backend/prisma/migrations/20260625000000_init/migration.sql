@@ -1,0 +1,3 @@
+-- Kreav baseline migration (BE-002)
+-- Empty schema marker establishing the migration history.
+-- Tables are added in BE-003 (core entities).
