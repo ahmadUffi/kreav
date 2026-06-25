@@ -1,0 +1,3 @@
+// Placeholder for Stellar DTOs (BE-007+).
+// Kept so the `dto/` folder is part of the PRD Section 7 structure from day one.
+export {};

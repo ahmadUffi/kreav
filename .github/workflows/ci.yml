@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop]
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  backend:
+    name: Backend (lint / build / test)
+    runs-on: ubuntu-latest
+
+    # Postgres service container for e2e tests + migrate verification.
+    services:
+      kreav-db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kreav
+          POSTGRES_PASSWORD: kreav
+          POSTGRES_DB: kreav
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kreav -d kreav"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kreav:kreav@localhost:5432/kreav?schema=public
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Apply migrations
+        run: pnpm prisma migrate deploy
+
+      - name: Lint
+        run: pnpm lint:check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Unit tests
+        run: pnpm test --ci
+
+      - name: E2E tests
+        run: pnpm test:e2e --ci
