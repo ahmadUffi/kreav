@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { type AppConfig } from './config/configuration';
+import { DecimalToStringInterceptor } from './common/serialization/decimal-to-string.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -26,6 +27,11 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // Audit #10 — serialize every Prisma.Decimal in responses to a string.
+  // Without this, money fields (`priceUsd`, `amountUsd`, ...) JSON-serialize to
+  // Prisma's internal `{ d: [...], e, s }` structure instead of "10.00".
+  app.useGlobalInterceptors(new DecimalToStringInterceptor());
 
   // Graceful shutdown: enable NestJS shutdown hooks so OnModuleDestroy runs
   // (PrismaService.$disconnect()). Without this, SIGTERM/SIGINT kills the
