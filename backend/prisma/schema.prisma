@@ -9,8 +9,13 @@
 //   💰 Wallet    — Wallet, Withdrawal
 //   📧 Infra     — NotificationLog
 //
-// Money is ALWAYS Decimal (never float). Stellar addresses are public keys
-// only (non-custodial — NO secret-key / seed-phrase columns anywhere).
+// Naming convention (BE-004):
+//   - Model fields are camelCase (so Prisma returns camelCase JSON, e.g.
+//     `priceUsd`, `creatorId` — the natural API shape).
+//   - Each field uses `@map` to point at its snake_case DB column. The DB
+//     schema (column names) is unchanged by this convention.
+//   - Money is ALWAYS Decimal (never float). Stellar addresses are public keys
+//     only (non-custodial — NO secret-key / seed-phrase columns anywhere).
 
 generator client {
   provider = "prisma-client-js"
@@ -95,15 +100,15 @@ enum NotificationStatus {
 // ---------------------------------------------------------------------------
 
 model User {
-  id         String   @id @default(uuid())
-  email      String   @unique
-  name       String
-  role       UserRole @default(BUYER)
-  created_at DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(BUYER)
+  createdAt DateTime @default(now()) @map("created_at")
 
-  products   Product[]
-  wallets    Wallet[]
-  withdrawals Withdrawal[]
+  products     Product[]
+  wallets      Wallet[]
+  withdrawals  Withdrawal[]
 
   @@map("users")
 }
@@ -114,18 +119,18 @@ model User {
 
 model Product {
   id          String   @id @default(uuid())
-  creator_id  String   @map("creator_id")
+  creatorId   String   @map("creator_id")
   title       String
   description String?
   // Money — Decimal, never float.
-  price_usd   Decimal  @db.Decimal(18, 2) @map("price_usd")
-  created_at  DateTime @default(now()) @map("created_at")
+  priceUsd    Decimal  @db.Decimal(18, 2) @map("price_usd")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  creator        User                  @relation(fields: [creator_id], references: [id])
-  collaborators  ProductCollaborator[]
-  orders         Order[]
+  creator       User                  @relation(fields: [creatorId], references: [id])
+  collaborators ProductCollaborator[]
+  orders        Order[]
 
-  @@index([creator_id])
+  @@index([creatorId])
   @@map("products")
 }
 
@@ -133,51 +138,51 @@ model Product {
 /// role is free-text (metadata); status is enum (app state).
 model ProductCollaborator {
   id                 String             @id @default(uuid())
-  product_id         String             @map("product_id")
-  wallet_address     String             @map("wallet_address")
+  productId          String             @map("product_id")
+  walletAddress      String             @map("wallet_address")
   // Free-text: Author, Illustrator, Editor, Translator, Co-Creator, Affiliate, ...
   role               String
-  revenue_percentage Decimal            @db.Decimal(5, 2) @map("revenue_percentage")
+  revenuePercentage  Decimal            @db.Decimal(5, 2) @map("revenue_percentage")
   status             CollaboratorStatus @default(ACTIVE)
-  created_at         DateTime           @default(now()) @map("created_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
 
-  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@index([product_id, status])
+  @@index([productId, status])
   @@map("product_collaborators")
 }
 
 model Order {
-  id          String      @id @default(uuid())
-  product_id  String      @map("product_id")
-  buyer_email String      @map("buyer_email")
-  amount_usd  Decimal     @db.Decimal(18, 2) @map("amount_usd")
-  status      OrderStatus @default(CREATED)
+  id         String      @id @default(uuid())
+  productId  String      @map("product_id")
+  buyerEmail String      @map("buyer_email")
+  amountUsd  Decimal     @db.Decimal(18, 2) @map("amount_usd")
+  status     OrderStatus @default(CREATED)
   // Populated on settlement.
-  tx_hash     String?     @map("tx_hash")
+  txHash     String?     @map("tx_hash")
   // v3.1 §20 — idempotency key (Payment Transaction ID). Unique.
-  payment_ref String?     @map("payment_ref")
-  created_at  DateTime    @default(now()) @map("created_at")
+  paymentRef String?     @map("payment_ref")
+  createdAt  DateTime    @default(now()) @map("created_at")
 
-  product    Product      @relation(fields: [product_id], references: [id])
+  product    Product      @relation(fields: [productId], references: [id])
   settlement Settlement?
 
-  @@unique([payment_ref])
+  @@unique([paymentRef])
   @@index([status])
   @@map("orders")
 }
 
 /// One canonical on-chain settlement event (v3.1 §19).
 model Settlement {
-  id           String           @id @default(uuid())
-  order_id     String           @unique @map("order_id")
-  total_amount Decimal          @db.Decimal(18, 2) @map("total_amount")
-  tx_hash      String
-  status       SettlementStatus @default(PENDING)
-  created_at   DateTime         @default(now()) @map("created_at")
+  id          String           @id @default(uuid())
+  orderId     String           @unique @map("order_id")
+  totalAmount Decimal          @db.Decimal(18, 2) @map("total_amount")
+  txHash      String           @map("tx_hash")
+  status      SettlementStatus @default(PENDING)
+  createdAt   DateTime         @default(now()) @map("created_at")
 
-  order      Order                @relation(fields: [order_id], references: [id])
-  recipients SettlementRecipient[]
+  order       Order                 @relation(fields: [orderId], references: [id])
+  recipients  SettlementRecipient[]
   withdrawals Withdrawal[]
 
   @@index([status])
@@ -187,17 +192,17 @@ model Settlement {
 /// Accounting breakdown — every recipient of a settlement (v3.1 §19).
 model SettlementRecipient {
   id            String        @id @default(uuid())
-  settlement_id String        @map("settlement_id")
-  wallet_address String       @map("wallet_address")
-  recipient_type RecipientType
+  settlementId  String        @map("settlement_id")
+  walletAddress String        @map("wallet_address")
+  recipientType RecipientType @map("recipient_type")
   // Free-text role label (mirrors the collaborator role or "Platform").
   role          String
   percentage    Decimal       @db.Decimal(5, 2)
   amount        Decimal       @db.Decimal(18, 2)
 
-  settlement Settlement @relation(fields: [settlement_id], references: [id], onDelete: Cascade)
+  settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
 
-  @@index([settlement_id])
+  @@index([settlementId])
   @@map("settlement_recipients")
 }
 
@@ -208,31 +213,31 @@ model SettlementRecipient {
 /// Non-custodial: stores ONLY the public key. NEVER secret/seed/private keys.
 model Wallet {
   id            String         @id @default(uuid())
-  creator_id    String         @map("creator_id")
-  wallet_address String        @map("wallet_address")
+  creatorId     String         @map("creator_id")
+  walletAddress String         @map("wallet_address")
   provider      WalletProvider
-  connected_at  DateTime       @default(now()) @map("connected_at")
+  connectedAt   DateTime       @default(now()) @map("connected_at")
 
-  creator User @relation(fields: [creator_id], references: [id])
+  creator User @relation(fields: [creatorId], references: [id])
 
-  @@index([creator_id])
+  @@index([creatorId])
   @@map("wallets")
 }
 
 /// v3.1 — dedicated Withdrawal entity (replaces generic Transaction.withdrawal).
 model Withdrawal {
-  id            String           @id @default(uuid())
-  creator_id    String           @map("creator_id")
-  settlement_id String?          @map("settlement_id")
-  tx_hash       String           @map("tx_hash")
-  amount        Decimal          @db.Decimal(18, 2)
-  status        WithdrawalStatus @default(PENDING)
-  created_at    DateTime         @default(now()) @map("created_at")
+  id           String           @id @default(uuid())
+  creatorId    String           @map("creator_id")
+  settlementId String?          @map("settlement_id")
+  txHash       String           @map("tx_hash")
+  amount       Decimal          @db.Decimal(18, 2)
+  status       WithdrawalStatus @default(PENDING)
+  createdAt    DateTime         @default(now()) @map("created_at")
 
-  creator    User        @relation(fields: [creator_id], references: [id])
-  settlement Settlement? @relation(fields: [settlement_id], references: [id])
+  creator    User        @relation(fields: [creatorId], references: [id])
+  settlement Settlement? @relation(fields: [settlementId], references: [id])
 
-  @@index([creator_id, created_at])
+  @@index([creatorId, createdAt])
   @@map("withdrawals")
 }
 
@@ -242,16 +247,16 @@ model Withdrawal {
 
 /// v3.1 §18 — durable retry state for notifications. NOT business data.
 model NotificationLog {
-  id                 String             @id @default(uuid())
-  recipient          String
-  channel            NotificationChannel @default(EMAIL)
-  event              String
-  status             NotificationStatus @default(PENDING)
-  attempts           Int                @default(0)
-  last_error         String?            @map("last_error")
-  provider_message_id String?           @map("provider_message_id")
-  created_at         DateTime           @default(now()) @map("created_at")
-  updated_at         DateTime           @updatedAt @map("updated_at")
+  id                  String              @id @default(uuid())
+  recipient           String
+  channel             NotificationChannel @default(EMAIL)
+  event               String
+  status              NotificationStatus  @default(PENDING)
+  attempts            Int                 @default(0)
+  lastError           String?             @map("last_error")
+  providerMessageId   String?             @map("provider_message_id")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
 
   @@index([status, event])
   @@map("notification_logs")
