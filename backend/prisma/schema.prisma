@@ -1,7 +1,16 @@
 // Kreav — Prisma schema
-// Source of truth: Kreav Backend PRD v3, Section 8 (Data Model).
-// Entities are added in BE-003; this baseline just establishes the datasource
-// and generator so the migrate workflow is proven.
+// Source of truth: Kreav Backend PRD v3 + v3.1 Addendum.
+//   §8 Data Model (v3) — restructured in v3.1 into Domain-Driven Design.
+//   §18 Notification, §19 Collaborative Split, §20 Failure Handling.
+//
+// Domains:
+//   👤 User      — User
+//   🛒 Commerce  — Product, ProductCollaborator, Order, Settlement, SettlementRecipient
+//   💰 Wallet    — Wallet, Withdrawal
+//   📧 Infra     — NotificationLog
+//
+// Money is ALWAYS Decimal (never float). Stellar addresses are public keys
+// only (non-custodial — NO secret-key / seed-phrase columns anywhere).
 
 generator client {
   provider = "prisma-client-js"
@@ -10,4 +19,240 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums (Postgres-native)
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  CREATOR
+  BUYER
+  ADMIN
+}
+
+enum WalletProvider {
+  FREIGHTER
+  LOBSTR
+}
+
+enum CollaboratorStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// v3.1 §20 — Order lifecycle + failure states. Only valid transitions allowed.
+enum OrderStatus {
+  // lifecycle
+  CREATED
+  CHECKOUT_STARTED
+  PAYMENT_PENDING
+  PAYMENT_RECEIVED
+  SETTLEMENT_PENDING
+  SETTLED
+  WITHDRAW_PENDING
+  WITHDRAW_COMPLETED
+  // failure states
+  PAYMENT_FAILED
+  SETTLEMENT_FAILED
+  WITHDRAW_FAILED
+  WAITING_WALLET
+  CANCELLED
+}
+
+enum SettlementStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+/// Extensible: AFFILIATE / TREASURY added later without migration pain.
+enum RecipientType {
+  CREATOR
+  PLATFORM
+  AFFILIATE
+  TREASURY
+}
+
+enum WithdrawalStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationChannel {
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// 👤 User Domain
+// ---------------------------------------------------------------------------
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  name       String
+  role       UserRole @default(BUYER)
+  created_at DateTime @default(now()) @map("created_at")
+
+  products   Product[]
+  wallets    Wallet[]
+  withdrawals Withdrawal[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// 🛒 Commerce Domain
+// ---------------------------------------------------------------------------
+
+model Product {
+  id          String   @id @default(uuid())
+  creator_id  String   @map("creator_id")
+  title       String
+  description String?
+  // Money — Decimal, never float.
+  price_usd   Decimal  @db.Decimal(18, 2) @map("price_usd")
+  created_at  DateTime @default(now()) @map("created_at")
+
+  creator        User                  @relation(fields: [creator_id], references: [id])
+  collaborators  ProductCollaborator[]
+  orders         Order[]
+
+  @@index([creator_id])
+  @@map("products")
+}
+
+/// v3.1 §19 — Collaborative Revenue Split.
+/// role is free-text (metadata); status is enum (app state).
+model ProductCollaborator {
+  id                 String             @id @default(uuid())
+  product_id         String             @map("product_id")
+  wallet_address     String             @map("wallet_address")
+  // Free-text: Author, Illustrator, Editor, Translator, Co-Creator, Affiliate, ...
+  role               String
+  revenue_percentage Decimal            @db.Decimal(5, 2) @map("revenue_percentage")
+  status             CollaboratorStatus @default(ACTIVE)
+  created_at         DateTime           @default(now()) @map("created_at")
+
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id, status])
+  @@map("product_collaborators")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  product_id  String      @map("product_id")
+  buyer_email String      @map("buyer_email")
+  amount_usd  Decimal     @db.Decimal(18, 2) @map("amount_usd")
+  status      OrderStatus @default(CREATED)
+  // Populated on settlement.
+  tx_hash     String?     @map("tx_hash")
+  // v3.1 §20 — idempotency key (Payment Transaction ID). Unique.
+  payment_ref String?     @map("payment_ref")
+  created_at  DateTime    @default(now()) @map("created_at")
+
+  product    Product      @relation(fields: [product_id], references: [id])
+  settlement Settlement?
+
+  @@unique([payment_ref])
+  @@index([status])
+  @@map("orders")
+}
+
+/// One canonical on-chain settlement event (v3.1 §19).
+model Settlement {
+  id           String           @id @default(uuid())
+  order_id     String           @unique @map("order_id")
+  total_amount Decimal          @db.Decimal(18, 2) @map("total_amount")
+  tx_hash      String
+  status       SettlementStatus @default(PENDING)
+  created_at   DateTime         @default(now()) @map("created_at")
+
+  order      Order                @relation(fields: [order_id], references: [id])
+  recipients SettlementRecipient[]
+  withdrawals Withdrawal[]
+
+  @@index([status])
+  @@map("settlements")
+}
+
+/// Accounting breakdown — every recipient of a settlement (v3.1 §19).
+model SettlementRecipient {
+  id            String        @id @default(uuid())
+  settlement_id String        @map("settlement_id")
+  wallet_address String       @map("wallet_address")
+  recipient_type RecipientType
+  // Free-text role label (mirrors the collaborator role or "Platform").
+  role          String
+  percentage    Decimal       @db.Decimal(5, 2)
+  amount        Decimal       @db.Decimal(18, 2)
+
+  settlement Settlement @relation(fields: [settlement_id], references: [id], onDelete: Cascade)
+
+  @@index([settlement_id])
+  @@map("settlement_recipients")
+}
+
+// ---------------------------------------------------------------------------
+// 💰 Wallet Domain
+// ---------------------------------------------------------------------------
+
+/// Non-custodial: stores ONLY the public key. NEVER secret/seed/private keys.
+model Wallet {
+  id            String         @id @default(uuid())
+  creator_id    String         @map("creator_id")
+  wallet_address String        @map("wallet_address")
+  provider      WalletProvider
+  connected_at  DateTime       @default(now()) @map("connected_at")
+
+  creator User @relation(fields: [creator_id], references: [id])
+
+  @@index([creator_id])
+  @@map("wallets")
+}
+
+/// v3.1 — dedicated Withdrawal entity (replaces generic Transaction.withdrawal).
+model Withdrawal {
+  id            String           @id @default(uuid())
+  creator_id    String           @map("creator_id")
+  settlement_id String?          @map("settlement_id")
+  tx_hash       String           @map("tx_hash")
+  amount        Decimal          @db.Decimal(18, 2)
+  status        WithdrawalStatus @default(PENDING)
+  created_at    DateTime         @default(now()) @map("created_at")
+
+  creator    User        @relation(fields: [creator_id], references: [id])
+  settlement Settlement? @relation(fields: [settlement_id], references: [id])
+
+  @@index([creator_id, created_at])
+  @@map("withdrawals")
+}
+
+// ---------------------------------------------------------------------------
+// 📧 Infrastructure
+// ---------------------------------------------------------------------------
+
+/// v3.1 §18 — durable retry state for notifications. NOT business data.
+model NotificationLog {
+  id                 String             @id @default(uuid())
+  recipient          String
+  channel            NotificationChannel @default(EMAIL)
+  event              String
+  status             NotificationStatus @default(PENDING)
+  attempts           Int                @default(0)
+  last_error         String?            @map("last_error")
+  provider_message_id String?           @map("provider_message_id")
+  created_at         DateTime           @default(now()) @map("created_at")
+  updated_at         DateTime           @updatedAt @map("updated_at")
+
+  @@index([status, event])
+  @@map("notification_logs")
 }
