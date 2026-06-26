@@ -1,11 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { type AppConfig } from './config/configuration';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  // Security: secure HTTP headers (Helmet) + CORS for the cross-origin
+  // frontend (Next.js on Vercel → backend on Railway). Without these the
+  // browser blocks every request during the demo.
+  app.use(helmet());
+  app.enableCors();
 
   const configService = app.get(ConfigService<AppConfig, true>);
   const port = configService.get('PORT', { infer: true }) ?? 3000;
@@ -19,6 +26,12 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // Graceful shutdown: enable NestJS shutdown hooks so OnModuleDestroy runs
+  // (PrismaService.$disconnect()). Without this, SIGTERM/SIGINT kills the
+  // process before DB connections close → leaked connections + in-flight
+  // settlements can be lost. Critical for a financial app.
+  app.enableShutdownHooks();
 
   await app.listen(port);
   const logger = new Logger('Bootstrap');
