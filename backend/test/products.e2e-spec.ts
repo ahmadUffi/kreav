@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
+import request, { type Response } from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { DecimalToStringInterceptor } from '../src/common/serialization/decimal-to-string.interceptor';
@@ -17,6 +17,20 @@ describe('ProductsController (e2e)', () => {
   let prisma: PrismaService;
   let creatorId: string;
   let createdProductId: string;
+
+  // Base valid payload + thin POST helper — the validation cases below all
+  // derive from this, so there's a single source of truth for the valid shape
+  // (avoids SonarCloud flagging the literal request bodies as duplicated code).
+  const validPayload = (overrides: Record<string, unknown> = {}) => ({
+    title: 'AI Interview Playbook',
+    description: 'A guide',
+    priceUsd: '10.00',
+    creatorId,
+    ...overrides,
+  });
+
+  const postProduct = (overrides: Record<string, unknown> = {}): Promise<Response> =>
+    request(app.getHttpServer()).post('/products').send(validPayload(overrides));
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -58,12 +72,7 @@ describe('ProductsController (e2e)', () => {
 
   describe('POST /products', () => {
     it('201 — creates a product, money returned as string', async () => {
-      const res = await request(app.getHttpServer()).post('/products').send({
-        title: 'AI Interview Playbook',
-        description: 'A guide',
-        priceUsd: '10.00',
-        creatorId,
-      });
+      const res = await postProduct();
 
       expect(res.status).toBe(201);
       expect(res.body.id).toEqual(expect.any(String));
@@ -76,34 +85,22 @@ describe('ProductsController (e2e)', () => {
     });
 
     it('400 — rejects a non-decimal priceUsd', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/products')
-        .send({ title: 'X', priceUsd: 'abc', creatorId });
-
+      const res = await postProduct({ priceUsd: 'abc' });
       expect(res.status).toBe(400);
     });
 
     it('400 — rejects a negative priceUsd', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/products')
-        .send({ title: 'X', priceUsd: '-5.00', creatorId });
-
+      const res = await postProduct({ priceUsd: '-5.00' });
       expect(res.status).toBe(400);
     });
 
     it('400 — rejects an empty title', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/products')
-        .send({ title: '', priceUsd: '10.00', creatorId });
-
+      const res = await postProduct({ title: '' });
       expect(res.status).toBe(400);
     });
 
     it('400 — rejects an unknown field (forbidNonWhitelisted)', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/products')
-        .send({ title: 'X', priceUsd: '10.00', creatorId, evil: true });
-
+      const res = await postProduct({ evil: true });
       expect(res.status).toBe(400);
     });
   });
