@@ -14,6 +14,9 @@ export interface AppConfig {
   NODE_ENV: string;
   PORT: number;
   DATABASE_URL: string;
+  /** Audit #11 — HMAC secret for verifying GCash webhook signatures. Optional
+   * in dev (webhook accepts unsigned), REQUIRED for the on-stage demo. */
+  GCASH_WEBHOOK_SECRET?: string;
 }
 
 export const validationSchema = Joi.object({
@@ -23,10 +26,13 @@ export const validationSchema = Joi.object({
     // PostgreSQL connection string — required now that Prisma/DB is wired (BE-002).
     .uri({ scheme: ['postgresql', 'postgres'] })
     .required(),
+  // Optional: when absent, webhook signature verification is skipped (dev/CI).
+  GCASH_WEBHOOK_SECRET: Joi.string().optional().allow(''),
 });
 
 export default () => ({
   NODE_ENV: process.env.NODE_ENV,
   PORT: parseInt(process.env.PORT ?? '3000', 10),
   DATABASE_URL: process.env.DATABASE_URL,
+  GCASH_WEBHOOK_SECRET: process.env.GCASH_WEBHOOK_SECRET,
 });
