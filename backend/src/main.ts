@@ -7,7 +7,9 @@ import { type AppConfig } from './config/configuration';
 import { DecimalToStringInterceptor } from './common/serialization/decimal-to-string.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // rawBody: true exposes req.rawBody (the exact request bytes) so the GCash
+  // webhook can verify its HMAC signature before trusting the payload (audit #11).
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
 
   // Security: secure HTTP headers (Helmet) + CORS for the cross-origin
   // frontend (Next.js on Vercel → backend on Railway). Without these the
