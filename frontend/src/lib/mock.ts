@@ -73,3 +73,100 @@ export const wallet: Wallet = {
     { id: "t5", label: "Refund — 3D for Beginners", amount: 49, type: "debit", date: "2026-06-22", txHash: "e5f60718293a4b5c6d7e8f901a2b3c4d5e6f708192a3b4c5d6e7f8090a1b2c3d4" },
   ],
 };
+
+/* ---------------------------------------------------------------------------
+   Creator dashboard analytics (mock — stands in for a future /analytics API).
+--------------------------------------------------------------------------- */
+
+export interface RevenuePoint {
+  /** Day index within the trailing 30-day window (1 = oldest). */
+  day: number;
+  amount: number;
+}
+
+export interface TopProduct {
+  productId: string;
+  sales: number;
+  revenue: number;
+}
+
+export interface Analytics {
+  totals: { revenueUsd: number; sales: number; activeProducts: number; pendingPayout: number };
+  /** % change vs the previous period, for KPI deltas. */
+  deltas: { revenue: number; sales: number; products: number; payout: number };
+  revenueSeries: RevenuePoint[];
+  topProducts: TopProduct[];
+  views: number;
+}
+
+const REVENUE_30D = [
+  80, 95, 70, 110, 130, 90, 120, 140, 100, 150, 170, 130, 160, 145, 190,
+  175, 210, 160, 195, 220, 180, 230, 205, 250, 215, 240, 270, 235, 280, 300,
+];
+
+export const analytics: Analytics = {
+  totals: { revenueUsd: 4218, sales: 186, activeProducts: 8, pendingPayout: 312.5 },
+  deltas: { revenue: 12.4, sales: 8.1, products: 0, payout: -3.2 },
+  revenueSeries: REVENUE_30D.map((amount, i) => ({ day: i + 1, amount })),
+  topProducts: [
+    { productId: "p2", sales: 64, revenue: 1856 },
+    { productId: "p1", sales: 41, revenue: 738 },
+    { productId: "p6", sales: 33, revenue: 792 },
+    { productId: "p5", sales: 18, revenue: 882 },
+    { productId: "p3", sales: 30, revenue: 360 },
+  ],
+  views: 4820,
+};
+
+/* ---------------------------------------------------------------------------
+   Creator profile + public mini-site (Linktree-style) — mock.
+--------------------------------------------------------------------------- */
+
+export interface CreatorLink {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface CreatorSocials {
+  instagram?: string;
+  x?: string;
+  tiktok?: string;
+  youtube?: string;
+}
+
+export interface CreatorProfile {
+  username: string;
+  displayName: string;
+  bio: string;
+  country: string;
+  /** Emoji stand-in for an avatar image. */
+  avatarEmoji: string;
+  /** Brand accent for the mini-site header. */
+  accent: string;
+  socials: CreatorSocials;
+  links: CreatorLink[];
+  featuredProductIds: string[];
+}
+
+export const currentCreator: CreatorProfile = {
+  username: "maya.shoots",
+  displayName: "Maya Tan",
+  bio: "Photographer & preset maker from Jakarta. I help creators get the warm, filmic look.",
+  country: "Indonesia",
+  avatarEmoji: "🌅",
+  accent: "#FF3BFF",
+  socials: { instagram: "maya.shoots", x: "mayashoots", tiktok: "maya.shoots", youtube: "@mayashoots" },
+  links: [
+    { id: "l1", label: "My Lightroom workflow (free)", url: "https://example.com/workflow" },
+    { id: "l2", label: "Book a 1:1 editing session", url: "https://example.com/booking" },
+    { id: "l3", label: "Join my newsletter", url: "https://example.com/newsletter" },
+  ],
+  featuredProductIds: ["p1", "p6", "p3"],
+};
+
+/** Lookup used by the public mini-site route. */
+export const creators: CreatorProfile[] = [currentCreator];
+export function findCreator(username: string): CreatorProfile | undefined {
+  return creators.find((c) => c.username === username);
+}

@@ -37,20 +37,24 @@ kreve/
 │   │   ├── Waitlist.tsx       # Zod-validated email form + animated counter
 │   │   ├── Footer.tsx         # 4-column footer with ghost KREAV wordmark
 │   │   ├── ProductCard.tsx    # Storefront product card (Link → /store/[id])
-│   │   └── ui/               # Reusable neobrutalism primitives (FE-001)
-│   │       ├── Button.tsx     # variant primary/secondary/section + press effect
-│   │       ├── Card.tsx       # theme-aware card, opt-in yellow-border hover
-│   │       ├── Badge.tsx      # eyebrow/badge ([ Label ]) + inverted variant
-│   │       ├── Input.tsx      # labelled input + inline error (mono 12px)
+│   │   ├── WalletConnectPanel.tsx # Mock Freighter connect + all states (reused)
+│   │   └── ui/               # Reusable primitives (refined app surface)
+│   │       ├── Button.tsx     # variant primary/secondary/ghost
+│   │       ├── Card.tsx       # theme-aware card, opt-in hover lift
+│   │       ├── Badge.tsx      # chip w/ colour tones (accent/neutral/success/warn/danger)
+│   │       ├── Input.tsx      # labelled input + inline error + focus ring
 │   │       ├── Skeleton.tsx   # loading placeholder (kv-skeleton keyframe)
 │   │       ├── EmptyState.tsx # empty state + optional CTA
 │   │       ├── ErrorState.tsx # error state + optional retry
+│   │       ├── Icon.tsx       # inline line-icon set (SVG, currentColor)
+│   │       ├── Stepper.tsx    # onboarding progress indicator
 │   │       └── index.ts       # barrel export
 │   ├── context/
 │   │   └── theme.tsx          # ThemeProvider + useTheme hook (dark/light)
 │   └── lib/
-│       ├── mock.ts            # Static mock data (products, orders, wallet) for app pages
-│       └── stellar.ts         # Stellar display helpers (truncateAddress, stellarTxUrl)
+│       ├── mock.ts            # Static mock data (products, orders, wallet, analytics, creator)
+│       ├── stellar.ts         # Stellar display helpers (truncateAddress, stellarTxUrl)
+│       └── constants.ts       # Shared constants (COUNTRIES for onboarding)
 ├── public/                    # Static assets
 ├── structure.md               # ← this file
 ├── role.md                    # AI agent working rules
