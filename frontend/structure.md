@@ -19,6 +19,7 @@ kreve/
 │   │       ├── layout.tsx     # Shared shell: AppNav + <main> + Footer
 │   │       ├── store/page.tsx     # Storefront product grid (mock data)
 │   │       ├── signup/page.tsx    # Onboarding signup form (email + role, Zod v4)
+│   │       ├── wallet/connect/page.tsx # Connect Freighter wallet — all states (mock)
 │   │       └── dashboard/page.tsx # Creator dashboard tabs (products/orders/wallet)
 │   ├── components/
 │   │   ├── Nav.tsx            # Fixed navigation bar (marketing landing only)
@@ -46,7 +47,8 @@ kreve/
 │   ├── context/
 │   │   └── theme.tsx          # ThemeProvider + useTheme hook (dark/light)
 │   └── lib/
-│       └── mock.ts            # Static mock data (products, orders, wallet) for app pages
+│       ├── mock.ts            # Static mock data (products, orders, wallet) for app pages
+│       └── stellar.ts         # Stellar display helpers (truncateAddress, stellarTxUrl)
 ├── public/                    # Static assets
 ├── structure.md               # ← this file
 ├── role.md                    # AI agent working rules
