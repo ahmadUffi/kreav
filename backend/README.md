@@ -4,8 +4,8 @@ Settlement orchestration layer for digital product creators, powered by Stellar.
 **NestJS + Prisma + PostgreSQL.** Non-custodial: the backend stores only public
 wallet addresses — never private keys or seed phrases.
 
-> **Source of truth:** [`../../Kreav Backend PRD.md`](../../Kreav%20Backend%20PRD.md) v3 (Final).
-> **Working agreement:** [`AGENTS.md`](./AGENTS.md).
+> **Source of truth:** [`../docs/backend/Backend-PRD.md`](../docs/backend/Backend-PRD.md) v3 (Final).
+> **Working agreement:** [`./AGENTS.md`](./AGENTS.md).
 
 ## Status
 

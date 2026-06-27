@@ -1,7 +1,8 @@
 # Backend Working Agreement
 
-> Source of truth for how backend issues (BE-001 → BE-012) are executed.
-> Bind to PRD: `Kreav Backend PRD.md` v3 (Final). Scope: **backend only**.
+> Source of truth for how backend issues (BE-001 → BE-014) are executed.
+> Bind to PRD: [`docs/backend/Backend-PRD.md`](../docs/backend/Backend-PRD.md) v3 (Final). Scope: **backend only**.
+> This file mirrors the backend section of the canonical [`../AGENTS.md`](../AGENTS.md); the canonical copy is authoritative.
 
 ## Issue lifecycle
 
@@ -13,7 +14,7 @@ Backlog → [create branch] → In progress → [open PR → develop] → In rev
 - **Base branch = `develop`** (NOT `main`). `develop` is the working source of truth; `main` is only touched via deliberate releases.
 - Move the Project #10 card at each phase so the board stays accurate.
 - Issue auto-closes on merge via `closes #X` in the PR body.
-- `Source of truth: Kreav Backend PRD.md` → always obey; it wins over other docs.
+- `Source of truth: docs/backend/Backend-PRD.md` → always obey; it wins over other docs.
 
 ## Branching
 
