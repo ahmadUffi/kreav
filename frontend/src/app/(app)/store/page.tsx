@@ -1,53 +1,49 @@
 "use client";
 import { useState } from "react";
-import { Badge, Card, Button, Skeleton, EmptyState } from "@/components/ui";
+import { Badge, Card, Button, Skeleton, EmptyState, ErrorState } from "@/components/ui";
+import ProductCard from "@/components/ProductCard";
 import { products } from "@/lib/mock";
 
-type View = "live" | "loading" | "empty";
+type View = "live" | "loading" | "empty" | "error";
 
 export default function StorePage() {
   const [view, setView] = useState<View>("live");
 
   return (
-    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "60px 40px 90px" }}>
+    <div className="mx-auto max-w-[1280px] px-10 pt-15 pb-[90px]">
       <Badge>Storefront</Badge>
       <h1
+        className="mt-5 mb-2.5"
         style={{
           fontFamily: "var(--font-anton)",
           fontSize: "clamp(34px, 5vw, 64px)",
           textTransform: "uppercase",
           lineHeight: 1,
-          margin: "20px 0 10px",
         }}
       >
         Digital products by Asian creators
       </h1>
       <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 15,
-          color: "var(--muted)",
-          maxWidth: 560,
-          margin: "0 0 30px",
-        }}
+        className="mb-[30px] max-w-[560px]"
+        style={{ fontFamily: "var(--font-mono)", fontSize: 15, color: "var(--muted)" }}
       >
         Browse presets, templates, ebooks and more. Pay instantly in your own
         currency — settlement powered by Stellar.
       </p>
 
-      {/* Demo state switcher (FE-001 shell only — no real fetching yet). */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 30, flexWrap: "wrap" }}>
-        {(["live", "loading", "empty"] as View[]).map((v) => (
+      {/* Demo state switcher (UI shell only — no real fetching yet). */}
+      <div className="mb-[30px] flex flex-wrap gap-2.5">
+        {(["live", "loading", "empty", "error"] as View[]).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
+            className="px-3 py-[7px]"
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 11,
               fontWeight: 700,
               letterSpacing: 1,
               textTransform: "uppercase",
-              padding: "7px 12px",
               cursor: "pointer",
               background: view === v ? "#FFE600" : "transparent",
               color: view === v ? "#0A0A0A" : "var(--text)",
@@ -66,76 +62,30 @@ export default function StorePage() {
           actionLabel="Become a creator"
           onAction={() => setView("live")}
         />
+      ) : view === "error" ? (
+        <ErrorState
+          title="Couldn't load products"
+          description="Something went wrong while fetching the storefront. Please try again."
+          retryLabel="Retry"
+          onRetry={() => setView("live")}
+        />
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: 24,
-          }}
-        >
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
           {view === "loading"
             ? Array.from({ length: 8 }).map((_, i) => (
                 <Card key={i} padding={0}>
                   <Skeleton height={150} />
-                  <div style={{ padding: 18 }}>
+                  <div className="p-[18px]">
                     <Skeleton height={16} style={{ marginBottom: 10 }} />
                     <Skeleton height={12} width="60%" />
                   </div>
                 </Card>
               ))
-            : products.map((p) => (
-                <Card key={p.id} hover padding={0} style={{ cursor: "pointer" }}>
-                  <div
-                    style={{
-                      height: 150,
-                      background: p.accent,
-                      borderBottom: "3px solid #0A0A0A",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 56,
-                    }}
-                  >
-                    {p.emoji}
-                  </div>
-                  <div style={{ padding: 18 }}>
-                    <div style={{ marginBottom: 10 }}>
-                      <Badge brackets={false} style={{ fontSize: 10, padding: "5px 9px", boxShadow: "none" }}>
-                        {p.category}
-                      </Badge>
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-anton)",
-                        fontSize: 20,
-                        textTransform: "uppercase",
-                        lineHeight: 1.05,
-                        marginBottom: 6,
-                      }}
-                    >
-                      {p.title}
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginTop: 12,
-                      }}
-                    >
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
-                        {p.creator}
-                      </span>
-                      <span style={{ fontFamily: "var(--font-anton)", fontSize: 18 }}>${p.price}</span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+            : products.map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
       )}
 
-      <div style={{ marginTop: 40 }}>
+      <div className="mt-10">
         <Button variant="section">Load more</Button>
       </div>
     </div>

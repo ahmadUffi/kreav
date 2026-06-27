@@ -33,6 +33,7 @@ kreve/
 │   │   ├── CreatorSpotlight.tsx # Horizontal-scroll creator cards
 │   │   ├── Waitlist.tsx       # Zod-validated email form + animated counter
 │   │   ├── Footer.tsx         # 4-column footer with ghost KREAV wordmark
+│   │   ├── ProductCard.tsx    # Storefront product card (Link → /store/[id])
 │   │   └── ui/               # Reusable neobrutalism primitives (FE-001)
 │   │       ├── Button.tsx     # variant primary/secondary/section + press effect
 │   │       ├── Card.tsx       # theme-aware card, opt-in yellow-border hover
