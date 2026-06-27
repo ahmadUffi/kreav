@@ -33,6 +33,7 @@
     "@nestjs/event-emitter": "^3.1.0",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/throttler": "^6.5.0",
+    "@noble/hashes": "1.8.0",
     "@prisma/client": "^6.19.3",
     "@stellar/stellar-sdk": "^16.0.1",
     "class-transformer": "^0.5.1",
@@ -89,7 +90,7 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "transformIgnorePatterns": [
-      "node_modules/(?!(@stellar/stellar-sdk|@noble|stellar-base|js-xdr|buffer|xdr-fp))"
+      "node_modules/(?!(.pnpm/)?(?:(@stellar|@noble|stellar-base|js-xdr)))"
     ]
   }
 }
