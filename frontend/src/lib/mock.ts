@@ -31,6 +31,8 @@ export interface WalletTransaction {
   amount: number;
   type: "credit" | "debit";
   date: string;
+  /** On-chain Stellar transaction hash (mock) for the explorer link. */
+  txHash: string;
 }
 
 export interface Wallet {
@@ -62,10 +64,10 @@ export const wallet: Wallet = {
   balance: 1284.5,
   currency: "USD",
   transactions: [
-    { id: "t1", label: "Sale — Notion Creator OS", amount: 29, type: "credit", date: "2026-06-26" },
-    { id: "t2", label: "Sale — Lightroom Sunset Presets", amount: 18, type: "credit", date: "2026-06-25" },
-    { id: "t3", label: "Withdrawal to wallet", amount: 200, type: "debit", date: "2026-06-24" },
-    { id: "t4", label: "Sale — Freelance Pricing Ebook", amount: 9, type: "credit", date: "2026-06-24" },
-    { id: "t5", label: "Refund — 3D for Beginners", amount: 49, type: "debit", date: "2026-06-22" },
+    { id: "t1", label: "Sale — Notion Creator OS", amount: 29, type: "credit", date: "2026-06-26", txHash: "a1b2c3d4e5f60718293a4b5c6d7e8f901a2b3c4d5e6f708192a3b4c5d6e7f8090" },
+    { id: "t2", label: "Sale — Lightroom Sunset Presets", amount: 18, type: "credit", date: "2026-06-25", txHash: "b2c3d4e5f60718293a4b5c6d7e8f901a2b3c4d5e6f708192a3b4c5d6e7f8090a1" },
+    { id: "t3", label: "Withdrawal to wallet", amount: 200, type: "debit", date: "2026-06-24", txHash: "c3d4e5f60718293a4b5c6d7e8f901a2b3c4d5e6f708192a3b4c5d6e7f8090a1b2" },
+    { id: "t4", label: "Sale — Freelance Pricing Ebook", amount: 9, type: "credit", date: "2026-06-24", txHash: "d4e5f60718293a4b5c6d7e8f901a2b3c4d5e6f708192a3b4c5d6e7f8090a1b2c3" },
+    { id: "t5", label: "Refund — 3D for Beginners", amount: 49, type: "debit", date: "2026-06-22", txHash: "e5f60718293a4b5c6d7e8f901a2b3c4d5e6f708192a3b4c5d6e7f8090a1b2c3d4" },
   ],
 };
