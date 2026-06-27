@@ -37,11 +37,16 @@ interface CreditBalance {
  */
 @Injectable()
 export class HorizonService {
-  private readonly server: Horizon.Server;
+  private _server: Horizon.Server | null = null;
 
-  constructor(@Inject(STELLAR_CONFIG) private readonly config: StellarConfig) {
-    // Lazy client — constructed once; doesn't block boot on Testnet flakiness.
-    this.server = new Horizon.Server(config.horizonUrl);
+  constructor(@Inject(STELLAR_CONFIG) private readonly config: StellarConfig) {}
+
+  /** Lazily initialize the Horizon server to avoid crash on empty config URL. */
+  private get server(): Horizon.Server {
+    if (!this._server) {
+      this._server = new Horizon.Server(this.config.horizonUrl);
+    }
+    return this._server;
   }
 
   /**

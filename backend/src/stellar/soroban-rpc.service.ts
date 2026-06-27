@@ -52,8 +52,8 @@ export interface SettlementRecipientInput {
 @Injectable()
 export class SorobanRpcService {
   private readonly logger = new Logger(SorobanRpcService.name);
-  private readonly server: rpc.Server;
-  private readonly contract: Contract;
+  private _server: rpc.Server | null = null;
+  private _contract: Contract | null = null;
 
   /** Poll config for getTransaction — bounded so we never loop forever. */
   private static readonly POLL_INTERVAL_MS = 1000;
@@ -62,9 +62,25 @@ export class SorobanRpcService {
   constructor(
     @Inject(STELLAR_CONFIG) private readonly config: StellarConfig,
     private readonly platformKey: PlatformKeypairService,
-  ) {
-    this.server = new rpc.Server(config.sorobanRpcUrl);
-    this.contract = new Contract(config.splitContractId);
+  ) {}
+
+  /**
+   * Lazily initialize the RPC server & contract reference.
+   * Defers SDK object construction to first use so that the service can be
+   * injected (and the module compiled) even when Stellar env vars are not set.
+   */
+  private get server(): rpc.Server {
+    if (!this._server) {
+      this._server = new rpc.Server(this.config.sorobanRpcUrl);
+    }
+    return this._server;
+  }
+
+  private get contract(): Contract {
+    if (!this._contract) {
+      this._contract = new Contract(this.config.splitContractId);
+    }
+    return this._contract;
   }
 
   /**
