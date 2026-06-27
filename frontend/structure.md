@@ -13,10 +13,16 @@ kreve/
 ├── src/
 │   ├── app/
 │   │   ├── globals.css        # Tailwind v4 @theme tokens + dark-mode CSS vars
-│   │   ├── layout.tsx         # Root layout: Google fonts, <html> attrs, metadata
-│   │   └── page.tsx           # Single-page entry — assembles all section components
+│   │   ├── layout.tsx         # Root layout: Google fonts, <html> attrs, metadata, global ThemeProvider
+│   │   ├── page.tsx           # Marketing landing ("/") — assembles all section components
+│   │   └── (app)/            # App route group (shares AppNav + Footer layout)
+│   │       ├── layout.tsx     # Shared shell: AppNav + <main> + Footer
+│   │       ├── store/page.tsx     # Storefront product grid (mock data)
+│   │       ├── signup/page.tsx    # Onboarding signup form (email + role, Zod v4)
+│   │       └── dashboard/page.tsx # Creator dashboard tabs (products/orders/wallet)
 │   ├── components/
-│   │   ├── Nav.tsx            # Fixed navigation bar
+│   │   ├── Nav.tsx            # Fixed navigation bar (marketing landing only)
+│   │   ├── AppNav.tsx         # App shell nav: Store/Signup/Dashboard links + theme toggle
 │   │   ├── Hero.tsx           # Above-the-fold section with map canvas
 │   │   ├── MapCanvas.tsx      # Three.js Asia map (client-only, ssr:false)
 │   │   ├── Marquee.tsx        # GSAP infinite ticker strip
@@ -26,9 +32,20 @@ kreve/
 │   │   ├── Features.tsx       # 2×2 feature grid
 │   │   ├── CreatorSpotlight.tsx # Horizontal-scroll creator cards
 │   │   ├── Waitlist.tsx       # Zod-validated email form + animated counter
-│   │   └── Footer.tsx         # 4-column footer with ghost KREAV wordmark
-│   └── context/
-│       └── theme.tsx          # ThemeProvider + useTheme hook (dark/light)
+│   │   ├── Footer.tsx         # 4-column footer with ghost KREAV wordmark
+│   │   └── ui/               # Reusable neobrutalism primitives (FE-001)
+│   │       ├── Button.tsx     # variant primary/secondary/section + press effect
+│   │       ├── Card.tsx       # theme-aware card, opt-in yellow-border hover
+│   │       ├── Badge.tsx      # eyebrow/badge ([ Label ]) + inverted variant
+│   │       ├── Input.tsx      # labelled input + inline error (mono 12px)
+│   │       ├── Skeleton.tsx   # loading placeholder (kv-skeleton keyframe)
+│   │       ├── EmptyState.tsx # empty state + optional CTA
+│   │       ├── ErrorState.tsx # error state + optional retry
+│   │       └── index.ts       # barrel export
+│   ├── context/
+│   │   └── theme.tsx          # ThemeProvider + useTheme hook (dark/light)
+│   └── lib/
+│       └── mock.ts            # Static mock data (products, orders, wallet) for app pages
 ├── public/                    # Static assets
 ├── structure.md               # ← this file
 ├── role.md                    # AI agent working rules
@@ -43,8 +60,10 @@ kreve/
 
 ## Page Composition (`page.tsx`)
 
+> `ThemeProvider` now lives in the root `layout.tsx` (wraps every route, including the `(app)` group). The landing `page.tsx` no longer wraps it.
+
 ```
-ThemeProvider
+RootLayout → ThemeProvider
 └── root <div> (CSS var background/color)
     ├── Nav
     ├── Hero
