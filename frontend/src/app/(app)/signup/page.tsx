@@ -55,59 +55,56 @@ export default function SignupPage() {
   };
 
   return (
-    <div style={{ maxWidth: 560, margin: "0 auto", padding: "60px 40px 90px" }}>
+    <div className="mx-auto max-w-[560px] px-10 pt-12 pb-[90px]">
       <Badge>Get started</Badge>
       <h1
-        style={{
-          fontFamily: "var(--font-anton)",
-          fontSize: "clamp(34px, 5vw, 58px)",
-          textTransform: "uppercase",
-          lineHeight: 1,
-          margin: "20px 0 30px",
-        }}
+        className="mt-4 mb-2"
+        style={{ fontFamily: "var(--font-anton)", fontSize: "clamp(30px, 4.4vw, 48px)", lineHeight: 1.05 }}
       >
         Create your account
       </h1>
+      <p className="mb-8" style={{ fontFamily: "var(--font-mono)", fontSize: 14, lineHeight: 1.6, color: "var(--muted)" }}>
+        One step to start buying or selling on Kreav.
+      </p>
 
       {submitted ? (
-        <Card style={{ textAlign: "center", padding: 40 }}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>✓</div>
+        <Card className="text-center" style={{ padding: 40 }}>
           <div
+            className="mx-auto mb-4 flex items-center justify-center"
             style={{
-              fontFamily: "var(--font-anton)",
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              background: "var(--tone-success-bg, rgba(2,158,87,.14))",
+              color: "var(--tone-success-fg, #0a7a45)",
               fontSize: 24,
-              textTransform: "uppercase",
-              marginBottom: 8,
+              fontWeight: 800,
             }}
           >
+            ✓
+          </div>
+          <div className="mb-2" style={{ fontFamily: "var(--font-mono)", fontSize: 18, fontWeight: 700 }}>
             You&apos;re in!
           </div>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--muted)", margin: "0 0 18px" }}>
+          <p className="mb-5" style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--muted)" }}>
             Welcome to Kreav as a {role}. Taking you to{" "}
             {role === "creator" ? "connect your wallet" : "the store"}…
           </p>
-          <Button variant="secondary" onClick={() => router.push(destination)}>
+          <Button variant="primary" onClick={() => router.push(destination)}>
             Continue now
           </Button>
         </Card>
       ) : (
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           {/* Role selection */}
           <div>
             <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                color: "var(--text)",
-                marginBottom: 10,
-              }}
+              className="mb-2.5"
+              style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}
             >
               How will you use Kreav?
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div className="grid grid-cols-2 gap-3">
               {ROLES.map((r) => {
                 const active = role === r.value;
                 return (
@@ -118,19 +115,18 @@ export default function SignupPage() {
                     style={{
                       textAlign: "left",
                       cursor: "pointer",
-                      background: "var(--card)",
+                      background: active ? "var(--surface-2, rgba(10,10,10,.045))" : "var(--card)",
                       color: "var(--card-text)",
-                      padding: 18,
-                      border: `3px solid ${active ? "#FFE600" : "#0A0A0A"}`,
-                      boxShadow: active ? "8px 8px 0 #0A0A0A" : "6px 6px 0 #0A0A0A",
-                      transition: "border-color 0.15s, box-shadow 0.15s",
+                      padding: 16,
+                      borderRadius: "var(--r, 10px)",
+                      border: `1.5px solid ${active ? "var(--line-strong, #0A0A0A)" : "var(--line, rgba(10,10,10,.14))"}`,
+                      boxShadow: active ? "var(--ring, 0 0 0 3px rgba(255,230,0,.4))" : "var(--shadow-sm, 0 1px 2px rgba(10,10,10,.06))",
+                      transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
                     }}
                   >
-                    <div style={{ fontSize: 28, marginBottom: 8 }}>{r.emoji}</div>
-                    <div style={{ fontFamily: "var(--font-anton)", fontSize: 18, textTransform: "uppercase" }}>
-                      {r.title}
-                    </div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                    <div style={{ fontSize: 26, marginBottom: 8 }}>{r.emoji}</div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700 }}>{r.title}</div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.5 }}>
                       {r.blurb}
                     </div>
                   </button>
@@ -138,7 +134,7 @@ export default function SignupPage() {
               })}
             </div>
             {errors.role && (
-              <p style={{ margin: "8px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: "#FF4D00" }}>
+              <p className="mt-2" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #FF4D00)" }}>
                 {errors.role}
               </p>
             )}
@@ -159,15 +155,7 @@ export default function SignupPage() {
           </Button>
 
           {/* Non-custodial assurance */}
-          <p
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-mono)",
-              fontSize: 12,
-              lineHeight: 1.6,
-              color: "var(--muted)",
-            }}
-          >
+          <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: 12, lineHeight: 1.6, color: "var(--muted)" }}>
             🔒 Kreav is non-custodial. We&apos;ll <strong style={{ color: "var(--text)" }}>never</strong> ask
             for your seed phrase or secret key — you stay in full control of your wallet.
           </p>

@@ -1,16 +1,18 @@
 import AppNav from "@/components/AppNav";
-import Footer from "@/components/Footer";
+import AppFooter from "@/components/AppFooter";
 
 /**
- * Shared layout for the application routes (/store, /signup, /dashboard).
+ * Shared layout for the application routes (/store, /signup, /dashboard, …).
  * The marketing landing at "/" is outside this route group and keeps its own
- * Nav/Hero composition. Theme is provided globally by the root layout.
+ * full-brutalism composition. `data-surface="app"` activates the refined
+ * neo-brutalism token set (see globals.css). Theme is provided by the root layout.
  */
 export default function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div
+      data-surface="app"
       style={{
         background: "var(--bg)",
         color: "var(--text)",
@@ -23,7 +25,7 @@ export default function AppLayout({
     >
       <AppNav />
       <main style={{ flex: 1 }}>{children}</main>
-      <Footer />
+      <AppFooter />
     </div>
   );
 }
