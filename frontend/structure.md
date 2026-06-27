@@ -18,6 +18,7 @@ kreve/
 │   │   └── (app)/            # App route group (shares AppNav + Footer layout)
 │   │       ├── layout.tsx     # Shared shell: AppNav + <main> + Footer
 │   │       ├── store/page.tsx     # Storefront product grid (mock data)
+│   │       ├── store/[id]/page.tsx # Product detail page (mock data + buy CTA)
 │   │       ├── signup/page.tsx    # Onboarding signup form (email + role, Zod v4)
 │   │       └── dashboard/page.tsx # Creator dashboard tabs (products/orders/wallet)
 │   ├── components/
