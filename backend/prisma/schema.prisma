@@ -71,7 +71,10 @@ enum SettlementStatus {
   FAILED
 }
 
-/// Extensible: AFFILIATE / TREASURY added later without migration pain.
+/// Recipient of a settlement. MVP uses ONLY `CREATOR` + `PLATFORM` (the 95/5 split).
+/// `AFFILIATE` / `TREASURY` are reserved for future recipient types — NOT in the MVP
+/// (do NOT add a Treasury node/wallet to diagrams or flows; the Final Architecture
+/// Treasury node was removed — see Kreav Final Architecture Review §Inconsistencies).
 enum RecipientType {
   CREATOR
   PLATFORM
@@ -153,6 +156,10 @@ model ProductCollaborator {
 }
 
 model Order {
+  // ADR H2 — this `id` is the contract's `order_ref` (idempotency key passed to
+  // the Soroban `settle` fn). A duplicate settle for the same order_ref is
+  // rejected by the contract. Separate from `paymentRef` (the GCash Payment
+  // Transaction ID, which idempotency-checks the webhook side).
   id         String      @id @default(uuid())
   productId  String      @map("product_id")
   buyerEmail String      @map("buyer_email")
@@ -199,6 +206,9 @@ model SettlementRecipient {
   role          String
   percentage    Decimal       @db.Decimal(5, 2)
   amount        Decimal       @db.Decimal(18, 2)
+  // ADR H3 / audit #9 — audit timestamp for chronological recipient ordering
+  // (reconciliation + dispute forensics). Every other money/lifecycle model has one.
+  createdAt     DateTime      @default(now()) @map("created_at")
 
   settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
 
