@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Anton, JetBrains_Mono, Press_Start_2P } from "next/font/google";
+import { ThemeProvider } from "@/context/theme";
 import "./globals.css";
 
 const anton = Anton({
@@ -36,7 +37,9 @@ export default function RootLayout({
       lang="en"
       className={`${anton.variable} ${jetbrainsMono.variable} ${pressStart2P.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }
