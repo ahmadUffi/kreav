@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { z } from "zod/v4";
 import { Badge, Card, Button, Input } from "@/components/ui";
 
@@ -15,11 +16,27 @@ const ROLES: { value: Role; title: string; blurb: string; emoji: string }[] = [
   { value: "buyer", title: "I'm a buyer", blurb: "Discover and buy digital products.", emoji: "🛍️" },
 ];
 
+/** Where each role lands after a successful (mock) signup. */
+const DESTINATION: Record<Role, string> = {
+  creator: "/wallet/connect", // FE-005 — connect a non-custodial wallet next
+  buyer: "/store",
+};
+
 export default function SignupPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role | null>(null);
   const [errors, setErrors] = useState<{ email?: string; role?: string }>({});
   const [submitted, setSubmitted] = useState(false);
+
+  const destination = role ? DESTINATION[role] : "/store";
+
+  // Mock success: after the confirmation flashes, route the user onward.
+  useEffect(() => {
+    if (!submitted) return;
+    const t = setTimeout(() => router.push(destination), 1400);
+    return () => clearTimeout(t);
+  }, [submitted, destination, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,9 +82,13 @@ export default function SignupPage() {
           >
             You&apos;re in!
           </div>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--muted)", margin: 0 }}>
-            Welcome to Kreav as a {role}. We&apos;ll be in touch at {email}.
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--muted)", margin: "0 0 18px" }}>
+            Welcome to Kreav as a {role}. Taking you to{" "}
+            {role === "creator" ? "connect your wallet" : "the store"}…
           </p>
+          <Button variant="secondary" onClick={() => router.push(destination)}>
+            Continue now
+          </Button>
         </Card>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 26 }}>
@@ -136,6 +157,20 @@ export default function SignupPage() {
           <Button type="submit" variant="primary" fullWidth>
             Create account
           </Button>
+
+          {/* Non-custodial assurance */}
+          <p
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              lineHeight: 1.6,
+              color: "var(--muted)",
+            }}
+          >
+            🔒 Kreav is non-custodial. We&apos;ll <strong style={{ color: "var(--text)" }}>never</strong> ask
+            for your seed phrase or secret key — you stay in full control of your wallet.
+          </p>
         </form>
       )}
     </div>
