@@ -6,6 +6,30 @@
 
 ---
 
+## Surfaces
+
+Kreav has **two visual surfaces** — match the surface of the file you're editing.
+
+| Surface | Where | Look |
+|---|---|---|
+| **Marketing** | `/` landing + its sections (`Hero`, `Nav`, `Features`, `Marquee`, …) | Full neobrutalism (the rest of this doc): 3px ink borders, 6px hard offset shadows, Anton UPPERCASE, zero radius. **Unchanged.** |
+| **App** | the `(app)` route group (`/store`, `/store/[id]`, `/signup`, `/wallet/connect`, `/dashboard`) + the shared `ui/` primitives | **Refined neo-brutalism**: hairline borders, small radius, soft low shadows, display font for page titles only, sentence-case body, one yellow accent per screen. |
+
+The app surface is activated by `data-surface="app"` on the `(app)` layout root, which sets soft tokens in `globals.css`:
+
+| Token | Purpose |
+|---|---|
+| `--r` / `--r-sm` | radius 10px / 8px |
+| `--line` / `--line-strong` | hairline border / primary-control border |
+| `--surface-2` | secondary fill / tracks |
+| `--shadow-sm` / `--shadow` | soft low shadows (rest / raised) |
+| `--ring` | focus ring |
+| `--tone-*-bg` / `--tone-*-fg` | soft status chips (success / warn / danger / neutral) |
+
+App-surface rules: reserve Anton (display) for the page H1 only; card/section titles + labels use JetBrains Mono, **sentence case**, no 3px tracking; exactly **one** yellow primary action per screen (secondary = neutral outline); status = soft tinted chips, not full-saturation blocks; hover = gentle lift, not the hard-offset press; never ship dev/demo state toggles to end users.
+
+---
+
 ## Colour Palette
 
 ### Brand tokens (static — never change with theme)

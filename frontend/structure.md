@@ -24,7 +24,8 @@ kreve/
 │   │       └── dashboard/page.tsx # Creator dashboard tabs (products/orders/wallet)
 │   ├── components/
 │   │   ├── Nav.tsx            # Fixed navigation bar (marketing landing only)
-│   │   ├── AppNav.tsx         # App shell nav: Store/Signup/Dashboard links + theme toggle
+│   │   ├── AppNav.tsx         # App shell nav: Store/Dashboard/Wallet links + theme toggle (refined)
+│   │   ├── AppFooter.tsx      # Slim app-surface footer (marketing Footer stays brutalist)
 │   │   ├── Hero.tsx           # Above-the-fold section with map canvas
 │   │   ├── MapCanvas.tsx      # Three.js Asia map (client-only, ssr:false)
 │   │   ├── Marquee.tsx        # GSAP infinite ticker strip

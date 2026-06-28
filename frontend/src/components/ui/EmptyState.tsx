@@ -11,7 +11,7 @@ interface EmptyStateProps {
 }
 
 /**
- * Neobrutalism empty state — pixel-art box icon, title, description, optional CTA.
+ * App-surface empty state — hairline panel, calm icon, optional CTA.
  */
 export default function EmptyState({
   title,
@@ -26,28 +26,22 @@ export default function EmptyState({
         flexDirection: "column",
         alignItems: "center",
         textAlign: "center",
-        gap: 14,
-        padding: "60px 24px",
-        border: "3px dashed #0A0A0A",
+        gap: 12,
+        padding: "48px 24px",
+        border: "1px solid var(--line, rgba(10,10,10,.14))",
+        borderRadius: "var(--r, 10px)",
         background: "var(--card)",
         color: "var(--card-text)",
+        boxShadow: "var(--shadow-sm, 0 1px 2px rgba(10,10,10,.06))",
       }}
     >
-      <svg width="40" height="40" viewBox="0 0 12 12" shapeRendering="crispEdges">
-        <rect x="1" y="2" width="10" height="8" fill="none" stroke="#0A0A0A" strokeWidth="1" />
-        <rect x="3" y="4" width="2" height="2" fill="#FFE600" />
-        <rect x="7" y="4" width="2" height="2" fill="#FFE600" />
-        <rect x="3" y="7" width="6" height="1" fill="#0A0A0A" />
+      <svg width="36" height="36" viewBox="0 0 12 12" shapeRendering="crispEdges" style={{ opacity: 0.8 }}>
+        <rect x="1" y="2" width="10" height="8" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+        <rect x="3" y="4" width="2" height="2" fill="var(--accent, #FFE600)" />
+        <rect x="7" y="4" width="2" height="2" fill="var(--accent, #FFE600)" />
+        <rect x="3" y="7" width="6" height="1" fill="currentColor" opacity="0.5" />
       </svg>
-      <div
-        style={{
-          fontFamily: "var(--font-anton)",
-          fontSize: 21,
-          textTransform: "uppercase",
-        }}
-      >
-        {title}
-      </div>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 17, fontWeight: 700 }}>{title}</div>
       {description && (
         <p
           style={{

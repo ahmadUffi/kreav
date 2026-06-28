@@ -3,13 +3,13 @@ import type { CSSProperties, InputHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
-  /** Inline validation message — rendered in mono 12px per role.md form rules. */
+  /** Inline validation message — rendered in mono 12px. */
   error?: string;
 }
 
 /**
- * Neobrutalism text input — 3px ink border, mono font, no native outline.
- * Border turns brand yellow on focus. Optional label + inline error.
+ * App-surface text input — hairline border, small radius, soft focus ring.
+ * Optional label + inline error.
  */
 export default function Input({
   label,
@@ -24,11 +24,13 @@ export default function Input({
     width: "100%",
     fontFamily: "var(--font-mono)",
     fontSize: 14,
-    padding: "14px 16px",
-    border: `3px solid ${error ? "#FF4D00" : "#0A0A0A"}`,
+    padding: "12px 14px",
+    borderRadius: "var(--r-sm, 8px)",
+    border: `1.5px solid ${error ? "var(--tone-danger-fg, #FF4D00)" : "var(--line, rgba(10,10,10,.14))"}`,
     outline: "none",
     background: "var(--card)",
     color: "var(--card-text)",
+    transition: "border-color 0.15s, box-shadow 0.15s",
     ...style,
   };
 
@@ -40,12 +42,10 @@ export default function Input({
           style={{
             display: "block",
             fontFamily: "var(--font-mono)",
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: 1,
-            textTransform: "uppercase",
+            fontSize: 13,
+            fontWeight: 600,
             color: "var(--text)",
-            marginBottom: 8,
+            marginBottom: 7,
           }}
         >
           {label}
@@ -55,11 +55,17 @@ export default function Input({
         id={id}
         style={inputStyle}
         onFocus={(e) => {
-          if (!error) e.currentTarget.style.borderColor = "#FFE600";
+          if (!error) {
+            e.currentTarget.style.borderColor = "var(--line-strong, #0A0A0A)";
+            e.currentTarget.style.boxShadow = "var(--ring, 0 0 0 3px rgba(255,230,0,.4))";
+          }
           onFocus?.(e);
         }}
         onBlur={(e) => {
-          if (!error) e.currentTarget.style.borderColor = "#0A0A0A";
+          if (!error) {
+            e.currentTarget.style.borderColor = "var(--line, rgba(10,10,10,.14))";
+            e.currentTarget.style.boxShadow = "none";
+          }
           onBlur?.(e);
         }}
         {...rest}
@@ -67,11 +73,10 @@ export default function Input({
       {error && (
         <p
           style={{
-            margin: "8px 0 0",
+            margin: "7px 0 0",
             fontFamily: "var(--font-mono)",
             fontSize: 12,
-            fontWeight: 700,
-            color: "#FF4D00",
+            color: "var(--tone-danger-fg, #FF4D00)",
           }}
         >
           {error}

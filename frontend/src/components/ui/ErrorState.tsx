@@ -11,7 +11,8 @@ interface ErrorStateProps {
 }
 
 /**
- * Neobrutalism error state — orange pixel warning icon, message, optional retry.
+ * App-surface error state — hairline panel with a restrained danger accent,
+ * message, and optional retry.
  */
 export default function ErrorState({
   title = "Something went wrong",
@@ -26,27 +27,33 @@ export default function ErrorState({
         flexDirection: "column",
         alignItems: "center",
         textAlign: "center",
-        gap: 14,
-        padding: "60px 24px",
-        border: "3px solid #FF4D00",
+        gap: 12,
+        padding: "48px 24px",
+        border: "1px solid var(--line, rgba(10,10,10,.14))",
+        borderRadius: "var(--r, 10px)",
         background: "var(--card)",
         color: "var(--card-text)",
-        boxShadow: "6px 6px 0 #0A0A0A",
+        boxShadow: "var(--shadow-sm, 0 1px 2px rgba(10,10,10,.06))",
       }}
     >
-      <svg width="40" height="40" viewBox="0 0 12 12" shapeRendering="crispEdges">
-        <rect x="5" y="1" width="2" height="6" fill="#FF4D00" />
-        <rect x="5" y="9" width="2" height="2" fill="#FF4D00" />
-      </svg>
       <div
         style={{
-          fontFamily: "var(--font-anton)",
-          fontSize: 21,
-          textTransform: "uppercase",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          background: "var(--tone-danger-bg, rgba(255,77,0,.14))",
+          color: "var(--tone-danger-fg, #b23a00)",
+          fontFamily: "var(--font-mono)",
+          fontWeight: 800,
+          fontSize: 20,
         }}
       >
-        {title}
+        !
       </div>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 17, fontWeight: 700 }}>{title}</div>
       {description && (
         <p
           style={{

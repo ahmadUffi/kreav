@@ -1,41 +1,21 @@
 "use client";
-import { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/context/theme";
-import gsap from "gsap";
 
 const LINKS = [
   { label: "Store", href: "/store" },
-  { label: "Signup", href: "/signup" },
   { label: "Dashboard", href: "/dashboard" },
+  { label: "Wallet", href: "/wallet/connect" },
 ];
 
 /**
- * App shell navigation — fixed bar reusing the marketing Nav's neobrutalism
- * patterns (glitch logo, mono links, theme toggle). Active route is derived
- * from usePathname() and highlighted in brand yellow.
+ * App shell navigation — slim bar with a hairline underline, calm active state,
+ * and a theme toggle. Refined (not brutalist) to match the app surface.
  */
 export default function AppNav() {
   const { dark, toggle } = useTheme();
   const pathname = usePathname();
-  const logoRRef = useRef<HTMLSpanElement>(null);
-  const logoCRef = useRef<HTMLSpanElement>(null);
-
-  const doGlitch = () => {
-    const r = logoRRef.current;
-    const c = logoCRef.current;
-    if (!r || !c) return;
-    gsap.set([r, c], { opacity: 1 });
-    const tl = gsap.timeline({
-      onComplete: () => gsap.set([r, c], { opacity: 0, x: 0 }),
-    });
-    for (let i = 0; i < 6; i++) {
-      tl.set(r, { x: Math.random() * 6 - 3 })
-        .set(c, { x: Math.random() * 6 - 3 })
-        .to({}, { duration: 0.05 });
-    }
-  };
 
   return (
     <nav
@@ -46,111 +26,68 @@ export default function AppNav() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "16px 40px",
-        background: "var(--bg)",
-        borderBottom: "3px solid #0A0A0A",
+        padding: "14px 40px",
+        background: "color-mix(in srgb, var(--bg) 88%, transparent)",
+        backdropFilter: "blur(8px)",
+        borderBottom: "1px solid var(--line, rgba(10,10,10,.14))",
       }}
     >
       {/* Logo → back to marketing landing */}
-      <Link
-        href="/"
-        onMouseEnter={doGlitch}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 11,
-          textDecoration: "none",
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 12 12">
-          <rect x="5" y="0" width="2" height="3" fill="#0A0A0A" />
-          <rect x="5" y="9" width="2" height="3" fill="#0A0A0A" />
-          <rect x="0" y="5" width="3" height="2" fill="#0A0A0A" />
-          <rect x="9" y="5" width="3" height="2" fill="#0A0A0A" />
-          <rect x="4" y="4" width="4" height="4" fill="#FFE600" stroke="#0A0A0A" strokeWidth="1" />
+      <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+        <svg width="18" height="18" viewBox="0 0 12 12">
+          <rect x="5" y="0" width="2" height="3" fill="currentColor" />
+          <rect x="5" y="9" width="2" height="3" fill="currentColor" />
+          <rect x="0" y="5" width="3" height="2" fill="currentColor" />
+          <rect x="9" y="5" width="3" height="2" fill="currentColor" />
+          <rect x="4" y="4" width="4" height="4" fill="#FFE600" stroke="currentColor" strokeWidth="1" />
         </svg>
-        <div
-          style={{
-            position: "relative",
-            fontFamily: "var(--font-anton)",
-            fontSize: 24,
-            letterSpacing: 1,
-          }}
-        >
-          <span style={{ position: "relative", zIndex: 2, color: "var(--text)" }}>KREAV</span>
-          <span
-            ref={logoRRef}
-            aria-hidden
-            style={{
-              position: "absolute", left: 0, top: 0, zIndex: 1,
-              color: "#FF3BFF", clipPath: "inset(0 0 50% 0)", opacity: 0,
-            }}
-          >
-            KREAV
-          </span>
-          <span
-            ref={logoCRef}
-            aria-hidden
-            style={{
-              position: "absolute", left: 0, top: 0, zIndex: 1,
-              color: "#00F5FF", clipPath: "inset(50% 0 0 0)", opacity: 0,
-            }}
-          >
-            KREAV
-          </span>
-        </div>
+        <span style={{ fontFamily: "var(--font-anton)", fontSize: 22, letterSpacing: 0.5, color: "var(--text)" }}>
+          KREAV
+        </span>
       </Link>
 
       {/* Links + theme toggle */}
-      <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            fontSize: 12,
-            textTransform: "uppercase",
-            letterSpacing: "1.5px",
-          }}
-        >
-          {LINKS.map(({ label, href }) => {
-            const active = pathname === href || pathname.startsWith(href + "/");
-            return (
-              <Link
-                key={href}
-                href={href}
-                style={{
-                  position: "relative",
-                  textDecoration: "none",
-                  color: active ? "#0A0A0A" : "var(--text)",
-                  background: active ? "#FFE600" : "transparent",
-                  padding: active ? "4px 8px" : "4px 0",
-                  border: active ? "2px solid #0A0A0A" : "2px solid transparent",
-                  fontWeight: active ? 700 : 400,
-                }}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {LINKS.map(({ label, href }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              style={{
+                textDecoration: "none",
+                fontFamily: "var(--font-mono)",
+                fontSize: 13,
+                fontWeight: active ? 700 : 500,
+                color: active ? "var(--text)" : "var(--muted)",
+                background: active ? "var(--surface-2, rgba(10,10,10,.06))" : "transparent",
+                padding: "7px 12px",
+                borderRadius: "var(--r-sm, 8px)",
+                transition: "color 0.15s, background 0.15s",
+              }}
+            >
+              {label}
+            </Link>
+          );
+        })}
 
         <button
           onClick={toggle}
+          aria-label="Toggle colour theme"
           style={{
+            marginLeft: 6,
             fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: 1,
+            fontSize: 13,
+            lineHeight: 1,
             background: "transparent",
             color: "var(--text)",
-            border: "2px solid var(--text)",
+            border: "1px solid var(--line, rgba(10,10,10,.14))",
+            borderRadius: "var(--r-sm, 8px)",
             padding: "7px 9px",
             cursor: "pointer",
-            textTransform: "uppercase",
           }}
         >
-          {dark ? "LIGHT" : "DARK"}
+          {dark ? "☀" : "☾"}
         </button>
       </div>
     </nav>

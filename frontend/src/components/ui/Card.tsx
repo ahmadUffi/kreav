@@ -2,18 +2,18 @@
 import type { CSSProperties, HTMLAttributes } from "react";
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  /** Enable the yellow-border + bigger-shadow hover lift (How It Works / Features pattern). */
+  /** Enable a subtle hover lift (raises the soft shadow). */
   hover?: boolean;
   padding?: number | string;
 }
 
 /**
- * Neobrutalism card — theme-aware background, 3px ink border, 6px hard shadow.
- * On hover (opt-in) the border turns brand yellow and the shadow bumps to 8px.
+ * App-surface card — hairline border, small radius, soft low shadow.
+ * On hover (opt-in) it lifts slightly. Theme-aware via CSS vars.
  */
 export default function Card({
   hover = false,
-  padding = 26,
+  padding = 24,
   style,
   onMouseEnter,
   onMouseLeave,
@@ -23,10 +23,11 @@ export default function Card({
   const base: CSSProperties = {
     background: "var(--card)",
     color: "var(--card-text)",
-    border: "3px solid #0A0A0A",
-    boxShadow: "6px 6px 0 #0A0A0A",
+    border: "1px solid var(--line, rgba(10,10,10,.14))",
+    borderRadius: "var(--r, 10px)",
+    boxShadow: "var(--shadow-sm, 0 1px 2px rgba(10,10,10,.06))",
     padding,
-    transition: "border-color 0.15s, box-shadow 0.15s",
+    transition: "transform 0.15s, box-shadow 0.15s",
     ...style,
   };
 
@@ -35,15 +36,15 @@ export default function Card({
       style={base}
       onMouseEnter={(e) => {
         if (hover) {
-          e.currentTarget.style.borderColor = "#FFE600";
-          e.currentTarget.style.boxShadow = "8px 8px 0 #0A0A0A";
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow = "var(--shadow, 0 6px 20px rgba(10,10,10,.08))";
         }
         onMouseEnter?.(e);
       }}
       onMouseLeave={(e) => {
         if (hover) {
-          e.currentTarget.style.borderColor = "#0A0A0A";
-          e.currentTarget.style.boxShadow = "6px 6px 0 #0A0A0A";
+          e.currentTarget.style.transform = "";
+          e.currentTarget.style.boxShadow = "var(--shadow-sm, 0 1px 2px rgba(10,10,10,.06))";
         }
         onMouseLeave?.(e);
       }}

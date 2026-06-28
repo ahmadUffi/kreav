@@ -1,13 +1,7 @@
 "use client";
 import type { ButtonHTMLAttributes, CSSProperties } from "react";
 
-type Variant = "primary" | "secondary" | "section";
-
-const VARIANT_BG: Record<Variant, string> = {
-  primary: "#FFE600",
-  secondary: "#ffffff",
-  section: "#FF3BFF",
-};
+type Variant = "primary" | "secondary" | "ghost";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -15,9 +9,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Neobrutalism button — 3px ink border + 6px hard offset shadow.
- * Press effect (translate 2px + shadow shrink) applied via mouse handlers,
- * matching the inline pattern used in Hero.tsx / Waitlist.tsx.
+ * App-surface button. `primary` = yellow accent, `secondary` = neutral outline,
+ * `ghost` = text-only. Gentle hover lift; soft shadow (no hard offset).
  */
 export default function Button({
   variant = "primary",
@@ -28,20 +21,36 @@ export default function Button({
   onMouseLeave,
   ...rest
 }: ButtonProps) {
+  const variants: Record<Variant, CSSProperties> = {
+    primary: {
+      background: disabled ? "var(--surface-2, #eee)" : "var(--accent, #FFE600)",
+      color: disabled ? "var(--muted)" : "#0A0A0A",
+      border: "1.5px solid var(--line-strong, #0A0A0A)",
+    },
+    secondary: {
+      background: "var(--card)",
+      color: "var(--card-text)",
+      border: "1px solid var(--line, rgba(10,10,10,.14))",
+    },
+    ghost: {
+      background: "transparent",
+      color: "var(--text)",
+      border: "1px solid transparent",
+    },
+  };
+
   const base: CSSProperties = {
     fontFamily: "var(--font-mono)",
-    fontSize: 14,
-    fontWeight: 800,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    background: disabled ? "#cccccc" : VARIANT_BG[variant],
-    color: "#0A0A0A",
-    border: "3px solid #0A0A0A",
-    padding: "15px 26px",
+    fontSize: 13.5,
+    fontWeight: 700,
+    letterSpacing: 0.2,
+    borderRadius: "var(--r-sm, 8px)",
+    padding: "11px 18px",
     cursor: disabled ? "not-allowed" : "pointer",
-    boxShadow: "6px 6px 0 #0A0A0A",
-    transition: "transform 0.12s, box-shadow 0.12s",
+    boxShadow: variant === "ghost" ? "none" : "var(--shadow-sm, 0 1px 2px rgba(10,10,10,.06))",
+    transition: "transform 0.12s, box-shadow 0.12s, background 0.12s",
     width: fullWidth ? "100%" : undefined,
+    ...variants[variant],
     ...style,
   };
 
@@ -51,15 +60,25 @@ export default function Button({
       disabled={disabled}
       style={base}
       onMouseEnter={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.transform = "translate(2px, 2px)";
-          e.currentTarget.style.boxShadow = "2px 2px 0 #0A0A0A";
+        if (disabled) {
+          onMouseEnter?.(e);
+          return;
+        }
+        if (variant === "ghost") {
+          e.currentTarget.style.background = "var(--surface-2, rgba(10,10,10,.045))";
+        } else {
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = "var(--shadow, 0 6px 20px rgba(10,10,10,.08))";
         }
         onMouseEnter?.(e);
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "";
-        e.currentTarget.style.boxShadow = "6px 6px 0 #0A0A0A";
+        if (variant === "ghost") {
+          e.currentTarget.style.background = "transparent";
+        } else {
+          e.currentTarget.style.boxShadow = "var(--shadow-sm, 0 1px 2px rgba(10,10,10,.06))";
+        }
         onMouseLeave?.(e);
       }}
       {...rest}
