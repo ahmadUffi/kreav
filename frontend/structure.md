@@ -15,19 +15,23 @@ kreve/
 │   │   ├── globals.css        # Tailwind v4 @theme tokens + dark-mode CSS vars
 │   │   ├── layout.tsx         # Root layout: Google fonts, <html> attrs, metadata, global ThemeProvider
 │   │   ├── page.tsx           # Marketing landing ("/") — assembles all section components
-│   │   └── (app)/            # App route group (shares AppNav + Footer layout)
-│   │       ├── layout.tsx     # Shared shell: AppNav + <main> + Footer
-│   │       ├── store/page.tsx     # Storefront product grid (mock data)
-│   │       ├── store/[id]/page.tsx # Product detail page (mock data + buy CTA)
-│   │       ├── signup/page.tsx    # Onboarding wizard (role→details→wallet→review→create)
-│   │       ├── wallet/connect/page.tsx # Connect Freighter wallet (uses WalletConnectPanel)
-│   │       └── dashboard/       # Creator dashboard (sidebar layout)
-│   │           ├── layout.tsx       # Sidebar shell (Overview/Products/Orders/Wallet/Site/Settings)
-│   │           ├── page.tsx         # Overview — KPIs + revenue/top-product charts + recent orders
-│   │           ├── products/page.tsx
-│   │           ├── orders/page.tsx
-│   │           ├── wallet/page.tsx
-│   │           └── settings/page.tsx
+│   │   ├── (app)/            # App route group (shares AppNav + AppFooter layout)
+│   │   │   ├── layout.tsx     # Shared shell: AppNav + <main> + AppFooter
+│   │   │   ├── store/page.tsx     # Storefront product grid (mock data)
+│   │   │   ├── store/[id]/page.tsx # Product detail page (mock data + buy CTA)
+│   │   │   ├── signup/page.tsx    # Onboarding wizard (role→details→wallet→review→create)
+│   │   │   ├── wallet/connect/page.tsx # Connect Freighter wallet (uses WalletConnectPanel)
+│   │   │   └── dashboard/       # Creator dashboard (sidebar layout)
+│   │   │       ├── layout.tsx       # Sidebar shell (Overview/Products/Orders/Wallet/Site/Settings)
+│   │   │       ├── page.tsx         # Overview — KPIs + revenue/top-product charts + recent orders
+│   │   │       ├── products/page.tsx
+│   │   │       ├── orders/page.tsx
+│   │   │       ├── wallet/page.tsx
+│   │   │       ├── settings/page.tsx
+│   │   │       └── site/page.tsx     # Mini-site editor (controls + live preview)
+│   │   └── u/[username]/      # Public Linktree-style creator mini-site
+│   │       ├── layout.tsx     # Minimal themed public chrome (no app nav)
+│   │       └── page.tsx       # Resolves creator by username (mock)
 │   ├── components/
 │   │   ├── Nav.tsx            # Fixed navigation bar (marketing landing only)
 │   │   ├── AppNav.tsx         # App shell nav: Store/Dashboard/Wallet links + theme toggle (refined)
@@ -44,6 +48,7 @@ kreve/
 │   │   ├── Footer.tsx         # 4-column footer with ghost KREAV wordmark
 │   │   ├── ProductCard.tsx    # Storefront product card (Link → /store/[id])
 │   │   ├── WalletConnectPanel.tsx # Mock Freighter connect + all states (reused)
+│   │   ├── CreatorMiniSite.tsx # Linktree-style profile (public page + editor preview)
 │   │   ├── charts/           # Hand-built SVG charts (no deps)
 │   │   │   ├── Sparkline.tsx  # KPI mini trend
 │   │   │   ├── AreaChart.tsx  # revenue area+line
