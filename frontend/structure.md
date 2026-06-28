@@ -19,9 +19,15 @@ kreve/
 │   │       ├── layout.tsx     # Shared shell: AppNav + <main> + Footer
 │   │       ├── store/page.tsx     # Storefront product grid (mock data)
 │   │       ├── store/[id]/page.tsx # Product detail page (mock data + buy CTA)
-│   │       ├── signup/page.tsx    # Onboarding signup form (email + role, Zod v4)
-│   │       ├── wallet/connect/page.tsx # Connect Freighter wallet — all states (mock)
-│   │       └── dashboard/page.tsx # Creator dashboard tabs (products/orders/wallet)
+│   │       ├── signup/page.tsx    # Onboarding wizard (role→details→wallet→review→create)
+│   │       ├── wallet/connect/page.tsx # Connect Freighter wallet (uses WalletConnectPanel)
+│   │       └── dashboard/       # Creator dashboard (sidebar layout)
+│   │           ├── layout.tsx       # Sidebar shell (Overview/Products/Orders/Wallet/Site/Settings)
+│   │           ├── page.tsx         # Overview — KPIs + revenue/top-product charts + recent orders
+│   │           ├── products/page.tsx
+│   │           ├── orders/page.tsx
+│   │           ├── wallet/page.tsx
+│   │           └── settings/page.tsx
 │   ├── components/
 │   │   ├── Nav.tsx            # Fixed navigation bar (marketing landing only)
 │   │   ├── AppNav.tsx         # App shell nav: Store/Dashboard/Wallet links + theme toggle (refined)
@@ -38,6 +44,10 @@ kreve/
 │   │   ├── Footer.tsx         # 4-column footer with ghost KREAV wordmark
 │   │   ├── ProductCard.tsx    # Storefront product card (Link → /store/[id])
 │   │   ├── WalletConnectPanel.tsx # Mock Freighter connect + all states (reused)
+│   │   ├── charts/           # Hand-built SVG charts (no deps)
+│   │   │   ├── Sparkline.tsx  # KPI mini trend
+│   │   │   ├── AreaChart.tsx  # revenue area+line
+│   │   │   └── BarChart.tsx   # horizontal bars (top products)
 │   │   └── ui/               # Reusable primitives (refined app surface)
 │   │       ├── Button.tsx     # variant primary/secondary/ghost
 │   │       ├── Card.tsx       # theme-aware card, opt-in hover lift
@@ -48,6 +58,7 @@ kreve/
 │   │       ├── ErrorState.tsx # error state + optional retry
 │   │       ├── Icon.tsx       # inline line-icon set (SVG, currentColor)
 │   │       ├── Stepper.tsx    # onboarding progress indicator
+│   │       ├── StatCard.tsx   # KPI card (value + delta + sparkline)
 │   │       └── index.ts       # barrel export
 │   ├── context/
 │   │   └── theme.tsx          # ThemeProvider + useTheme hook (dark/light)
