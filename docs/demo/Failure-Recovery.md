@@ -1,7 +1,7 @@
 # Demo Failure Recovery
 
 > **Status:** What to do when something goes wrong on stage. Each failure has a defined recovery — never improvise.
-> **Authoritative refs:** [Backend PRD §20](../backend/Backend-PRD.md) (Failure Matrix), [Error-Codes](../api/Error-Codes.md), [Demo Playbook](./Demo-Playbook.md), [Security-Audit #20](../security/Security-Audit.md).
+> **Authoritative refs:** [Backend PRD §20](../backend/Backend-PRD.md) (Failure Matrix), [Demo Playbook](./Demo-Playbook.md), [Security-Audit #20](../security/Security-Audit.md).
 
 **Golden rule:** *audience focus is the money movement, not the mechanics.* Narrate calmly; recover silently where possible; fall back to the recorded proof if a live step is unrecoverable.
 
@@ -67,4 +67,4 @@ The contingency exists so the demo **never** shows a broken flow. Honesty + a pr
 
 ---
 
-*Cross-reference: error mapping → [Error-Codes](../api/Error-Codes.md); failure matrix → [Backend PRD §20](../backend/Backend-PRD.md); pre-demo guard → [Demo Checklist](./Demo-Checklist.md).*
+*Cross-reference: failure matrix → [Backend PRD §20](../backend/Backend-PRD.md); pre-demo guard → [Demo Checklist](./Demo-Checklist.md).*

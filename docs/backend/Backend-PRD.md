@@ -20,7 +20,7 @@ Programmable Logic: Soroban
 > - [`docs/stellar/Stellar-Standards-PRD.md`](../stellar/Stellar-Standards-PRD.md) — every Stellar standard, protocol, SDK, and architectural decision
 > - [`docs/stellar/Anchor-PRD.md`](../stellar/Anchor-PRD.md) — fiat on-ramp/off-ramp architecture
 > - [`docs/stellar/Soroban-Contract-PRD.md`](../stellar/Soroban-Contract-PRD.md) — the Revenue Split contract specification
-> - [`docs/reviews/Architecture-Consistency-Check.md`](../reviews/Architecture-Consistency-Check.md) — cross-document consistency + the edits that produced this revision
+> - Internal consistency: cross-document consistency was verified during final revision.
 
 ---
 
