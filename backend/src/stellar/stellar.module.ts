@@ -4,12 +4,13 @@ import { loadStellarConfig, STELLAR_CONFIG, type StellarConfig } from './stellar
 import { PlatformKeypairService } from './platform-keypair.service';
 import { HorizonService } from './horizon.service';
 import { SorobanRpcService } from './soroban-rpc.service';
+import { SettlementService } from './settlement.service';
 
 /**
- * Stellar Module — BE-007A.
+ * Stellar Module — BE-007.
  *
  * Provides the Stellar integration clients consumed by:
- *   - SettlementService (BE-007B/C): SorobanRpcService.invokeSettle
+ *   - SettlementService (BE-007): SorobanRpcService.invokeSettle + recording
  *   - Wallet module (BE-008): HorizonService.getUsdcBalance
  *
  * ADR-005: RPC primary (Soroban invoke/verify), Horizon secondary (balance/trustline).
@@ -27,7 +28,14 @@ import { SorobanRpcService } from './soroban-rpc.service';
     PlatformKeypairService,
     HorizonService,
     SorobanRpcService,
+    SettlementService,
   ],
-  exports: [STELLAR_CONFIG, SorobanRpcService, HorizonService, PlatformKeypairService],
+  exports: [
+    STELLAR_CONFIG,
+    SorobanRpcService,
+    HorizonService,
+    PlatformKeypairService,
+    SettlementService,
+  ],
 })
 export class StellarModule {}
