@@ -9,6 +9,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { EventsModule } from './events/events.module';
 import { OrdersModule } from './orders/orders.module';
+import { StellarModule } from './stellar/stellar.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { OrdersModule } from './orders/orders.module';
     EventsModule,
     ProductsModule,
     OrdersModule,
+    StellarModule,
   ],
   providers: [
     // Activate the global throttle guard so @Throttle() / defaults apply.
