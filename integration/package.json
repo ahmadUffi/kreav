@@ -1,0 +1,33 @@
+{
+  "name": "@kreav/integration",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kreav — Soroban Integration Workspace: contract tests, BE-007 reference, e2e verification",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit --pretty",
+    "typecheck": "tsc --noEmit --strict",
+    "version": "tsx scripts/01-get-version.ts",
+    "initialize": "tsx scripts/02-check-initialize.ts",
+    "settle:single": "tsx scripts/03-single-settlement.ts",
+    "settle:multi": "tsx scripts/04-multi-settlement.ts",
+    "idempotency": "tsx scripts/05-idempotency.ts",
+    "validation": "tsx scripts/06-validation-errors.ts",
+    "balances": "tsx scripts/07-balances.ts",
+    "events": "tsx scripts/08-events.ts",
+    "acceptance": "tsx scripts/99-acceptance.ts"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^16.0.1",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}
