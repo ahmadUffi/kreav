@@ -1,7 +1,7 @@
 # Demo Playbook
 
 > **Status:** The complete runbook for executing the Kreav hackathon demo end-to-end. The screen-by-screen script lives in [Demo PRD](../product/Demo-PRD.md); this Playbook covers **preparation + timeline + execution** so the demo never fails on logistics.
-> **Authoritative refs:** [Demo PRD](../product/Demo-PRD.md), [Implementation Backlog](../backend/Implementation-Backlog.md) BC-010/BC-011, [Failure Recovery](./Failure-Recovery.md), [ADR C1](../reviews/Final-Architecture-Review.md) (float), [ADR-009](../adr/ADR-009-Why-Simulated-Payment-Provider.md) (simulated PSP).
+> **Authoritative refs:** [Demo PRD](../product/Demo-PRD.md), [Implementation Backlog](../backend/Implementation-Backlog.md) BC-010/BC-011, [Failure Recovery](./Failure-Recovery.md), [DECISIONS.md §5](../adr/DECISIONS.md) (float), [DECISIONS.md §6](../adr/DECISIONS.md) (simulated PSP).
 
 ## The canonical narrative (memorize this)
 

@@ -412,4 +412,4 @@ flowchart TB
 
 ---
 
-> **Architecture Consistency Check:** see [`docs/reviews/Architecture-Consistency-Check.md`](../reviews/Architecture-Consistency-Check.md) — verifies no contradictions with the Backend PRD or between the three new PRDs, and lists the Backend PRD edits required after these documents.
+> **Architecture Consistency Check:** internal verification confirms no contradictions with the Backend PRD or between the three Stellar PRDs.
