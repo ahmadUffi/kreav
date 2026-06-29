@@ -24,8 +24,7 @@
   "include": [
     "helpers/**/*.ts",
     "scripts/**/*.ts",
-    "types/**/*.ts",
-    "bindings/**/*.ts"
+    "types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
