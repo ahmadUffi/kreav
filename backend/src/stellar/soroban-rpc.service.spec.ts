@@ -22,16 +22,17 @@ jest.mock('@stellar/stellar-sdk', () => ({
     setTimeout: jest.fn().mockReturnThis(),
     build: jest.fn(() => ({ sign: jest.fn() })),
   })),
-  xdr: {
-    ScVal: {
-      scvMap: jest.fn(() => ({})),
-      scvVec: jest.fn(() => ({})),
-      scvSymbol: jest.fn(() => ({})),
-      scvU32: jest.fn(() => ({})),
+    xdr: {
+      ScVal: {
+        scvMap: jest.fn(() => ({})),
+        scvVec: jest.fn(() => ({})),
+        scvSymbol: jest.fn(() => ({})),
+        scvString: jest.fn(() => ({})),
+        scvU32: jest.fn(() => ({})),
+      },
+      ScMapEntry: jest.fn(),
+      Int128Parts: jest.fn(),
     },
-    ScMapEntry: jest.fn(),
-    Int128Parts: jest.fn(),
-  },
 }));
 
 import { Test } from '@nestjs/testing';
@@ -84,14 +85,14 @@ describe('SorobanRpcService', () => {
     service = moduleRef.get(SorobanRpcService);
   });
 
-  const mockRecipients = [{ address: 'GCREATOR', role: 'Author', shareBps: 9500 }];
+  const mockRecipients = [{ address: 'GCREATOR', shareBps: 9500 }];
 
   it('throws SettlementSimulationError when simulation fails', async () => {
     jest.mocked(rpc.Api.isSimulationError).mockReturnValue(true);
     mockRpcServer.simulateTransaction.mockResolvedValue({ error: 'panic' });
 
     await expect(
-      service.invokeSettle('order-1', BigInt(100000000), mockRecipients, 'CSAC'),
+      service.invokeSettle('order-1', BigInt(100000000), mockRecipients),
     ).rejects.toBeInstanceOf(SettlementSimulationError);
   });
 
@@ -103,9 +104,9 @@ describe('SorobanRpcService', () => {
       .mockResolvedValueOnce({ status: 'NOT_FOUND' })
       .mockResolvedValueOnce({ status: 'SUCCESS', returnValue: 'mock-return' });
 
-    const result = await service.invokeSettle('order-1', BigInt(100000000), mockRecipients, 'CSAC');
+	    const result = await service.invokeSettle('order-1', BigInt(100000000), mockRecipients);
 
-    expect(result.status).toBe('SUCCESS');
+	    expect(result.status).toBe('SUCCESS');
     expect(result.txHash).toBe('abc123');
     expect(result.returnValue).toBe('mock-return');
     expect(mockRpcServer.simulateTransaction).toHaveBeenCalledTimes(1);
@@ -122,7 +123,7 @@ describe('SorobanRpcService', () => {
       resultXdr: { toXDR: () => 'error-xdr' },
     });
 
-    const result = await service.invokeSettle('order-2', BigInt(100000000), mockRecipients, 'CSAC');
+	    const result = await service.invokeSettle('order-2', BigInt(100000000), mockRecipients);
 
     expect(result.status).toBe('FAILED');
     expect(result.txHash).toBe('abc456');
@@ -141,9 +142,9 @@ describe('SorobanRpcService', () => {
       return {} as NodeJS.Timeout;
     });
 
-    await expect(
-      service.invokeSettle('order-3', BigInt(100000000), mockRecipients, 'CSAC'),
-    ).rejects.toBeInstanceOf(SettlementTimeoutError);
+	    await expect(
+	      service.invokeSettle('order-3', BigInt(100000000), mockRecipients),
+	    ).rejects.toBeInstanceOf(SettlementTimeoutError);
 
     jest.restoreAllMocks();
   }, 15_000);

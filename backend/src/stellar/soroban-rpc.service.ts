@@ -27,12 +27,15 @@ export interface InvokeResult {
 
 /**
  * A recipient of a settlement (mirrors the contract's Recipient vec entry).
- * `shareBps` = basis points within the creator pool (sum 10000 = 100%).
+ * `shareBps` = basis points of the creator pool (sum 10000 = 100%).
+ * Only `address` + `shareBps` are sent to the contract — the `role` field
+ * was removed from the contract per the canonical contract design.
  */
-export interface SettlementRecipientInput {
-  address: string; // G...
-  role: string; // free-text ("Author", "Platform", ...)
-  shareBps: number; // e.g. 9500 for 95%
+export interface RecipientInput {
+  /** Stellar wallet address (G...) or contract address (C...). */
+  address: string;
+  /** Share of the creator pool in basis points. e.g. 5000 = 50%. Requires i128 in the contract. */
+  shareBps: number;
 }
 
 /**
@@ -86,11 +89,17 @@ export class SorobanRpcService {
   /**
    * Invoke the `settle` contract function.
    *
-   * @param orderRef   the Order.id UUID (ADR H2 idempotency key)
-   * @param totalAmountBase  total USDC in base units (7 decimals; ED-7)
-   * @param recipients the creator-pool recipients (shares sum to 10000 bps)
-   * @param usdcSacAddress  the USDC SAC contract address (C...) — separate from the split contract
-   * @returns the on-chain result (txHash + status + returnValue)
+   * Matches the canonical contract's public API:
+   *   settle(order_ref: String, total_amount: i128, recipients: Vec<Recipient>)
+   *
+   * The contract reads `usdc_sac` and `source` (platform_wallet) from its own
+   * instance storage — they are NOT passed as parameters (defense against
+   * misconfiguration). The contract computes all amounts from `shareBps`.
+   *
+   * @param orderRef   the Order.id UUID (the contract's idempotency key)
+   * @param totalAmountBase  total USDC in base units (7 decimals)
+   * @param recipients the creator-pool allocations (shares sum to 10000 bps)
+   * @returns the on-chain result (txHash + status)
    *
    * Throws on simulation error (→ SETTLEMENT_FAILED, no retry) or
    * network error during submit (→ SETTLEMENT_FAILED).
@@ -98,19 +107,16 @@ export class SorobanRpcService {
   async invokeSettle(
     orderRef: string,
     totalAmountBase: bigint,
-    recipients: SettlementRecipientInput[],
-    usdcSacAddress: string,
+    recipients: RecipientInput[],
   ): Promise<InvokeResult> {
     const platformKeypair = this.platformKey.getKeypair();
     const sourceAccount = await this.server.getAccount(platformKeypair.publicKey());
 
-    // 1. Build the invoke transaction.
+    // 1. Build the invoke transaction (3 args: order_ref, total_amount, recipients).
     const args = this.buildSettleArgs(
-      platformKeypair.publicKey(),
       orderRef,
       totalAmountBase,
       recipients,
-      usdcSacAddress,
     );
 
     let tx = new TransactionBuilder(sourceAccount, {
@@ -191,20 +197,20 @@ export class SorobanRpcService {
 
   /**
    * Build the scVal args for the `settle` function.
-   * settle(usdc_sac: Address, source: Address, order_ref: Symbol,
-   *        total_amount: i128, recipients: Vec<Recipient>)
+   *
+   * New contract API: settle(order_ref: String, total_amount: i128, recipients: Vec<Recipient>)
+   *   where Recipient = { address: Address, share_bps: i128 }
+   *
+   * The contract reads `usdc_sac` and `platform_wallet` from its own storage.
+   * We only pass the three dynamic arguments.
    */
   private buildSettleArgs(
-    sourcePublicKey: string,
     orderRef: string,
     totalAmountBase: bigint,
-    recipients: SettlementRecipientInput[],
-    usdcSacAddress: string,
+    recipients: RecipientInput[],
   ): xdr.ScVal[] {
-    const sourceAddress = new Address(sourcePublicKey);
-    const sacAddress = new Address(usdcSacAddress);
-
-    // Build the recipients Vec<Recipient> where Recipient { address, role, share_bps }
+    // Build the recipients Vec<Recipient> where Recipient { address, share_bps }
+    // Note: no `role` field — it was removed from the canonical contract.
     const recipientsScVals = recipients.map((r) =>
       xdr.ScVal.scvMap([
         new xdr.ScMapEntry({
@@ -212,12 +218,8 @@ export class SorobanRpcService {
           val: new Address(r.address).toScVal(),
         }),
         new xdr.ScMapEntry({
-          key: xdr.ScVal.scvSymbol('role'),
-          val: xdr.ScVal.scvSymbol(r.role),
-        }),
-        new xdr.ScMapEntry({
           key: xdr.ScVal.scvSymbol('share_bps'),
-          val: xdr.ScVal.scvU32(r.shareBps),
+          val: nativeToScVal(r.shareBps, { type: 'i128' }),
         }),
       ]),
     );
@@ -226,10 +228,11 @@ export class SorobanRpcService {
     // i128 via nativeToScVal (handles lo/hi split internally)
     const totalAmountScVal = nativeToScVal(totalAmountBase, { type: 'i128' });
 
+    // order_ref as String (not Symbol — UUIDs are 36 chars > Symbol's 32-char limit)
+    const orderRefScVal = xdr.ScVal.scvString(orderRef);
+
     return [
-      sacAddress.toScVal(),
-      sourceAddress.toScVal(),
-      xdr.ScVal.scvSymbol(orderRef),
+      orderRefScVal,
       totalAmountScVal,
       recipientsVec,
     ];
