@@ -115,7 +115,8 @@ Buyer (Philippines) → Checkout → Soroban Smart Contract → Creator Wallet (
           message: {
             type: 'string',
             description: 'Human-readable error description',
-            example: 'Insufficient withdrawable balance. Available: 4.50 USDC, Requested: 10.00 USDC.',
+            example:
+              'Insufficient withdrawable balance. Available: 4.50 USDC, Requested: 10.00 USDC.',
           },
           statusCode: {
             type: 'integer',
