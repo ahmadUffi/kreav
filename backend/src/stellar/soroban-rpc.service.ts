@@ -196,6 +196,18 @@ export class SorobanRpcService {
   }
 
   /**
+   * Check a single transaction's status on chain (no polling).
+   * Used by StartupRecoveryService (BE-012) to verify settlement-pending orders.
+   *
+   * Returns 'SUCCESS', 'FAILED', or 'NOT_FOUND' (tx not yet in a ledger).
+   * Throws on network error.
+   */
+  async getTransactionStatus(txHash: string): Promise<'SUCCESS' | 'FAILED' | 'NOT_FOUND'> {
+    const result = await this.server.getTransaction(txHash);
+    return result.status;
+  }
+
+  /**
    * Build the scVal args for the `settle` function.
    *
    * New contract API: settle(order_ref: String, total_amount: i128, recipients: Vec<Recipient>)

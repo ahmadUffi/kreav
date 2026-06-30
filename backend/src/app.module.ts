@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { configuration, validationSchema } from './config';
 import { HealthModule } from './common/health/health.module';
+import { StartupModule } from './common/startup/startup.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { EventsModule } from './events/events.module';
@@ -43,6 +44,7 @@ import { WalletsModule } from './wallets/wallets.module';
     OrdersModule,
     StellarModule,
     WalletsModule,
+    StartupModule,
   ],
   providers: [
     // Activate the global throttle guard so @Throttle() / defaults apply.

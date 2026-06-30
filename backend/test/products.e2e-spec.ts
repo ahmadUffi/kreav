@@ -4,6 +4,7 @@ import request, { type Response } from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { DecimalToStringInterceptor } from '../src/common/serialization/decimal-to-string.interceptor';
+import { DomainExceptionFilter } from '../src/common/exceptions/domain-exception.filter';
 
 /**
  * Product endpoints e2e — exercises the full HTTP stack (controller → service
@@ -46,6 +47,7 @@ describe('ProductsController (e2e)', () => {
       }),
     );
     app.useGlobalInterceptors(new DecimalToStringInterceptor());
+    app.useGlobalFilters(new DomainExceptionFilter());
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -115,13 +117,17 @@ describe('ProductsController (e2e)', () => {
       expect(res.body.creator).toBeDefined();
     });
 
-    it('404 — when product does not exist', async () => {
+    it('404 — when product does not exist — uses consistent error format (BE-012)', async () => {
       const res = await request(app.getHttpServer()).get(
         '/products/00000000-0000-0000-0000-000000000000',
       );
 
       expect(res.status).toBe(404);
       expect(res.body.message).toBe('Product not found');
+      // BE-012: error format includes code + statusCode + timestamp
+      expect(res.body.code).toBe('REQUEST_ERROR');
+      expect(res.body.statusCode).toBe(404);
+      expect(res.body.timestamp).toEqual(expect.any(String));
     });
   });
 
