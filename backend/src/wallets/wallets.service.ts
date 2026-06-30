@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorizonService } from '../stellar/horizon.service';
+import { ExplorerService } from '../stellar/explorer.service';
 
 /**
  * WalletsService — BE-008 query logic.
@@ -17,6 +18,7 @@ export class WalletsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly horizon: HorizonService,
+    private readonly explorer: ExplorerService,
   ) {}
 
   /**
@@ -61,6 +63,7 @@ export class WalletsService {
       id: string;
       orderId: string;
       txHash: string;
+      explorerLink: string;
       totalAmount: string;
       amount: string;
       recipientType: string;
@@ -103,6 +106,7 @@ export class WalletsService {
       id: row.id,
       orderId: row.settlement.orderId,
       txHash: row.settlement.txHash,
+      explorerLink: this.explorer.txUrl(row.settlement.txHash),
       // toFixed(2) matches the DecimalToStringInterceptor convention — "9.50" not "9.5"
       totalAmount: row.settlement.totalAmount?.toFixed?.(2) ?? String(row.settlement.totalAmount),
       amount: row.amount?.toFixed?.(2) ?? String(row.amount),

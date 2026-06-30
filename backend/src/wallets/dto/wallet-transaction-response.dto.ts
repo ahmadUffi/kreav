@@ -54,6 +54,13 @@ class TransactionItemDto {
   status!: string;
 
   @ApiProperty({
+    description: 'Stellar.expert explorer URL for this transaction (BE-010)',
+    example:
+      'https://stellar.expert/explorer/testnet/tx/a1b2c3d4e5f60718293a4b5c6d7e8f901a2b3c4d5e6f708192a3b4c5d6e7f8090',
+  })
+  explorerLink!: string;
+
+  @ApiProperty({
     description: 'ISO-8601 timestamp of the settlement',
     example: '2026-06-29T12:00:00.000Z',
   })

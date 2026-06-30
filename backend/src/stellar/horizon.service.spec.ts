@@ -29,6 +29,7 @@ describe('HorizonService', () => {
     usdcAssetCode: 'USDC',
     splitContractId: 'CCONTRACT',
     networkPassphrase: 'Test SDF Network ; September 2015',
+    explorerUrl: 'https://stellar.expert/explorer/testnet',
   };
 
   beforeEach(async () => {

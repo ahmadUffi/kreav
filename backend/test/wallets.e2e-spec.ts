@@ -190,6 +190,10 @@ describe('WalletsController (e2e)', () => {
       expect(tx.role).toBe('Author');
       expect(tx.percentage).toBe('95.00');
       expect(tx.txHash).toBe(order.txHash);
+      // BE-010: explorerLink must be a valid URL containing the tx hash
+      expect(tx.explorerLink).toBeDefined();
+      expect(tx.explorerLink).toContain('stellar.expert');
+      expect(tx.explorerLink).toContain(order.txHash);
       expect(tx.status).toBe('COMPLETED');
 
       // Cleanup

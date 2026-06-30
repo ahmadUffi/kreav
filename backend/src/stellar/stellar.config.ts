@@ -27,7 +27,12 @@ export interface StellarConfig {
   splitContractId: string;
   /** Stellar network passphrase — TESTNET for the demo. */
   networkPassphrase: string;
+  /** Base URL for the Stellar block explorer (e.g. stellar.expert). BE-010. */
+  explorerUrl: string;
 }
+
+/** Default Stellar.expert explorer URL for testnet. */
+export const EXPLORER_TESTNET_URL = 'https://stellar.expert/explorer/testnet';
 
 /** Testnet constants from the Stellar Skills (agentic-payments skill). */
 export const USDC_TESTNET_ISSUER = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
@@ -73,12 +78,14 @@ export function loadStellarConfig(get: (key: string) => string | undefined): Ste
       usdcAssetCode: required.usdcAssetCode ?? 'USDC',
       splitContractId: required.splitContractId ?? '',
       networkPassphrase: STELLAR_TESTNET_PASSPHRASE,
+      explorerUrl: EXPLORER_TESTNET_URL,
     } satisfies StellarConfig;
   }
 
   return {
     ...required,
     networkPassphrase: STELLAR_TESTNET_PASSPHRASE,
+    explorerUrl: EXPLORER_TESTNET_URL,
   } as StellarConfig;
 }
 
