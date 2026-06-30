@@ -55,6 +55,9 @@ export function loadStellarConfig(get: (key: string) => string | undefined): Ste
     splitContractId: get('SPLIT_CONTRACT_ID'),
   } as Record<string, string | undefined>;
 
+  // Optional: block explorer URL (BE-010). Falls back to stellar.expert testnet.
+  const explorerUrl = get('EXPLORER_URL') ?? EXPLORER_TESTNET_URL;
+
   const missing = Object.entries(required)
     .filter(([, v]) => !v)
     .map(([k]) => k);
@@ -78,14 +81,14 @@ export function loadStellarConfig(get: (key: string) => string | undefined): Ste
       usdcAssetCode: required.usdcAssetCode ?? 'USDC',
       splitContractId: required.splitContractId ?? '',
       networkPassphrase: STELLAR_TESTNET_PASSPHRASE,
-      explorerUrl: EXPLORER_TESTNET_URL,
+      explorerUrl,
     } satisfies StellarConfig;
   }
 
   return {
     ...required,
     networkPassphrase: STELLAR_TESTNET_PASSPHRASE,
-    explorerUrl: EXPLORER_TESTNET_URL,
+    explorerUrl,
   } as StellarConfig;
 }
 
