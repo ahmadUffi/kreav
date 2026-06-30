@@ -83,7 +83,8 @@ enum RecipientType {
 }
 
 enum WithdrawalStatus {
-  PENDING
+  REQUESTED
+  PROCESSING
   COMPLETED
   FAILED
 }
@@ -236,13 +237,17 @@ model Wallet {
 
 /// v3.1 — dedicated Withdrawal entity (replaces generic Transaction.withdrawal).
 model Withdrawal {
-  id           String           @id @default(uuid())
-  creatorId    String           @map("creator_id")
-  settlementId String?          @map("settlement_id")
-  txHash       String           @map("tx_hash")
-  amount       Decimal          @db.Decimal(18, 2)
-  status       WithdrawalStatus @default(PENDING)
-  createdAt    DateTime         @default(now()) @map("created_at")
+  id                 String           @id @default(uuid())
+  creatorId          String           @map("creator_id")
+  settlementId       String?          @map("settlement_id")
+  settlementTxHash   String?          @map("settlement_tx_hash")
+  amount             Decimal          @db.Decimal(18, 2)
+  destinationType    String           @map("destination_type")
+  destinationAccount String           @map("destination_account")
+  reference          String           @unique @map("reference")
+  status             WithdrawalStatus @default(REQUESTED)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  completedAt        DateTime?        @map("completed_at")
 
   creator    User        @relation(fields: [creatorId], references: [id])
   settlement Settlement? @relation(fields: [settlementId], references: [id])
