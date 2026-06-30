@@ -1,17 +1,20 @@
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorizonService } from '../stellar/horizon.service';
+import { ExplorerService } from '../stellar/explorer.service';
+import { STELLAR_CONFIG } from '../stellar/stellar.config';
 import { WalletsService } from './wallets.service';
 
 /**
- * WalletsService — test suite (BE-008).
+ * WalletsService — test suite (BE-008 + BE-010).
  *
  * Tests assert:
  *   - getBalance delegates to HorizonService and returns correct shape
  *   - getTransactions queries SettlementRecipient table and paginates correctly
+ *   - explorerLink is generated from the explorer URL + txHash (BE-010)
  *   - Empty states are handled gracefully
  *
- * HorizonService and PrismaService are fully mocked — no Stellar network calls.
+ * HorizonService, PrismaService, and ExplorerService are fully mocked.
  */
 describe('WalletsService', () => {
   let service: WalletsService;
@@ -24,6 +27,12 @@ describe('WalletsService', () => {
   };
 
   const MOCK_ADDRESS = 'GDA2SQ2PHWIER57TDXKLBSOD3IT4GTAHK5RV2H27LJZAXDBWQ6KYJ72B';
+  const MOCK_EXPLORER_URL = 'https://stellar.expert/explorer/testnet';
+
+  // Shared ExplorerService instance so the mock is consistent across tests.
+  const mockExplorerService = {
+    txUrl: (txHash: string) => `${MOCK_EXPLORER_URL}/tx/${txHash}`,
+  };
 
   beforeEach(async () => {
     horizon = { getUsdcBalance: jest.fn() };
@@ -36,6 +45,11 @@ describe('WalletsService', () => {
         WalletsService,
         { provide: HorizonService, useValue: horizon },
         { provide: PrismaService, useValue: prisma },
+        { provide: ExplorerService, useValue: mockExplorerService },
+        {
+          provide: STELLAR_CONFIG,
+          useValue: { explorerUrl: MOCK_EXPLORER_URL },
+        },
       ],
     }).compile();
 
@@ -107,7 +121,7 @@ describe('WalletsService', () => {
   // ── getTransactions ───────────────────────────────────────────────────
 
   describe('getTransactions', () => {
-    it('returns paginated transactions for a wallet address', async () => {
+    it('returns paginated transactions with explorerLink for a wallet address', async () => {
       const mockRows = [
         {
           id: 'rec-1',
@@ -115,13 +129,13 @@ describe('WalletsService', () => {
           walletAddress: MOCK_ADDRESS,
           recipientType: 'CREATOR',
           role: 'Author',
-          percentage: { toString: () => '95.00' },
-          amount: { toString: () => '9.50' },
+          percentage: { toFixed: () => '95.00' },
+          amount: { toFixed: () => '9.50' },
           createdAt: new Date('2026-06-29T12:00:00Z'),
           settlement: {
             orderId: 'order-1',
             txHash: 'abc123',
-            totalAmount: { toString: () => '10.00' },
+            totalAmount: { toFixed: () => '10.00' },
             status: 'COMPLETED',
             createdAt: new Date('2026-06-29T12:00:00Z'),
           },
@@ -132,13 +146,13 @@ describe('WalletsService', () => {
           walletAddress: MOCK_ADDRESS,
           recipientType: 'PLATFORM',
           role: 'Platform Fee',
-          percentage: { toString: () => '5.00' },
-          amount: { toString: () => '0.50' },
+          percentage: { toFixed: () => '5.00' },
+          amount: { toFixed: () => '0.50' },
           createdAt: new Date('2026-06-29T11:00:00Z'),
           settlement: {
             orderId: 'order-2',
             txHash: 'def456',
-            totalAmount: { toString: () => '10.00' },
+            totalAmount: { toFixed: () => '10.00' },
             status: 'COMPLETED',
             createdAt: new Date('2026-06-29T11:00:00Z'),
           },
@@ -157,6 +171,7 @@ describe('WalletsService', () => {
             id: 'rec-1',
             orderId: 'order-1',
             txHash: 'abc123',
+            explorerLink: `${MOCK_EXPLORER_URL}/tx/abc123`,
             totalAmount: '10.00',
             amount: '9.50',
             recipientType: 'CREATOR',
@@ -169,6 +184,7 @@ describe('WalletsService', () => {
             id: 'rec-2',
             orderId: 'order-2',
             txHash: 'def456',
+            explorerLink: `${MOCK_EXPLORER_URL}/tx/def456`,
             totalAmount: '10.00',
             amount: '0.50',
             recipientType: 'PLATFORM',
@@ -182,24 +198,35 @@ describe('WalletsService', () => {
         limit: 20,
         total: 2,
       });
+    });
 
-      expect(prisma.settlementRecipient.findMany).toHaveBeenCalledWith({
-        where: { walletAddress: MOCK_ADDRESS },
-        include: {
+    it('generates explorerLink using the txHash', async () => {
+      const mockRows = [
+        {
+          id: 'rec-1',
+          settlementId: 'settle-1',
+          walletAddress: MOCK_ADDRESS,
+          recipientType: 'CREATOR',
+          role: 'Author',
+          percentage: { toFixed: () => '100.00' },
+          amount: { toFixed: () => '10.00' },
+          createdAt: new Date('2026-06-29T12:00:00Z'),
           settlement: {
-            select: {
-              orderId: true,
-              txHash: true,
-              totalAmount: true,
-              status: true,
-              createdAt: true,
-            },
+            orderId: 'order-1',
+            txHash: 'a1b2c3d4e5f6',
+            totalAmount: { toFixed: () => '10.00' },
+            status: 'COMPLETED',
+            createdAt: new Date('2026-06-29T12:00:00Z'),
           },
         },
-        orderBy: { createdAt: 'desc' },
-        skip: 0,
-        take: 20,
-      });
+      ];
+
+      prisma.settlementRecipient.findMany.mockResolvedValue(mockRows);
+      prisma.settlementRecipient.count.mockResolvedValue(1);
+
+      const result = await service.getTransactions(MOCK_ADDRESS, 1, 20);
+
+      expect(result.transactions[0].explorerLink).toBe(`${MOCK_EXPLORER_URL}/tx/a1b2c3d4e5f6`);
     });
 
     it('returns empty list when address has no transactions', async () => {

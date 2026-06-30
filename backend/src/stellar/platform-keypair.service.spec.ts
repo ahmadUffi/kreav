@@ -31,6 +31,7 @@ describe('PlatformKeypairService', () => {
     usdcAssetCode: 'USDC',
     splitContractId: 'contract',
     networkPassphrase: 'Test SDF Network ; September 2015',
+    explorerUrl: 'https://stellar.expert/explorer/testnet',
   };
 
   async function makeService(secret: string | undefined): Promise<PlatformKeypairService> {

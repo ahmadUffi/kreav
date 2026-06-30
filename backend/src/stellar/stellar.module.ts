@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { loadStellarConfig, STELLAR_CONFIG, type StellarConfig } from './stellar.config';
+import { ExplorerService } from './explorer.service';
 import { PlatformKeypairService } from './platform-keypair.service';
 import { HorizonService } from './horizon.service';
 import { SorobanRpcService } from './soroban-rpc.service';
@@ -12,6 +13,7 @@ import { SettlementService } from './settlement.service';
  * Provides the Stellar integration clients consumed by:
  *   - SettlementService (BE-007): SorobanRpcService.invokeSettle + recording
  *   - Wallet module (BE-008): HorizonService.getUsdcBalance
+ *   - Explorer link generation (BE-010): ExplorerService
  *
  * ADR-005: RPC primary (Soroban invoke/verify), Horizon secondary (balance/trustline).
  */
@@ -29,6 +31,7 @@ import { SettlementService } from './settlement.service';
     HorizonService,
     SorobanRpcService,
     SettlementService,
+    ExplorerService,
   ],
   exports: [
     STELLAR_CONFIG,
@@ -36,6 +39,7 @@ import { SettlementService } from './settlement.service';
     HorizonService,
     PlatformKeypairService,
     SettlementService,
+    ExplorerService,
   ],
 })
 export class StellarModule {}
