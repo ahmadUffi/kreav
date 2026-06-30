@@ -1,7 +1,7 @@
 {
   "name": "kreav-backend",
   "version": "0.0.1",
-  "description": "Kreav — settlement orchestration layer (NestJS + Prisma + PostgreSQL)",
+  "description": "Kreav \u2014 settlement orchestration layer (NestJS + Prisma + PostgreSQL)",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -21,7 +21,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "smoke": "ts-node scripts/smoke.ts",
+    "acceptance": "ts-node scripts/acceptance-backend.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
