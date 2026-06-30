@@ -1,10 +1,20 @@
 /**
  * Supported withdrawal destinations for the mock Anchor off-ramp (BE-009).
  *
- * MVP supports GCash (Philippines), Bank (generic), and PayMaya (Philippines).
+ * Covers popular e-wallets and banks in Southeast Asia (Indonesia & Philippines)
+ * to match the demo characters: Indonesian creator, Philippine buyer.
+ *
+ * MVP: all destinations are SIMULATED — no real money moves.
  */
 export enum WithdrawalDestination {
+  // Philippines
   GCASH = 'GCASH',
-  BANK = 'BANK',
   PAYMAYA = 'PAYMAYA',
+  // Indonesia
+  GOPAY = 'GOPAY',
+  OVO = 'OVO',
+  DANA = 'DANA',
+  SHOPEEPAY = 'SHOPEEPAY',
+  // Generic
+  BANK = 'BANK',
 }
