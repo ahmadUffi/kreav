@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { type AppConfig } from './config/configuration';
 import { DecimalToStringInterceptor } from './common/serialization/decimal-to-string.interceptor';
+import { DomainExceptionFilter } from './common/exceptions/domain-exception.filter';
 
 async function bootstrap() {
   // rawBody: true exposes req.rawBody (the exact request bytes) so the GCash
@@ -36,6 +37,10 @@ async function bootstrap() {
   // Prisma's internal `{ d: [...], e, s }` structure instead of "10.00".
   app.useGlobalInterceptors(new DecimalToStringInterceptor());
 
+  // BE-012 — Global exception filter for consistent error responses.
+  // DomainException → structured JSON; unknown → sanitized 500 (no stack leak).
+  app.useGlobalFilters(new DomainExceptionFilter());
+
   // Graceful shutdown: enable NestJS shutdown hooks so OnModuleDestroy runs
   // (PrismaService.$disconnect()). Without this, SIGTERM/SIGINT kills the
   // process before DB connections close → leaked connections + in-flight
@@ -45,7 +50,9 @@ async function bootstrap() {
   // ── OpenAPI / Swagger ─────────────────────────────────────────────────
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Kreav API')
-    .setDescription('Programmable settlement layer for digital-product creators, powered by Stellar.')
+    .setDescription(
+      'Programmable settlement layer for digital-product creators, powered by Stellar.',
+    )
     .setVersion('1.0.0')
     .addTag('Products', 'Product catalog management')
     .addTag('Orders', 'Checkout and payment flow')
