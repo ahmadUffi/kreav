@@ -19,11 +19,14 @@ describe('HealthController (e2e)', () => {
     await app.close();
   });
 
-  it('GET /health → 200 { status: "ok" }', async () => {
+  it('GET /health → 200 + deep DB check', async () => {
     const res = await request(app.getHttpServer()).get('/health');
 
     expect(res.status).toBe(200);
+    // Shallow liveness
     expect(res.body.status).toBe('ok');
     expect(res.body.timestamp).toEqual(expect.any(String));
+    // Deep readiness (BE-016)
+    expect(res.body.db).toBe('connected');
   });
 });
