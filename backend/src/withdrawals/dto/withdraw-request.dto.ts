@@ -26,7 +26,7 @@ export class WithdrawRequestDto {
     enum: WithdrawalDestination,
     example: WithdrawalDestination.GCASH,
   })
-  @IsEnum(WithdrawalDestination, { message: 'destinationType must be one of: GCASH, PAYMAYA, GOPAY, OVO, DANA, SHOPEEPAY, BANK' })
+  @IsEnum(WithdrawalDestination, { message: 'destinationType must be a valid Southeast Asian payment method (GCASH, PAYMAYA, GOPAY, OVO, DANA, SHOPEEPAY, MOMO, ZALOPAY, TRUEMONEY, PROMPTPAY, TOUCHNGO, GRABPAY, PAYNOW, WAVEMONEY, WING, ABA, BANK)' })
   destinationType!: WithdrawalDestination;
 
   @ApiProperty({
