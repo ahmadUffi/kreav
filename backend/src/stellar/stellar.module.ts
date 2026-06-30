@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { loadStellarConfig, STELLAR_CONFIG, type StellarConfig } from './stellar.config';
 import { ExplorerService } from './explorer.service';
+import { FloatMonitorService } from './float-monitor.service';
 import { PlatformKeypairService } from './platform-keypair.service';
 import { HorizonService } from './horizon.service';
 import { SorobanRpcService } from './soroban-rpc.service';
@@ -32,6 +33,7 @@ import { SettlementService } from './settlement.service';
     SorobanRpcService,
     SettlementService,
     ExplorerService,
+    FloatMonitorService,
   ],
   exports: [
     STELLAR_CONFIG,

@@ -129,9 +129,7 @@ describe('SettlementService', () => {
     // Assert: invokeSettle called with correct args
     // totalAmountBase = 10.00 × 10^7 = 100_000_000
     const expectedBaseAmount = BigInt(
-      new Prisma.Decimal(PAYMENT_PAYLOAD.amountUsd)
-        .mul(10 ** USDC_DECIMALS)
-        .toFixed(0),
+      new Prisma.Decimal(PAYMENT_PAYLOAD.amountUsd).mul(10 ** USDC_DECIMALS).toFixed(0),
     );
     expect(sorobanRpc.invokeSettle).toHaveBeenCalledWith(
       PAYMENT_PAYLOAD.orderId,
@@ -255,9 +253,7 @@ describe('SettlementService', () => {
   it('fails to SETTLEMENT_FAILED when submission is rejected', async () => {
     prisma.order.findUnique.mockResolvedValue(MOCK_ORDER);
     prisma.productCollaborator.findMany.mockResolvedValue(MOCK_COLLABORATORS);
-    sorobanRpc.invokeSettle.mockRejectedValue(
-      new SettlementSubmissionError('tx-bad-seq'),
-    );
+    sorobanRpc.invokeSettle.mockRejectedValue(new SettlementSubmissionError('tx-bad-seq'));
 
     await service.handlePaymentReceived(PAYMENT_PAYLOAD);
 
@@ -273,9 +269,7 @@ describe('SettlementService', () => {
   it('leaves order at SETTLEMENT_PENDING when poll times out', async () => {
     prisma.order.findUnique.mockResolvedValue(MOCK_ORDER);
     prisma.productCollaborator.findMany.mockResolvedValue(MOCK_COLLABORATORS);
-    sorobanRpc.invokeSettle.mockRejectedValue(
-      new SettlementTimeoutError('pending-tx-hash'),
-    );
+    sorobanRpc.invokeSettle.mockRejectedValue(new SettlementTimeoutError('pending-tx-hash'));
 
     await service.handlePaymentReceived(PAYMENT_PAYLOAD);
 
@@ -347,12 +341,10 @@ describe('SettlementService', () => {
     sorobanRpc.invokeSettle.mockResolvedValue(MOCK_INVOKE_SUCCESS);
 
     let capturedSettlementData: any;
-    prisma.settlement.create.mockImplementation(
-      (async (args: any) => {
-        capturedSettlementData = args.data;
-        return { id: 'settlement-uuid' };
-      }) as any,
-    );
+    prisma.settlement.create.mockImplementation((async (args: any) => {
+      capturedSettlementData = args.data;
+      return { id: 'settlement-uuid' };
+    }) as any);
 
     await service.handlePaymentReceived(PAYMENT_PAYLOAD);
 
@@ -383,10 +375,7 @@ describe('SettlementService', () => {
     expect(creatorC.amount.toNumber()).toBeCloseTo(0.95, 2);
 
     // Sum of all amounts should equal total
-    const totalAmount = recipientRows.reduce(
-      (acc: number, r: any) => acc + r.amount.toNumber(),
-      0,
-    );
+    const totalAmount = recipientRows.reduce((acc: number, r: any) => acc + r.amount.toNumber(), 0);
     expect(totalAmount).toBeCloseTo(10.0, 2);
   });
 
@@ -400,15 +389,12 @@ describe('SettlementService', () => {
 
     await service.handlePaymentReceived(PAYMENT_PAYLOAD);
 
-    expect(emitter.emit).toHaveBeenCalledWith(
-      AppEvents.SettlementCompleted,
-      {
-        orderId: PAYMENT_PAYLOAD.orderId,
-        txHash: MOCK_INVOKE_SUCCESS.txHash,
-        creatorAmountUsd: '9.50', // 95% of $10
-        platformAmountUsd: '0.50', // 5% of $10
-      },
-    );
+    expect(emitter.emit).toHaveBeenCalledWith(AppEvents.SettlementCompleted, {
+      orderId: PAYMENT_PAYLOAD.orderId,
+      txHash: MOCK_INVOKE_SUCCESS.txHash,
+      creatorAmountUsd: '9.50', // 95% of $10
+      platformAmountUsd: '0.50', // 5% of $10
+    });
   });
 
   // ── Invalid state transition ───────────────────────────────────────────────
