@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { type AppConfig } from './config/configuration';
@@ -40,6 +41,20 @@ async function bootstrap() {
   // process before DB connections close → leaked connections + in-flight
   // settlements can be lost. Critical for a financial app.
   app.enableShutdownHooks();
+
+  // ── OpenAPI / Swagger ─────────────────────────────────────────────────
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Kreav API')
+    .setDescription('Programmable settlement layer for digital-product creators, powered by Stellar.')
+    .setVersion('1.0.0')
+    .addTag('Products', 'Product catalog management')
+    .addTag('Orders', 'Checkout and payment flow')
+    .addTag('Wallet', 'Stellar wallet balance and transaction history')
+    .addTag('Health', 'Application health checks')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api', app, document);
 
   await app.listen(port);
   const logger = new Logger('Bootstrap');
