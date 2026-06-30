@@ -22,11 +22,11 @@ export class WithdrawRequestDto {
   amount!: number;
 
   @ApiProperty({
-    description: 'Destination type for the withdrawal',
+    description: 'Destination type for the withdrawal (simulated Anchor off-ramp)',
     enum: WithdrawalDestination,
     example: WithdrawalDestination.GCASH,
   })
-  @IsEnum(WithdrawalDestination, { message: 'destinationType must be a valid Southeast Asian payment method (GCASH, PAYMAYA, GOPAY, OVO, DANA, SHOPEEPAY, MOMO, ZALOPAY, TRUEMONEY, PROMPTPAY, TOUCHNGO, GRABPAY, PAYNOW, WAVEMONEY, WING, ABA, BANK)' })
+  @IsEnum(WithdrawalDestination, { message: 'destinationType must be one of: GCASH, GOPAY, PAYNOW, BANK' })
   destinationType!: WithdrawalDestination;
 
   @ApiProperty({

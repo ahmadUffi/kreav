@@ -71,12 +71,16 @@ export class WithdrawalsController {
     description: 'Withdrawal request payload',
     examples: {
       gcash: {
-        summary: 'GCash withdrawal',
+        summary: '🇵🇭 GCash withdrawal (Philippines)',
         value: { amount: 5.0, destinationType: 'GCASH', destinationAccount: '0917xxxxxxx' },
       },
-      bank: {
-        summary: 'Bank withdrawal',
-        value: { amount: 10.0, destinationType: 'BANK', destinationAccount: '1234567890' },
+      gopay: {
+        summary: '🇮🇩 GoPay withdrawal (Indonesia)',
+        value: { amount: 10.0, destinationType: 'GOPAY', destinationAccount: '0812xxxxxxx' },
+      },
+      paynow: {
+        summary: '🇸🇬 PayNow withdrawal (Singapore)',
+        value: { amount: 3.5, destinationType: 'PAYNOW', destinationAccount: '91234567' },
       },
     },
   })

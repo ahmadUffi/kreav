@@ -336,6 +336,7 @@ export class WithdrawalsService {
 
     const withdrawals = rows.map((w) => ({
       withdrawalId: w.id,
+      receiptVersion: '1.0',
       reference: w.reference,
       status: w.status,
       amount: Number(w.amount),
@@ -374,6 +375,7 @@ export class WithdrawalsService {
     completedAt?: Date | null,
   ): Record<string, unknown> {
     return {
+      receiptVersion: '1.0',
       withdrawalId,
       reference,
       status,
@@ -382,7 +384,7 @@ export class WithdrawalsService {
       availableBalanceAfter: Number(availableBalanceAfter),
       destinationType,
       destinationAccount,
-      anchor: 'Mock Philippines Anchor',
+      anchor: 'Mock Anchor (SEP-24 simulation)',
       requestedAt: requestedAt?.toISOString() ?? new Date().toISOString(),
       completedAt: completedAt?.toISOString() ?? null,
       settlementTxHash: settlementTxHash ?? null,

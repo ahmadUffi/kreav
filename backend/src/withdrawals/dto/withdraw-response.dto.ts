@@ -41,6 +41,12 @@ class SimulationInfoDto {
  */
 export class WithdrawResponseDto {
   @ApiProperty({
+    description: 'Receipt format version',
+    example: '1.0',
+  })
+  receiptVersion!: string;
+
+  @ApiProperty({
     description: 'Unique withdrawal ID (UUID)',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
