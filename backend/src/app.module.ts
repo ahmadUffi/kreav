@@ -12,6 +12,7 @@ import { EventsModule } from './events/events.module';
 import { OrdersModule } from './orders/orders.module';
 import { StellarModule } from './stellar/stellar.module';
 import { WalletsModule } from './wallets/wallets.module';
+import { WithdrawalsModule } from './withdrawals/withdrawals.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { WalletsModule } from './wallets/wallets.module';
     StellarModule,
     WalletsModule,
     StartupModule,
+    WithdrawalsModule,
   ],
   providers: [
     // Activate the global throttle guard so @Throttle() / defaults apply.
