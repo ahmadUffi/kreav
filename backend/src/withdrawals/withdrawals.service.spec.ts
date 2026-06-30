@@ -122,6 +122,7 @@ describe('WithdrawalsService', () => {
       expect(receipt.reference).toContain('KRV-WD');
       expect(receipt.withdrawalId).toBe('wd-uuid');
       const r = receipt as any;
+      expect(r.receiptVersion).toBe('1.0');
       expect(r.simulation).toBeDefined();
       expect(r.simulation.mode).toBe('SIMULATED');
       expect(r.simulation.realComponents).toContain('Settlement');

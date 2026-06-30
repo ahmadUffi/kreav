@@ -125,6 +125,7 @@ describe('WithdrawalsController (e2e)', () => {
 
       expect(res.status).toBe(202);
       expect(res.body.status).toBe('PROCESSING');
+      expect(res.body.receiptVersion).toBe('1.0');
       expect(res.body.reference).toContain('KRV-WD');
       expect(res.body.amount).toBe(5.0);
       expect(res.body.withdrawalId).toEqual(expect.any(String));
