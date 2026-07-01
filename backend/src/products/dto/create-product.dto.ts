@@ -53,6 +53,33 @@ export class CreateProductDto {
   priceUsd!: string;
 
   @ApiProperty({
+    description: 'Emoji representing the product (for cover tile display)',
+    required: false,
+    example: '🌅',
+  })
+  @IsOptional()
+  @IsString()
+  emoji?: string;
+
+  @ApiProperty({
+    description: 'Brand accent color hex (for cover tile display)',
+    required: false,
+    example: '#FF3BFF',
+  })
+  @IsOptional()
+  @IsString()
+  accent?: string;
+
+  @ApiProperty({
+    description: 'Product category (Ebook | Preset | Course | Music | Template)',
+    required: false,
+    example: 'Preset',
+  })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiProperty({
     description: 'Creator user ID (UUID)',
     required: true,
     example: '550e8400-e29b-41d4-a716-446655440000',

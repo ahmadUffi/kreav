@@ -104,6 +104,9 @@ async function main() {
     description: string;
     price: string;
     fileUrl: string;
+    emoji: string;
+    accent: string;
+    category: string;
     collaborators: { walletAddress: string; role: string; share: number }[];
   }
 
@@ -114,6 +117,9 @@ async function main() {
         'Ace your next interview with AI-powered practice sessions, curated questions, and real-time feedback.',
       price: '10.00',
       fileUrl: 'https://drive.google.com/file/d/abc001/view',
+      emoji: '📘',
+      accent: '#FF4D00',
+      category: 'Ebook',
       collaborators: [{ walletAddress: CREATOR_PUBLIC, role: 'Author', share: 100 }],
     },
     {
@@ -122,6 +128,9 @@ async function main() {
         '12 warm, film-inspired Lightroom presets tuned for golden-hour portraits and travel shots.',
       price: '18.00',
       fileUrl: 'https://drive.google.com/file/d/abc002/view',
+      emoji: '🌅',
+      accent: '#FF3BFF',
+      category: 'Preset',
       collaborators: [{ walletAddress: CREATOR_PUBLIC, role: 'Photographer', share: 100 }],
     },
     {
@@ -130,6 +139,9 @@ async function main() {
         'An all-in-one Notion workspace to plan content, track collabs, and manage your product launches.',
       price: '29.00',
       fileUrl: 'https://notion.so/templates/creator-os-abc003',
+      emoji: '🗂️',
+      accent: '#00F5FF',
+      category: 'Template',
       collaborators: [
         { walletAddress: CREATOR_PUBLIC, role: 'Author', share: 50 },
         { walletAddress: PHOTOGRAPHER_PUBLIC, role: 'Designer', share: 30 },
@@ -142,6 +154,9 @@ async function main() {
         '20 royalty-free lo-fi loops and stems for streams, videos, and study playlists. WAV + MP3 included.',
       price: '12.00',
       fileUrl: 'https://drive.google.com/file/d/abc004/view',
+      emoji: '🎧',
+      accent: '#FFE600',
+      category: 'Music',
       collaborators: [{ walletAddress: CREATOR_PUBLIC, role: 'Producer', share: 100 }],
     },
   ];
@@ -158,11 +173,25 @@ async function main() {
           description: p.description,
           priceUsd: p.price,
           fileUrl: p.fileUrl,
+          emoji: p.emoji,
+          accent: p.accent,
+          category: p.category,
           creatorId: creator.id,
         },
       });
       console.log(`  ✅ Product: ${p.title} ($${p.price})`);
     } else {
+      // Idempotently update UI fields if missing (BE-027).
+      if (!product.emoji || !product.accent || !product.category) {
+        await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            emoji: product.emoji ?? p.emoji,
+            accent: product.accent ?? p.accent,
+            category: product.category ?? p.category,
+          },
+        });
+      }
       console.log(`  ⏭️  Product exists: ${p.title}`);
     }
 
