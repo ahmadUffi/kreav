@@ -1,26 +1,45 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
+  Logger,
+  Param,
   Post,
+  Query,
   Req,
   UnauthorizedException,
-  Logger,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiParam,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiResponse,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { OrdersService } from './orders.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { GcashWebhookDto } from './dto/gcash-webhook.dto';
+import { OrdersListQueryDto } from './dto/orders-list-query.dto';
+import { OrdersListResponseDto } from './dto/order-item.dto';
 import { WebhookSignature } from './webhook-signature';
 
 /**
- * OrdersController — BE-005.
+ * OrdersController — BE-005 + BE-018.
  *
- *   POST /checkout        — create an order (buyer side)
- *   POST /webhooks/gcash  — mock GCash payment confirmation (provider side)
+ * Write endpoints:
+ *   POST /checkout           — create an order (buyer side)
+ *   POST /webhooks/gcash     — mock GCash payment confirmation (provider side)
+ *
+ * Read endpoints (BE-018):
+ *   GET  /orders             — paginated order list (optional ?creatorId=)
+ *   GET  /orders/:id         — single order with settlement details
  *
  * Audit #7 — rate limiting: checkout is throttled tighter than the global
  * default (buyers shouldn't spam orders), and the webhook gets an even tighter
@@ -29,6 +48,7 @@ import { WebhookSignature } from './webhook-signature';
  * Audit #11 — the webhook verifies an HMAC signature over the raw body before
  * trusting it; the body is parsed into the DTO only AFTER verification.
  */
+@ApiTags('Orders')
 @Controller()
 export class OrdersController {
   private readonly logger = new Logger(OrdersController.name);
@@ -44,6 +64,13 @@ export class OrdersController {
   @Post('checkout')
   @Throttle({ default: { ttl: 60_000, limit: 20 } })
   @HttpCode(201)
+  @ApiOperation({
+    summary: 'Create an order (checkout)',
+    description: 'Creates a new order for a product. The order starts in PAYMENT_PENDING status.',
+  })
+  @ApiBody({ type: CheckoutDto })
+  @ApiCreatedResponse({ description: 'Order created successfully' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   checkout(@Body() dto: CheckoutDto) {
     return this.orders.checkout(dto.productId);
   }
@@ -58,6 +85,15 @@ export class OrdersController {
   @Post('webhooks/gcash')
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Receive GCash payment webhook',
+    description:
+      'Mock GCash webhook to confirm a payment. Verifies HMAC signature over the raw body. ' +
+      'Idempotent on paymentRef — duplicate webhooks are silently acknowledged.',
+  })
+  @ApiBody({ type: GcashWebhookDto })
+  @ApiResponse({ status: 200, description: 'Payment confirmed' })
+  @ApiResponse({ status: 401, description: 'Invalid webhook signature' })
   async handleGcashWebhook(
     @Req() req: Request,
     @Headers('x-gcash-signature') signature: string | undefined,
@@ -80,5 +116,78 @@ export class OrdersController {
     }
 
     return this.orders.handleGcashPayment(dto.orderId, dto.paymentRef);
+  }
+
+  // ── BE-018: Read endpoints ───────────────────────────────────────────────
+
+  /**
+   * GET /orders — paginated order list.
+   *
+   * Optionally filter by creatorId to show only orders for a specific creators
+   * products. Results ordered newest-first.
+   */
+  @Get('orders')
+  @ApiOperation({
+    summary: 'List orders',
+    description:
+      'Returns a paginated list of orders. Optionally filter by creatorId ' +
+      'to show only orders for a specific creators products. Ordered newest-first. ' +
+      'Each order includes the product title and price.',
+  })
+  @ApiQuery({
+    name: 'creatorId',
+    description: 'Filter by creator user ID (UUID)',
+    required: false,
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiQuery({
+    name: 'page',
+    description: 'Page number (1-indexed)',
+    required: false,
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Items per page',
+    required: false,
+    example: 20,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of orders',
+    type: OrdersListResponseDto,
+  })
+  async findAll(@Query() query: OrdersListQueryDto): Promise<{
+    data: Array<Record<string, unknown>>;
+    page: number;
+    limit: number;
+    total: number;
+  }> {
+    this.logger.log(
+      `GET /orders?creatorId=${query.creatorId ?? ''}&page=${query.page}&limit=${query.limit}`,
+    );
+    return this.orders.findAll(query);
+  }
+
+  /**
+   * GET /orders/:id — single order with settlement details.
+   */
+  @Get('orders/:id')
+  @ApiOperation({
+    summary: 'Get order by ID',
+    description:
+      'Returns a single order with product and settlement details. ' +
+      'Throws 404 if the order is not found.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Order ID (UUID)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiResponse({ status: 200, description: 'Order found' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  async findOne(@Param('id') id: string): Promise<Record<string, unknown>> {
+    this.logger.log(`GET /orders/${id}`);
+    return this.orders.findOne(id);
   }
 }

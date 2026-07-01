@@ -1,4 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { WalletProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorizonService } from '../stellar/horizon.service';
 import { ExplorerService } from '../stellar/explorer.service';
@@ -15,6 +21,8 @@ import { ExplorerService } from '../stellar/explorer.service';
  */
 @Injectable()
 export class WalletsService {
+  private readonly logger = new Logger(WalletsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly horizon: HorizonService,
@@ -126,6 +134,74 @@ export class WalletsService {
       page,
       limit,
       total,
+    };
+  }
+
+  // ── BE-020: Wallet Connect ───────────────────────────────────────────────
+
+  /**
+   * POST /wallets — connect a Stellar wallet to a creator.
+   *
+   * Validates that the creator exists, checks for duplicate wallet addresses,
+   * and creates the wallet record. Non-custodial: stores only the public key.
+   *
+   * Throws:
+   *   NotFoundException — creatorId does not match any user
+   *   ConflictException — walletAddress is already connected to a creator
+   */
+  async connect(
+    creatorId: string,
+    walletAddress: string,
+    provider: WalletProvider,
+  ): Promise<{
+    id: string;
+    creatorId: string;
+    walletAddress: string;
+    provider: string;
+    connectedAt: string;
+  }> {
+    // Verify the creator exists.
+    const creator = await this.prisma.user.findUnique({
+      where: { id: creatorId },
+      select: { id: true },
+    });
+    if (!creator) {
+      throw new NotFoundException(`Creator with id ${creatorId} not found`);
+    }
+
+    // Check for duplicate wallet address.
+    const existing = await this.prisma.wallet.findFirst({
+      where: { walletAddress },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `Wallet ${walletAddress} is already connected to another account`,
+      );
+    }
+
+    const wallet = await this.prisma.wallet.create({
+      data: { creatorId, walletAddress, provider },
+      select: {
+        id: true,
+        creatorId: true,
+        walletAddress: true,
+        provider: true,
+        connectedAt: true,
+      },
+    });
+
+    this.logger.log(`Wallet connected: ${wallet.id} (${walletAddress}, ${provider})`);
+
+    return {
+      id: wallet.id,
+      creatorId: wallet.creatorId,
+      walletAddress: wallet.walletAddress,
+      provider: wallet.provider,
+      connectedAt:
+        wallet.connectedAt instanceof Date
+          ? wallet.connectedAt.toISOString()
+          : String(wallet.connectedAt),
     };
   }
 }
