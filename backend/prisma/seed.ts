@@ -103,6 +103,7 @@ async function main() {
     title: string;
     description: string;
     price: string;
+    fileUrl: string;
     collaborators: { walletAddress: string; role: string; share: number }[];
   }
 
@@ -112,6 +113,7 @@ async function main() {
       description:
         'Ace your next interview with AI-powered practice sessions, curated questions, and real-time feedback.',
       price: '10.00',
+      fileUrl: 'https://drive.google.com/file/d/abc001/view',
       collaborators: [{ walletAddress: CREATOR_PUBLIC, role: 'Author', share: 100 }],
     },
     {
@@ -119,6 +121,7 @@ async function main() {
       description:
         '12 warm, film-inspired Lightroom presets tuned for golden-hour portraits and travel shots.',
       price: '18.00',
+      fileUrl: 'https://drive.google.com/file/d/abc002/view',
       collaborators: [{ walletAddress: CREATOR_PUBLIC, role: 'Photographer', share: 100 }],
     },
     {
@@ -126,6 +129,7 @@ async function main() {
       description:
         'An all-in-one Notion workspace to plan content, track collabs, and manage your product launches.',
       price: '29.00',
+      fileUrl: 'https://notion.so/templates/creator-os-abc003',
       collaborators: [
         { walletAddress: CREATOR_PUBLIC, role: 'Author', share: 50 },
         { walletAddress: PHOTOGRAPHER_PUBLIC, role: 'Designer', share: 30 },
@@ -137,6 +141,7 @@ async function main() {
       description:
         '20 royalty-free lo-fi loops and stems for streams, videos, and study playlists. WAV + MP3 included.',
       price: '12.00',
+      fileUrl: 'https://drive.google.com/file/d/abc004/view',
       collaborators: [{ walletAddress: CREATOR_PUBLIC, role: 'Producer', share: 100 }],
     },
   ];
@@ -152,6 +157,7 @@ async function main() {
           title: p.title,
           description: p.description,
           priceUsd: p.price,
+          fileUrl: p.fileUrl,
           creatorId: creator.id,
         },
       });

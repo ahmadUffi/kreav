@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiQuery, ApiParam, ApiCreatedResponse, ApiResponse } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { PaginationDto } from './dto/pagination.dto';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -14,21 +15,106 @@ import { CreateProductDto } from './dto/create-product.dto';
  * Money in responses is serialized to string by the global
  * DecimalToStringInterceptor — controllers stay Decimal-agnostic.
  */
+@ApiTags('Products')
 @Controller('products')
 export class ProductsController {
   constructor(private readonly products: ProductsService) {}
 
   @Get()
+  @ApiOperation({
+    summary: 'List all products',
+    description:
+      'Returns a paginated list of products. Optionally filter by creatorId. ' +
+      'Includes creator info and fileUrl (download link). Ordered newest-first.',
+  })
+  @ApiQuery({
+    name: 'creatorId',
+    description: 'Filter by creator user ID (UUID)',
+    required: false,
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiQuery({
+    name: 'page',
+    description: 'Page number (1-indexed)',
+    required: false,
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Items per page',
+    required: false,
+    example: 20,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of products',
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', description: 'Array of product objects' },
+        page: { type: 'integer', example: 1 },
+        limit: { type: 'integer', example: 20 },
+        total: { type: 'integer', example: 8 },
+      },
+    },
+  })
   findAll(@Query() query: PaginationDto) {
     return this.products.findAll(query);
   }
 
   @Get(':id')
+  @ApiOperation({
+    summary: 'Get product by ID',
+    description:
+      'Returns a single product with creator details and fileUrl (download link). ' +
+      'Throws 404 if the product is not found.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Product ID (UUID)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiResponse({ status: 200, description: 'Product found' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   findOne(@Param('id') id: string) {
     return this.products.findOne(id);
   }
 
   @Post()
+  @ApiOperation({
+    summary: 'Create a product',
+    description:
+      'Creates a new digital product. `priceUsd` must be a decimal string with 0-2 fractional digits. ' +
+      '`fileUrl` is optional — the download or access link for the digital product.',
+  })
+  @ApiBody({
+    type: CreateProductDto,
+    description: 'Product creation payload',
+    examples: {
+      preset: {
+        summary: '🌅 Lightroom Presets',
+        value: {
+          title: 'Lightroom Sunset Presets',
+          description: '12 warm, film-inspired Lightroom presets.',
+          fileUrl: 'https://drive.google.com/file/d/abc002/view',
+          priceUsd: '18.00',
+          creatorId: '550e8400-e29b-41d4-a716-446655440000',
+        },
+      },
+      ebook: {
+        summary: '📘 Freelance Pricing Ebook',
+        value: {
+          title: 'Freelance Pricing Ebook',
+          description: 'A no-fluff guide to pricing your freelance work.',
+          fileUrl: 'https://drive.google.com/file/d/abc005/view',
+          priceUsd: '9.00',
+          creatorId: '550e8400-e29b-41d4-a716-446655440000',
+        },
+      },
+    },
+  })
+  @ApiCreatedResponse({ description: 'Product created successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
   create(@Body() dto: CreateProductDto) {
     return this.products.create(dto);
   }
