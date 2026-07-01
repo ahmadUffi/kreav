@@ -9,7 +9,7 @@ import { ApiProperty } from '@nestjs/swagger';
  * enforces a non-negative decimal with 0–2 fractional digits ("10", "9.5",
  * "9.50" all valid). The DB column is Decimal(18,2).
  *
- * `fileUrl` is the digital product download/access link (optional).
+ * `fileUrl` is the digital product download/access link (required).
  *
  * Source: Kreav Backend PRD v3 — §9 Product APIs.
  */
@@ -35,12 +35,12 @@ export class CreateProductDto {
   @ApiProperty({
     description:
       'Download or access URL for the digital product (public for demo)',
-    required: false,
+    required: true,
     example: 'https://drive.google.com/file/d/abc123/view',
   })
-  @IsOptional()
   @IsString()
-  fileUrl?: string;
+  @IsNotEmpty({ message: 'fileUrl must not be empty' })
+  fileUrl!: string;
 
   @ApiProperty({
     description: 'Price in USD (string with 0-2 decimal places)',
