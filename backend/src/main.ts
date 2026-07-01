@@ -90,6 +90,8 @@ Buyer (Philippines) → Checkout → Soroban Smart Contract → Creator Wallet (
     .addTag('Wallet', 'Stellar wallet — query USDC balance and settlement transaction history')
     .addTag('Withdrawals', 'Simulated Anchor off-ramp — request withdrawals and view receipts')
     .addTag('Health', 'Application health checks — liveness and PostgreSQL readiness')
+    .addTag('Auth', 'User registration — email-only signup, no password (non-custodial)')
+    .addTag('Analytics', 'Dashboard analytics — KPI aggregation, revenue series, top products')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig, {

@@ -148,4 +148,116 @@ export class OrdersService {
     this.emitter.emit(AppEvents.PaymentReceived, payload);
     return { status: 'paid', orderId };
   }
+
+  // ── BE-018: Read endpoints ───────────────────────────────────────────────
+
+  /**
+   * GET /orders — paginated list, optionally filtered by creator.
+   *
+   * Joins with Product to return the product title and price.
+   * Ordered newest-first.
+   */
+  async findAll(query: {
+    creatorId?: string;
+    page: number;
+    limit: number;
+  }): Promise<{
+    data: Array<Record<string, unknown>>;
+    page: number;
+    limit: number;
+    total: number;
+  }> {
+    const { creatorId, page, limit } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.OrderWhereInput = {};
+    if (creatorId) {
+      where.product = { creatorId };
+    }
+
+    const [rows, total] = await Promise.all([
+      this.prisma.order.findMany({
+        skip,
+        take: limit,
+        where,
+        include: {
+          product: {
+            select: { title: true, priceUsd: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    const data = rows.map((row) => ({
+      id: row.id,
+      productTitle: row.product.title,
+      productPrice: row.product.priceUsd?.toFixed?.(2) ?? String(row.product.priceUsd),
+      buyerEmail: row.buyerEmail,
+      amountUsd: row.amountUsd?.toFixed?.(2) ?? String(row.amountUsd),
+      status: row.status,
+      paymentRef: row.paymentRef ?? undefined,
+      txHash: row.txHash ?? undefined,
+      createdAt: row.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : String(row.createdAt),
+    }));
+
+    return { data, page, limit, total };
+  }
+
+  /**
+   * GET /orders/:id — single order with product details.
+   * Throws 404 if not found.
+   */
+  async findOne(id: string): Promise<Record<string, unknown>> {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: {
+        product: {
+          select: { id: true, title: true, priceUsd: true },
+        },
+        settlement: {
+          select: {
+            id: true,
+            txHash: true,
+            totalAmount: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return {
+      id: order.id,
+      productId: order.product.id,
+      productTitle: order.product.title,
+      productPrice: order.product.priceUsd?.toFixed?.(2) ?? String(order.product.priceUsd),
+      buyerEmail: order.buyerEmail,
+      amountUsd: order.amountUsd?.toFixed?.(2) ?? String(order.amountUsd),
+      status: order.status,
+      paymentRef: order.paymentRef ?? undefined,
+      txHash: order.txHash ?? undefined,
+      settlement: order.settlement
+        ? {
+            id: order.settlement.id,
+            txHash: order.settlement.txHash,
+            totalAmount: order.settlement.totalAmount?.toFixed?.(2) ?? String(order.settlement.totalAmount),
+            status: order.settlement.status,
+            createdAt: order.settlement.createdAt instanceof Date
+              ? order.settlement.createdAt.toISOString()
+              : String(order.settlement.createdAt),
+          }
+        : undefined,
+      createdAt: order.createdAt instanceof Date
+        ? order.createdAt.toISOString()
+        : String(order.createdAt),
+    };
+  }
 }
