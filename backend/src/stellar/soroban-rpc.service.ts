@@ -113,11 +113,7 @@ export class SorobanRpcService {
     const sourceAccount = await this.server.getAccount(platformKeypair.publicKey());
 
     // 1. Build the invoke transaction (3 args: order_ref, total_amount, recipients).
-    const args = this.buildSettleArgs(
-      orderRef,
-      totalAmountBase,
-      recipients,
-    );
+    const args = this.buildSettleArgs(orderRef, totalAmountBase, recipients);
 
     let tx = new TransactionBuilder(sourceAccount, {
       fee: BASE_FEE,
@@ -243,11 +239,7 @@ export class SorobanRpcService {
     // order_ref as String (not Symbol — UUIDs are 36 chars > Symbol's 32-char limit)
     const orderRefScVal = xdr.ScVal.scvString(orderRef);
 
-    return [
-      orderRefScVal,
-      totalAmountScVal,
-      recipientsVec,
-    ];
+    return [orderRefScVal, totalAmountScVal, recipientsVec];
   }
 
   private sleep(ms: number): Promise<void> {

@@ -33,8 +33,7 @@ export class CreateProductDto {
   description?: string;
 
   @ApiProperty({
-    description:
-      'Download or access URL for the digital product (public for demo)',
+    description: 'Download or access URL for the digital product (public for demo)',
     required: true,
     example: 'https://drive.google.com/file/d/abc123/view',
   })

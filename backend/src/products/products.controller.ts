@@ -1,5 +1,13 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiQuery, ApiParam, ApiCreatedResponse, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBody,
+  ApiQuery,
+  ApiParam,
+  ApiCreatedResponse,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { PaginationDto } from './dto/pagination.dto';
 import { CreateProductDto } from './dto/create-product.dto';

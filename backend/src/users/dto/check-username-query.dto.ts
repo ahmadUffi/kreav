@@ -18,8 +18,7 @@ export class CheckUsernameQueryDto {
   @MinLength(3, { message: 'Username must be at least 3 characters' })
   @MaxLength(30, { message: 'Username must be at most 30 characters' })
   @Matches(/^[a-z0-9._-]+$/, {
-    message:
-      'Username can only contain lowercase letters, numbers, dots, underscores, and hyphens',
+    message: 'Username can only contain lowercase letters, numbers, dots, underscores, and hyphens',
   })
   username!: string;
 }

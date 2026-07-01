@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { WalletProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorizonService } from '../stellar/horizon.service';

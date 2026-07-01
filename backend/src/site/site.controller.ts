@@ -1,20 +1,6 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Logger,
-  NotFoundException,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Logger, NotFoundException, Put, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiQuery,
-  ApiBody,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { SiteService } from './site.service';
 import { SiteDto } from './dto';
 
@@ -105,7 +91,12 @@ export class SiteController {
           bio: 'Photographer & preset maker from Jakarta.',
           avatarEmoji: '🌅',
           accent: '#FF3BFF',
-          socials: { instagram: 'maya.shoots', x: 'mayashoots', tiktok: 'maya.shoots', youtube: '@mayashoots' },
+          socials: {
+            instagram: 'maya.shoots',
+            x: 'mayashoots',
+            tiktok: 'maya.shoots',
+            youtube: '@mayashoots',
+          },
           links: [
             { label: 'My Lightroom workflow (free)', url: 'https://example.com/workflow' },
             { label: 'Book a 1:1 editing session', url: 'https://example.com/booking' },
@@ -122,10 +113,7 @@ export class SiteController {
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async updateSite(
-    @Query('userId') userId: string,
-    @Body() dto: SiteDto,
-  ): Promise<SiteDto> {
+  async updateSite(@Query('userId') userId: string, @Body() dto: SiteDto): Promise<SiteDto> {
     if (!userId) {
       throw new NotFoundException('userId query parameter is required');
     }

@@ -4,10 +4,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { OrderStatus, Prisma, RecipientType, SettlementStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppEvents } from '../events/event-names';
-import type {
-  PaymentReceivedPayload,
-  SettlementCompletedPayload,
-} from '../events/event-payloads';
+import type { PaymentReceivedPayload, SettlementCompletedPayload } from '../events/event-payloads';
 import { canTransition } from '../orders/order-state-machine';
 import { InvalidStateTransitionException } from '../orders/invalid-transition.exception';
 import {

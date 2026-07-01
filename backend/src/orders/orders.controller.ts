@@ -82,7 +82,10 @@ export class OrdersController {
       },
     },
   })
-  @ApiCreatedResponse({ description: 'Order created successfully', schema: { example: { orderId: '660e8400-e29b-41d4-a716-446655440000' } } })
+  @ApiCreatedResponse({
+    description: 'Order created successfully',
+    schema: { example: { orderId: '660e8400-e29b-41d4-a716-446655440000' } },
+  })
   @ApiResponse({ status: 404, description: 'Product not found' })
   checkout(@Body() dto: CheckoutDto) {
     return this.orders.checkout(dto.productId);
