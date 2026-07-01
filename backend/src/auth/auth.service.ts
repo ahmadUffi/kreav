@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto, RegisterResponseDto } from './dto';
 
@@ -59,9 +55,8 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
-      createdAt: user.createdAt instanceof Date
-        ? user.createdAt.toISOString()
-        : String(user.createdAt),
+      createdAt:
+        user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt),
     };
   }
 }

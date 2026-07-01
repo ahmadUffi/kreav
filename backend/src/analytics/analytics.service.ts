@@ -21,19 +21,14 @@ export class AnalyticsService {
    * GET /analytics — compute all dashboard KPIs for a creator.
    */
   async getAnalytics(creatorId: string): Promise<AnalyticsResponseDto> {
-    const [
-      settledStats,
-      pendingStats,
-      activeProducts,
-      topProductsRaw,
-      revenueDays,
-    ] = await Promise.all([
-      this.getSettledStats(creatorId),
-      this.getPendingPayout(creatorId),
-      this.getActiveProductCount(creatorId),
-      this.getTopProducts(creatorId),
-      this.getRevenueSeries(creatorId),
-    ]);
+    const [settledStats, pendingStats, activeProducts, topProductsRaw, revenueDays] =
+      await Promise.all([
+        this.getSettledStats(creatorId),
+        this.getPendingPayout(creatorId),
+        this.getActiveProductCount(creatorId),
+        this.getTopProducts(creatorId),
+        this.getRevenueSeries(creatorId),
+      ]);
 
     return {
       totals: {
@@ -56,9 +51,7 @@ export class AnalyticsService {
   /**
    * Aggregate settled orders: total revenue + sales count.
    */
-  private async getSettledStats(
-    creatorId: string,
-  ): Promise<{ revenueUsd: string; sales: number }> {
+  private async getSettledStats(creatorId: string): Promise<{ revenueUsd: string; sales: number }> {
     const result = await this.prisma.order.aggregate({
       where: {
         status: 'SETTLED',

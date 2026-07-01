@@ -9,14 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiQuery,
-  ApiParam,
-  ApiBody,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import {
   UpdateProfileDto,
@@ -70,9 +63,7 @@ export class UsersController {
   })
   @ApiResponse({ status: 400, description: 'Invalid userId format' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async getProfile(
-    @Query('userId') userId: string,
-  ): Promise<ProfileResponseDto> {
+  async getProfile(@Query('userId') userId: string): Promise<ProfileResponseDto> {
     if (!userId) {
       throw new NotFoundException('userId query parameter is required');
     }
@@ -169,9 +160,7 @@ export class UsersController {
     type: CheckUsernameResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Invalid username format' })
-  async checkUsername(
-    @Query() query: CheckUsernameQueryDto,
-  ): Promise<CheckUsernameResponseDto> {
+  async checkUsername(@Query() query: CheckUsernameQueryDto): Promise<CheckUsernameResponseDto> {
     this.logger.log(`GET /users/check-username?username=${query.username}`);
     return this.users.checkUsername(query.username);
   }
@@ -189,7 +178,7 @@ export class UsersController {
     description:
       'Returns a public creator profile by username. ' +
       'Includes display name, bio, country, avatar emoji, accent, ' +
-      'and the creator\'s products. ' +
+      "and the creator's products. " +
       'No email or wallet details are exposed. ' +
       'Throws 404 if the username is not found.',
   })
@@ -205,9 +194,7 @@ export class UsersController {
     type: PublicProfileResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Creator not found' })
-  async getPublicProfile(
-    @Param('username') username: string,
-  ): Promise<PublicProfileResponseDto> {
+  async getPublicProfile(@Param('username') username: string): Promise<PublicProfileResponseDto> {
     this.logger.log(`GET /users/${username}/profile`);
     return this.users.getPublicProfile(username);
   }

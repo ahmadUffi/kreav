@@ -68,12 +68,14 @@ export class ProductsService {
   /**
    * Create a product. `priceUsd` arrives as a validated decimal string; we
    * wrap it in Prisma.Decimal so it is written as money, never float.
+   * `fileUrl` is optional — the digital product download/access link.
    */
   async create(dto: CreateProductDto): Promise<Record<string, unknown>> {
     return this.prisma.product.create({
       data: {
         title: dto.title,
         description: dto.description,
+        fileUrl: dto.fileUrl,
         priceUsd: new Prisma.Decimal(dto.priceUsd),
         creatorId: dto.creatorId,
       },

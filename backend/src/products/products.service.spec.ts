@@ -118,6 +118,7 @@ describe('ProductsService', () => {
     const dto: CreateProductDto = {
       title: 'AI Interview Playbook',
       description: 'A guide',
+      fileUrl: 'https://drive.google.com/file/d/abc001/view',
       priceUsd: '10.00',
       creatorId: 'u1',
     };
@@ -137,6 +138,7 @@ describe('ProductsService', () => {
         data: {
           title: dto.title,
           description: dto.description,
+          fileUrl: dto.fileUrl,
           priceUsd: expect.objectContaining({ d: expect.any(Array) }), // Prisma.Decimal-like
           creatorId: dto.creatorId,
         },

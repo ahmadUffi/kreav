@@ -1,12 +1,6 @@
 import { Body, Controller, HttpCode, Logger, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBody,
-  ApiCreatedResponse,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiCreatedResponse, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto, RegisterResponseDto } from './dto';
 

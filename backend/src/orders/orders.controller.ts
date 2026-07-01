@@ -68,8 +68,24 @@ export class OrdersController {
     summary: 'Create an order (checkout)',
     description: 'Creates a new order for a product. The order starts in PAYMENT_PENDING status.',
   })
-  @ApiBody({ type: CheckoutDto })
-  @ApiCreatedResponse({ description: 'Order created successfully' })
+  @ApiBody({
+    type: CheckoutDto,
+    description: 'Checkout payload — just the product ID',
+    examples: {
+      sunset: {
+        summary: '🌅 Lightroom Sunset Presets',
+        value: { productId: '550e8400-e29b-41d4-a716-446655440000' },
+      },
+      notion: {
+        summary: '🗂️ Notion Creator OS',
+        value: { productId: '550e8400-e29b-41d4-a716-446655440001' },
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Order created successfully',
+    schema: { example: { orderId: '660e8400-e29b-41d4-a716-446655440000' } },
+  })
   @ApiResponse({ status: 404, description: 'Product not found' })
   checkout(@Body() dto: CheckoutDto) {
     return this.orders.checkout(dto.productId);
@@ -91,7 +107,16 @@ export class OrdersController {
       'Mock GCash webhook to confirm a payment. Verifies HMAC signature over the raw body. ' +
       'Idempotent on paymentRef — duplicate webhooks are silently acknowledged.',
   })
-  @ApiBody({ type: GcashWebhookDto })
+  @ApiBody({
+    type: GcashWebhookDto,
+    description: 'GCash webhook payload',
+    examples: {
+      success: {
+        summary: '✅ Payment confirmed',
+        value: { orderId: '660e8400-e29b-41d4-a716-446655440000', paymentRef: 'gcash-txn-abc123' },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Payment confirmed' })
   @ApiResponse({ status: 401, description: 'Invalid webhook signature' })
   async handleGcashWebhook(

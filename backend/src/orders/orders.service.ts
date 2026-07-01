@@ -157,11 +157,7 @@ export class OrdersService {
    * Joins with Product to return the product title and price.
    * Ordered newest-first.
    */
-  async findAll(query: {
-    creatorId?: string;
-    page: number;
-    limit: number;
-  }): Promise<{
+  async findAll(query: { creatorId?: string; page: number; limit: number }): Promise<{
     data: Array<Record<string, unknown>>;
     page: number;
     limit: number;
@@ -199,9 +195,8 @@ export class OrdersService {
       status: row.status,
       paymentRef: row.paymentRef ?? undefined,
       txHash: row.txHash ?? undefined,
-      createdAt: row.createdAt instanceof Date
-        ? row.createdAt.toISOString()
-        : String(row.createdAt),
+      createdAt:
+        row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
     }));
 
     return { data, page, limit, total };
@@ -248,16 +243,17 @@ export class OrdersService {
         ? {
             id: order.settlement.id,
             txHash: order.settlement.txHash,
-            totalAmount: order.settlement.totalAmount?.toFixed?.(2) ?? String(order.settlement.totalAmount),
+            totalAmount:
+              order.settlement.totalAmount?.toFixed?.(2) ?? String(order.settlement.totalAmount),
             status: order.settlement.status,
-            createdAt: order.settlement.createdAt instanceof Date
-              ? order.settlement.createdAt.toISOString()
-              : String(order.settlement.createdAt),
+            createdAt:
+              order.settlement.createdAt instanceof Date
+                ? order.settlement.createdAt.toISOString()
+                : String(order.settlement.createdAt),
           }
         : undefined,
-      createdAt: order.createdAt instanceof Date
-        ? order.createdAt.toISOString()
-        : String(order.createdAt),
+      createdAt:
+        order.createdAt instanceof Date ? order.createdAt.toISOString() : String(order.createdAt),
     };
   }
 }

@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   UpdateProfileDto,
@@ -47,10 +42,7 @@ export class UsersService {
    * Supports partial updates — only provided fields are changed.
    * Checks username uniqueness if a new username is provided.
    */
-  async updateProfile(
-    userId: string,
-    dto: UpdateProfileDto,
-  ): Promise<ProfileResponseDto> {
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<ProfileResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -66,9 +58,7 @@ export class UsersService {
         select: { id: true },
       });
       if (existing) {
-        throw new ConflictException(
-          `Username "${dto.username}" is already taken`,
-        );
+        throw new ConflictException(`Username "${dto.username}" is already taken`);
       }
     }
 
@@ -115,9 +105,7 @@ export class UsersService {
       accent: user.accent ?? undefined,
       role: user.role,
       createdAt:
-        user.createdAt instanceof Date
-          ? user.createdAt.toISOString()
-          : String(user.createdAt),
+        user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt),
     };
   }
 

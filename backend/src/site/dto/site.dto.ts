@@ -42,7 +42,11 @@ export class SiteDto {
   @ApiProperty({ description: 'Username', example: 'maya.shoots' })
   username!: string;
 
-  @ApiProperty({ description: 'Short bio', required: false, example: 'Photographer & preset maker from Jakarta.' })
+  @ApiProperty({
+    description: 'Short bio',
+    required: false,
+    example: 'Photographer & preset maker from Jakarta.',
+  })
   bio?: string;
 
   @ApiProperty({ description: 'Avatar emoji', required: false, example: '🌅' })

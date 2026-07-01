@@ -182,6 +182,8 @@ model Product {
   creatorId   String   @map("creator_id")
   title       String
   description String?
+  // Digital product file/access URL — public for demo (Opsi 1).
+  fileUrl     String?  @map("file_url")
   // Money — Decimal, never float.
   priceUsd    Decimal  @db.Decimal(18, 2) @map("price_usd")
   createdAt   DateTime @default(now()) @map("created_at")

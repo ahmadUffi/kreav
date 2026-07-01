@@ -1,9 +1,4 @@
-import {
-  Controller,
-  Get,
-  Logger,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Logger, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
