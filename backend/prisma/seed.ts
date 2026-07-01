@@ -50,20 +50,36 @@ async function main() {
   }
 
   // ── 2. Creator ────────────────────────────────────────────────────────
-  const CREATOR_EMAIL = 'creator@kreav.demo';
-  let creator = await prisma.user.findUnique({ where: { email: CREATOR_EMAIL } });
-  if (!creator) {
-    creator = await prisma.user.create({
-      data: {
-        email: CREATOR_EMAIL,
-        name: 'Maya Tan',
-        role: 'CREATOR',
-      },
-    });
-    console.log(`  ✅ Creator: ${creator.name}`);
-  } else {
-    console.log(`  ⏭️  Creator exists: ${creator.name}`);
-  }
+	  const CREATOR_EMAIL = 'creator@kreav.demo';
+	  let creator = await prisma.user.findUnique({ where: { email: CREATOR_EMAIL } });
+	  if (!creator) {
+	    creator = await prisma.user.create({
+	      data: {
+	        email: CREATOR_EMAIL,
+	        name: 'Maya Tan',
+	        role: 'CREATOR',
+	        username: 'maya.shoots',
+	        country: 'Indonesia',
+	        bio: 'Photographer & preset maker from Jakarta. I help creators get the warm, filmic look.',
+	        avatarEmoji: '🌅',
+	        accent: '#FF3BFF',
+	      },
+	    });
+	    console.log(`  ✅ Creator: ${creator.name}`);
+	  } else {
+	    // Update profile fields idempotently (BE-022).
+	    creator = await prisma.user.update({
+	      where: { id: creator.id },
+	      data: {
+	        username: creator.username ?? 'maya.shoots',
+	        country: creator.country ?? 'Indonesia',
+	        bio: creator.bio ?? 'Photographer & preset maker from Jakarta.',
+	        avatarEmoji: creator.avatarEmoji ?? '🌅',
+	        accent: creator.accent ?? '#FF3BFF',
+	      },
+	    });
+	    console.log(`  ⏭️  Creator exists: ${creator.name}`);
+	  }
 
   // ── 3. Creator wallet ─────────────────────────────────────────────────
   let creatorWallet = await prisma.wallet.findFirst({

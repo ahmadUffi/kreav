@@ -108,6 +108,12 @@ model User {
   email     String   @unique
   name      String
   role      UserRole @default(BUYER)
+  // BE-022 — Creator Profile fields (all nullable for gradual onboarding).
+  username    String? @unique
+  country     String?
+  bio         String?
+  avatarEmoji String? @map("avatar_emoji")
+  accent      String?
   createdAt DateTime @default(now()) @map("created_at")
 
   products     Product[]
