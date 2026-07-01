@@ -5,7 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateProfileDto, ProfileResponseDto } from './dto';
+import {
+  UpdateProfileDto,
+  ProfileResponseDto,
+  CheckUsernameResponseDto,
+  PublicProfileResponseDto,
+} from './dto';
 
 /**
  * UsersService — BE-022 profile read/update logic.
@@ -113,6 +118,62 @@ export class UsersService {
         user.createdAt instanceof Date
           ? user.createdAt.toISOString()
           : String(user.createdAt),
+    };
+  }
+
+  // ── BE-024: Username Check ───────────────────────────────────────────────
+
+  /**
+   * GET /users/check-username — check if a username is available.
+   */
+  async checkUsername(username: string): Promise<CheckUsernameResponseDto> {
+    const existing = await this.prisma.user.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+
+    return { username, available: !existing };
+  }
+
+  // ── BE-023: Public Profile ────────────────────────────────────────────────
+
+  /**
+   * GET /users/:username/profile — public creator profile.
+   *
+   * Returns basic profile info + the creator's products (public only).
+   * No email, no wallet details. Throws 404 if username not found.
+   */
+  async getPublicProfile(username: string): Promise<PublicProfileResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      include: {
+        products: {
+          select: {
+            id: true,
+            title: true,
+            priceUsd: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Creator "${username}" not found`);
+    }
+
+    return {
+      username: user.username!,
+      displayName: user.name,
+      bio: user.bio ?? undefined,
+      country: user.country ?? undefined,
+      avatarEmoji: user.avatarEmoji ?? undefined,
+      accent: user.accent ?? undefined,
+      products: user.products.map((p) => ({
+        id: p.id,
+        title: p.title,
+        priceUsd: p.priceUsd?.toFixed?.(2) ?? String(p.priceUsd),
+      })),
     };
   }
 }

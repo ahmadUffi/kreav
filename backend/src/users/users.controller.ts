@@ -4,6 +4,7 @@ import {
   Get,
   Logger,
   NotFoundException,
+  Param,
   Patch,
   Query,
 } from '@nestjs/common';
@@ -12,11 +13,18 @@ import {
   ApiTags,
   ApiOperation,
   ApiQuery,
+  ApiParam,
   ApiBody,
   ApiResponse,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { UpdateProfileDto, ProfileResponseDto } from './dto';
+import {
+  UpdateProfileDto,
+  ProfileResponseDto,
+  CheckUsernameQueryDto,
+  CheckUsernameResponseDto,
+  PublicProfileResponseDto,
+} from './dto';
 
 /**
  * UsersController — BE-022.
@@ -131,5 +139,76 @@ export class UsersController {
     }
     this.logger.log(`PATCH /users/me?userId=${userId}`);
     return this.users.updateProfile(userId, dto);
+  }
+
+  // ── BE-024: Username Check ───────────────────────────────────────────────
+
+  /**
+   * GET /users/check-username?username=<value>
+   *
+   * Checks whether a username is available for registration.
+   */
+  @Get('check-username')
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  @ApiOperation({
+    summary: 'Check username availability',
+    description:
+      'Checks whether a username is available. ' +
+      'Returns { username, available: boolean }. ' +
+      'Username format: lowercase letters, numbers, dots, underscores, hyphens. 3–30 characters.',
+  })
+  @ApiQuery({
+    name: 'username',
+    description: 'Username to check',
+    required: true,
+    example: 'maya.shoots',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Username availability check result',
+    type: CheckUsernameResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid username format' })
+  async checkUsername(
+    @Query() query: CheckUsernameQueryDto,
+  ): Promise<CheckUsernameResponseDto> {
+    this.logger.log(`GET /users/check-username?username=${query.username}`);
+    return this.users.checkUsername(query.username);
+  }
+
+  // ── BE-023: Public Profile ────────────────────────────────────────────────
+
+  /**
+   * GET /users/:username/profile — public creator profile.
+   *
+   * Returns basic profile info + creator's products. No email or wallet details.
+   */
+  @Get(':username/profile')
+  @ApiOperation({
+    summary: 'Get public creator profile',
+    description:
+      'Returns a public creator profile by username. ' +
+      'Includes display name, bio, country, avatar emoji, accent, ' +
+      'and the creator\'s products. ' +
+      'No email or wallet details are exposed. ' +
+      'Throws 404 if the username is not found.',
+  })
+  @ApiParam({
+    name: 'username',
+    description: 'Creator username',
+    required: true,
+    example: 'maya.shoots',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Public profile retrieved successfully',
+    type: PublicProfileResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Creator not found' })
+  async getPublicProfile(
+    @Param('username') username: string,
+  ): Promise<PublicProfileResponseDto> {
+    this.logger.log(`GET /users/${username}/profile`);
+    return this.users.getPublicProfile(username);
   }
 }

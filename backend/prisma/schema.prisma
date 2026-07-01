@@ -119,8 +119,58 @@ model User {
   products     Product[]
   wallets      Wallet[]
   withdrawals  Withdrawal[]
+  // BE-025 — Mini-site relations.
+  socialLinks       SocialLink[]
+  customLinks       CustomLink[]
+  featuredProducts  FeaturedProduct[]
 
   @@map("users")
+}
+
+// ── BE-025: Mini-Site models ────────────────────────────────────────────────
+
+/// Social media links displayed on the public mini-site.
+model SocialLink {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  platform  String   // INSTAGRAM | X | TIKTOK | YOUTUBE
+  handle    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@map("social_links")
+}
+
+/// Custom links (Linktree-style) on the public mini-site.
+model CustomLink {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  label     String
+  url       String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("custom_links")
+}
+
+/// Featured products selected to appear prominently on the mini-site.
+model FeaturedProduct {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("featured_products")
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +189,7 @@ model Product {
   creator       User                  @relation(fields: [creatorId], references: [id])
   collaborators ProductCollaborator[]
   orders        Order[]
+  featuredBy    FeaturedProduct[]
 
   @@index([creatorId])
   @@map("products")
