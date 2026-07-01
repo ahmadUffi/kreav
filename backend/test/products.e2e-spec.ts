@@ -25,6 +25,7 @@ describe('ProductsController (e2e)', () => {
   const validPayload = (overrides: Record<string, unknown> = {}) => ({
     title: 'AI Interview Playbook',
     description: 'A guide',
+    fileUrl: 'https://drive.google.com/file/d/abc001/view',
     priceUsd: '10.00',
     creatorId,
     ...overrides,
