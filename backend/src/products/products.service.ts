@@ -17,8 +17,9 @@ import { CreateProductDto } from './dto/create-product.dto';
 @Injectable()
 export class ProductsService {
   // Reused relation include so every product response carries its creator.
+  // BE-027: also expose username so the frontend can link to /u/[username].
   private readonly includeCreator = {
-    creator: { select: { id: true, name: true } },
+    creator: { select: { id: true, name: true, username: true } },
   } as const satisfies Prisma.ProductInclude;
 
   constructor(private readonly prisma: PrismaService) {}
@@ -76,6 +77,9 @@ export class ProductsService {
         title: dto.title,
         description: dto.description,
         fileUrl: dto.fileUrl,
+        emoji: dto.emoji,
+        accent: dto.accent,
+        category: dto.category,
         priceUsd: new Prisma.Decimal(dto.priceUsd),
         creatorId: dto.creatorId,
       },

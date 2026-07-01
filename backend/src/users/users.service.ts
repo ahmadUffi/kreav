@@ -140,8 +140,28 @@ export class UsersService {
             id: true,
             title: true,
             priceUsd: true,
+            emoji: true,
+            accent: true,
+            category: true,
           },
           orderBy: { createdAt: 'desc' },
+        },
+        socialLinks: {
+          select: { platform: true, handle: true },
+          orderBy: { createdAt: 'asc' },
+        },
+        customLinks: {
+          select: { label: true, url: true, sortOrder: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+        featuredProducts: {
+          select: {
+            sortOrder: true,
+            product: {
+              select: { id: true, title: true, priceUsd: true, emoji: true, accent: true },
+            },
+          },
+          orderBy: { sortOrder: 'asc' },
         },
       },
     });
@@ -161,6 +181,26 @@ export class UsersService {
         id: p.id,
         title: p.title,
         priceUsd: p.priceUsd?.toFixed?.(2) ?? String(p.priceUsd),
+        emoji: p.emoji ?? undefined,
+        accent: p.accent ?? undefined,
+        category: p.category ?? undefined,
+      })),
+      socials: user.socialLinks.map((s) => ({
+        platform: s.platform,
+        handle: s.handle,
+      })),
+      links: user.customLinks.map((l) => ({
+        label: l.label,
+        url: l.url,
+        sortOrder: l.sortOrder,
+      })),
+      featuredProducts: user.featuredProducts.map((fp) => ({
+        id: fp.product.id,
+        title: fp.product.title,
+        priceUsd: fp.product.priceUsd?.toFixed?.(2) ?? String(fp.product.priceUsd),
+        emoji: fp.product.emoji ?? undefined,
+        accent: fp.product.accent ?? undefined,
+        sortOrder: fp.sortOrder,
       })),
     };
   }

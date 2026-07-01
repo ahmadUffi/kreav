@@ -184,6 +184,10 @@ model Product {
   description String?
   // Digital product file/access URL — public for demo (Opsi 1).
   fileUrl     String?  @map("file_url")
+  // UI display fields — BE-027.
+  emoji       String?
+  accent      String?
+  category    String?
   // Money — Decimal, never float.
   priceUsd    Decimal  @db.Decimal(18, 2) @map("price_usd")
   createdAt   DateTime @default(now()) @map("created_at")

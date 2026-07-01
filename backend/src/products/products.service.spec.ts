@@ -14,7 +14,8 @@ describe('ProductsService', () => {
   // Shared expectation fragments — kept in one place so the suite doesn't
   // re-declare the same nested include/where objects across tests (SonarCloud
   // flagged the literal repetition as duplicated code).
-  const EXPECTED_INCLUDE = { creator: { select: { id: true, name: true } } };
+  // BE-027: username added to creator select for /u/[username] linking.
+  const EXPECTED_INCLUDE = { creator: { select: { id: true, name: true, username: true } } };
 
   let service: ProductsService;
   let prisma: {
@@ -139,6 +140,9 @@ describe('ProductsService', () => {
           title: dto.title,
           description: dto.description,
           fileUrl: dto.fileUrl,
+          emoji: dto.emoji,
+          accent: dto.accent,
+          category: dto.category,
           priceUsd: expect.objectContaining({ d: expect.any(Array) }), // Prisma.Decimal-like
           creatorId: dto.creatorId,
         },
