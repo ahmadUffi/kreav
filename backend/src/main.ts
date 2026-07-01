@@ -93,6 +93,7 @@ Buyer (Philippines) → Checkout → Soroban Smart Contract → Creator Wallet (
     .addTag('Auth', 'User registration — email-only signup, no password (non-custodial)')
     .addTag('Analytics', 'Dashboard analytics — KPI aggregation, revenue series, top products')
     .addTag('Users', 'User profile — read and update profile fields, manage username')
+    .addTag('Site', 'Creator mini-site — manage social links, custom links, and featured products')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig, {

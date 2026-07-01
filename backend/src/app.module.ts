@@ -16,6 +16,7 @@ import { WithdrawalsModule } from './withdrawals/withdrawals.module';
 import { AuthModule } from './auth/auth.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { UsersModule } from './users/users.module';
+import { SiteModule } from './site/site.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     AnalyticsModule,
     UsersModule,
+    SiteModule,
   ],
   providers: [
     // Activate the global throttle guard so @Throttle() / defaults apply.
