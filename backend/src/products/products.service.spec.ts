@@ -120,19 +120,20 @@ describe('ProductsService', () => {
       description: 'A guide',
       fileUrl: 'https://drive.google.com/file/d/abc001/view',
       priceUsd: '10.00',
-      creatorId: 'u1',
     };
+    // Fase 1: creatorId comes from the session JWT, not the DTO.
+    const CREATOR_ID = 'u1';
 
     it('creates a product with price as Decimal and includes creator', async () => {
       const created = {
         id: 'p1',
         title: dto.title,
         priceUsd: 10n,
-        creator: { id: 'u1', name: 'Ayu' },
+        creator: { id: CREATOR_ID, name: 'Ayu' },
       };
       prisma.product.create.mockResolvedValue(created);
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, CREATOR_ID);
 
       expect(prisma.product.create).toHaveBeenCalledWith({
         data: {
@@ -140,7 +141,7 @@ describe('ProductsService', () => {
           description: dto.description,
           fileUrl: dto.fileUrl,
           priceUsd: expect.objectContaining({ d: expect.any(Array) }), // Prisma.Decimal-like
-          creatorId: dto.creatorId,
+          creatorId: CREATOR_ID,
         },
         include: EXPECTED_INCLUDE,
       });
@@ -155,7 +156,7 @@ describe('ProductsService', () => {
       const { description: _omitted, ...dtoWithoutDescription } = dto;
       void _omitted;
 
-      await service.create(dtoWithoutDescription);
+      await service.create(dtoWithoutDescription, CREATOR_ID);
 
       expect(prisma.product.create).toHaveBeenCalledWith(
         expect.objectContaining({

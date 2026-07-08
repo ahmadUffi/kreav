@@ -52,8 +52,9 @@ export async function getOrder(id: string): Promise<OrderDetailView> {
   };
 }
 
+/** Orders of the authenticated creator (identity from the session JWT). */
 export async function listOrders(
-  params: { creatorId?: string; page?: number; limit?: number } = {},
+  params: { page?: number; limit?: number } = {},
 ): Promise<OrderList> {
   const res = await api.get<Paginated<OrderRaw>>("/orders", params);
   return { items: res.data.map(mapOrder), total: res.total, page: res.page, limit: res.limit };

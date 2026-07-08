@@ -20,7 +20,7 @@ export default function DashboardSettingsPage() {
   useEffect(() => {
     if (!ready || !userId) return;
     let alive = true;
-    getMe(userId)
+    getMe()
       .then((u) => {
         if (!alive) return;
         setDisplayName(u.name ?? "");
@@ -46,7 +46,7 @@ export default function DashboardSettingsPage() {
     setSaved(false);
     setSaving(true);
     try {
-      const updated = await updateMe(userId, {
+      const updated = await updateMe({
         name: displayName.trim() || undefined,
         username: username.trim() || undefined,
         country: country.trim() || undefined,

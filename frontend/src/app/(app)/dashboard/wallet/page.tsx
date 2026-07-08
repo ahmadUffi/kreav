@@ -15,7 +15,7 @@ const DESTINATIONS: WithdrawalDestination[] = ["GCASH", "GOPAY", "PAYNOW", "BANK
 export default function DashboardWalletPage() {
   const { ready, walletAddress } = useSession();
   const { data: wallet, loading, error, refetch } = useApiQuery(
-    () => getWallet(walletAddress!),
+    () => getWallet(),
     [walletAddress],
     ready && !!walletAddress,
   );
@@ -105,7 +105,6 @@ export default function DashboardWalletPage() {
 
       {showForm && walletAddress && (
         <WithdrawForm
-          address={walletAddress}
           maxAmount={wallet?.balance ?? 0}
           onClose={() => setShowForm(false)}
           onDone={() => refetch()}
@@ -116,12 +115,10 @@ export default function DashboardWalletPage() {
 }
 
 function WithdrawForm({
-  address,
   maxAmount,
   onClose,
   onDone,
 }: {
-  address: string;
   maxAmount: number;
   onClose: () => void;
   onDone: () => void;
@@ -170,7 +167,7 @@ function WithdrawForm({
     if (!destinationAccount.trim()) return setErr("Enter your destination account.");
     setPhase("processing");
     try {
-      const r = await createWithdrawal(address, {
+      const r = await createWithdrawal({
         amount: amt,
         destinationType,
         destinationAccount: destinationAccount.trim(),

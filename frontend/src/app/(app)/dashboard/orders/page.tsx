@@ -16,7 +16,7 @@ const STATUS_TONE: Record<OrderStatusView, Tone> = {
 export default function DashboardOrdersPage() {
   const { ready, userId } = useSession();
   const { data, loading, error } = useApiQuery(
-    () => listOrders({ creatorId: userId!, limit: 50 }),
+    () => listOrders({ limit: 50 }),
     [userId],
     ready && !!userId,
   );

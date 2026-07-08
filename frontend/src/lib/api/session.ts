@@ -1,11 +1,14 @@
 /**
- * MVP session — the backend has no auth/login (see INTEGRATION_PLAN.md). We keep
- * the creator's `userId` and connected `walletAddress` in localStorage and thread
- * them into the `?userId=` / `?address=` query params each request needs.
+ * Session store (Fase 1) — the backend now issues a session JWT
+ * (register / SEP-10 wallet login). The token is attached to every request as
+ * `Authorization: Bearer <token>` by the API client; `userId` / `walletAddress`
+ * / `username` are kept only for UI display — identity on the server always
+ * comes from the token.
  *
  * All accessors are SSR-safe (return null on the server).
  */
 
+const TOKEN_KEY = "kreav.token";
 const USER_ID_KEY = "kreav.userId";
 const WALLET_KEY = "kreav.walletAddress";
 const USERNAME_KEY = "kreav.username";
@@ -24,6 +27,9 @@ function write(key: string, value: string | null): void {
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
+export const getToken = (): string | null => read(TOKEN_KEY);
+export const setToken = (token: string | null): void => write(TOKEN_KEY, token);
+
 export const getUserId = (): string | null => read(USER_ID_KEY);
 export const setUserId = (id: string): void => write(USER_ID_KEY, id);
 
@@ -33,9 +39,10 @@ export const setWalletAddress = (address: string | null): void => write(WALLET_K
 export const getUsername = (): string | null => read(USERNAME_KEY);
 export const setUsername = (username: string | null): void => write(USERNAME_KEY, username);
 
-export const isSignedIn = (): boolean => getUserId() !== null;
+export const isSignedIn = (): boolean => getToken() !== null;
 
 export function clearSession(): void {
+  write(TOKEN_KEY, null);
   write(USER_ID_KEY, null);
   write(WALLET_KEY, null);
   write(USERNAME_KEY, null);

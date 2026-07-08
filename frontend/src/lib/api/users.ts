@@ -1,12 +1,13 @@
 import { api } from "./client";
 import type { CheckUsernameRaw, PublicProfileRaw, UpdateUserBody, UserRaw } from "./types";
 
-export async function getMe(userId: string): Promise<UserRaw> {
-  return api.get<UserRaw>("/users/me", { userId });
+/** Profile of the authenticated user (identity from the session JWT). */
+export async function getMe(): Promise<UserRaw> {
+  return api.get<UserRaw>("/users/me");
 }
 
-export async function updateMe(userId: string, body: UpdateUserBody): Promise<UserRaw> {
-  return api.patch<UserRaw>("/users/me", body, { userId });
+export async function updateMe(body: UpdateUserBody): Promise<UserRaw> {
+  return api.patch<UserRaw>("/users/me", body);
 }
 
 export async function checkUsername(username: string): Promise<boolean> {

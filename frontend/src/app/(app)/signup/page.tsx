@@ -8,7 +8,7 @@ import { COUNTRIES } from "@/lib/constants";
 import { register } from "@/lib/api/auth";
 import { updateMe, checkUsername } from "@/lib/api/users";
 import { connectWallet } from "@/lib/api/wallet";
-import { setUserId, setUsername, setWalletAddress } from "@/lib/api/session";
+import { setToken, setUserId, setUsername, setWalletAddress } from "@/lib/api/session";
 import { ApiError } from "@/lib/api/client";
 
 type Role = "creator" | "buyer";
@@ -92,17 +92,19 @@ export default function SignupPage() {
     setSubmitError(null);
     try {
       const role = data.role === "creator" ? "CREATOR" : "BUYER";
-      // 1. Register (BE accepts email/name/role; name falls back to username).
+      // 1. Register — returns the profile + session JWT (register = logged in).
       const user = await register({ email: data.email, name: data.username, role });
+      setToken(user.token);
       setUserId(user.id);
       setUsername(data.username);
-      // 2. Persist username + country the register endpoint ignores.
-      await updateMe(user.id, { username: data.username, country: data.country });
-      // 3. Creators: record the connected wallet.
+      // 2. Persist username + country the register endpoint ignores
+      //    (authorized by the session token — no userId param).
+      await updateMe({ username: data.username, country: data.country });
+      // 3. Creators: record the connected wallet (creator identity from the token).
       if (data.role === "creator" && data.walletAddress) {
         setWalletAddress(data.walletAddress);
         try {
-          await connectWallet({ creatorId: user.id, walletAddress: data.walletAddress, provider: "FREIGHTER" });
+          await connectWallet({ walletAddress: data.walletAddress, provider: "FREIGHTER" });
         } catch {
           // Non-fatal: account exists; wallet can be connected later from the wallet page.
         }

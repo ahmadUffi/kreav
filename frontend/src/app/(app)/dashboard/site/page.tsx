@@ -76,7 +76,7 @@ export default function DashboardSitePage() {
   useEffect(() => {
     if (!ready || !userId) return;
     let alive = true;
-    Promise.all([getSite(userId), getMe(userId), listProducts({ creatorId: userId, limit: 100 })])
+    Promise.all([getSite(), getMe(), listProducts({ creatorId: userId, limit: 100 })])
       .then(([site, me, prods]) => {
         if (!alive) return;
         setProfile(toProfile(site, me.country ?? ""));
@@ -144,7 +144,7 @@ export default function DashboardSitePage() {
     setSaved(false);
     setSaving(true);
     try {
-      const updated = await saveSite(userId, toSiteConfig(p));
+      const updated = await saveSite(toSiteConfig(p));
       setProfile(toProfile(updated, p.country));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

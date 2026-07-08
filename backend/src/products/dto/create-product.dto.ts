@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -51,13 +51,4 @@ export class CreateProductDto {
     message: 'priceUsd must be a decimal string with up to 2 fractional digits (e.g. "10.00")',
   })
   priceUsd!: string;
-
-  @ApiProperty({
-    description: 'Creator user ID (UUID)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @IsString()
-  @IsUUID()
-  creatorId!: string;
 }

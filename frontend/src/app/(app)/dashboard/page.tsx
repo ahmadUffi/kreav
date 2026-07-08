@@ -14,8 +14,8 @@ export default function DashboardOverviewPage() {
   const { data, loading, error } = useApiQuery(
     async () => {
       const [analytics, orders] = await Promise.all([
-        getAnalytics(userId!),
-        listOrders({ creatorId: userId!, limit: 5 }),
+        getAnalytics(),
+        listOrders({ limit: 5 }),
       ]);
       return { analytics, recent: orders.items };
     },

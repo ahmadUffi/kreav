@@ -14,10 +14,10 @@ export default function WalletConnectPage() {
     const address = addressRef.current;
     if (address) {
       setWalletAddress(address);
-      const userId = getUserId();
-      if (userId) {
+      // Creator identity comes from the session token (Fase 1).
+      if (getUserId()) {
         try {
-          await connectWallet({ creatorId: userId, walletAddress: address, provider: "FREIGHTER" });
+          await connectWallet({ walletAddress: address, provider: "FREIGHTER" });
         } catch {
           // Non-fatal — address is still saved locally for the wallet dashboard.
         }

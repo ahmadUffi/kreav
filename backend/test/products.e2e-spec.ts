@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import request, { type Response } from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -18,6 +19,8 @@ describe('ProductsController (e2e)', () => {
   let prisma: PrismaService;
   let creatorId: string;
   let createdProductId: string;
+  /** Session JWT for the test creator — POST /products is guarded (Fase 1). */
+  let token: string;
 
   // Base valid payload + thin POST helper — the validation cases below all
   // derive from this, so there's a single source of truth for the valid shape
@@ -27,12 +30,14 @@ describe('ProductsController (e2e)', () => {
     description: 'A guide',
     fileUrl: 'https://drive.google.com/file/d/abc001/view',
     priceUsd: '10.00',
-    creatorId,
     ...overrides,
   });
 
   const postProduct = (overrides: Record<string, unknown> = {}): Promise<Response> =>
-    request(app.getHttpServer()).post('/products').send(validPayload(overrides));
+    request(app.getHttpServer())
+      .post('/products')
+      .set('Authorization', `Bearer ${token}`)
+      .send(validPayload(overrides));
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -62,6 +67,7 @@ describe('ProductsController (e2e)', () => {
       },
     });
     creatorId = creator.id;
+    token = app.get(JwtService).sign({ sub: creatorId, role: 'CREATOR', email: creator.email });
   });
 
   afterAll(async () => {
@@ -74,6 +80,11 @@ describe('ProductsController (e2e)', () => {
   });
 
   describe('POST /products', () => {
+    it('401 — rejects a request without a bearer token', async () => {
+      const res = await request(app.getHttpServer()).post('/products').send(validPayload());
+      expect(res.status).toBe(401);
+    });
+
     it('201 — creates a product, money returned as string', async () => {
       const res = await postProduct();
 

@@ -8,13 +8,17 @@ import type {
   WalletView,
 } from "./types";
 
-export async function getBalance(address: string): Promise<{
+/**
+ * Wallet reads are scoped to the authenticated creator — the backend resolves
+ * the connected wallet address from the session JWT (no `?address=` param).
+ */
+export async function getBalance(): Promise<{
   address: string;
   balance: number;
   hasUsdcTrustline: boolean;
   accountExists: boolean;
 }> {
-  const raw = await api.get<WalletBalanceRaw>("/wallet/balance", { address });
+  const raw = await api.get<WalletBalanceRaw>("/wallet/balance");
   return {
     address: raw.address,
     balance: parseMoney(raw.balanceUsd),
@@ -23,8 +27,8 @@ export async function getBalance(address: string): Promise<{
   };
 }
 
-export async function getTransactions(address: string, page = 1, limit = 20) {
-  const raw = await api.get<WalletTxResponseRaw>("/wallet/transactions", { address, page, limit });
+export async function getTransactions(page = 1, limit = 20) {
+  const raw = await api.get<WalletTxResponseRaw>("/wallet/transactions", { page, limit });
   return {
     items: raw.transactions.map(mapWalletTx),
     total: raw.total,
@@ -34,8 +38,8 @@ export async function getTransactions(address: string, page = 1, limit = 20) {
 }
 
 /** Combined balance + recent transactions for the wallet dashboard. */
-export async function getWallet(address: string): Promise<WalletView> {
-  const [balance, tx] = await Promise.all([getBalance(address), getTransactions(address)]);
+export async function getWallet(): Promise<WalletView> {
+  const [balance, tx] = await Promise.all([getBalance(), getTransactions()]);
   return {
     balance: balance.balance,
     currency: "USDC",
@@ -46,6 +50,7 @@ export async function getWallet(address: string): Promise<WalletView> {
   };
 }
 
+/** Connect a wallet to the authenticated creator (identity from the JWT). */
 export async function connectWallet(body: ConnectWalletBody): Promise<WalletConnectionRaw> {
   return api.post<WalletConnectionRaw>("/wallets", body);
 }

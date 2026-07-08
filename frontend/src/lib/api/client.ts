@@ -9,6 +9,7 @@
  *   modules and pages keep working as-is.
  */
 import axios, { AxiosError, type AxiosInstance } from "axios";
+import { getToken } from "./session";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -50,6 +51,14 @@ interface BackendError {
 export const http: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
+});
+
+// Fase 1 — attach the session JWT to every request. SSR-safe: getToken()
+// returns null on the server, so server components stay anonymous.
+http.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 http.interceptors.response.use(

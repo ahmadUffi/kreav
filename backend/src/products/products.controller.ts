@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -7,8 +7,11 @@ import {
   ApiParam,
   ApiCreatedResponse,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
+import { JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { PaginationDto } from './dto/pagination.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 
@@ -89,11 +92,15 @@ export class ProductsController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create a product',
     description:
-      'Creates a new digital product. `priceUsd` must be a decimal string with 0-2 fractional digits. ' +
-      '`fileUrl` is optional — the download or access link for the digital product.',
+      'Creates a new digital product owned by the authenticated creator ' +
+      '(identity from the session JWT). ' +
+      '`priceUsd` must be a decimal string with 0-2 fractional digits. ' +
+      '`fileUrl` is the download or access link for the digital product.',
   })
   @ApiBody({
     type: CreateProductDto,
@@ -106,7 +113,6 @@ export class ProductsController {
           description: '12 warm, film-inspired Lightroom presets.',
           fileUrl: 'https://drive.google.com/file/d/abc002/view',
           priceUsd: '18.00',
-          creatorId: '550e8400-e29b-41d4-a716-446655440000',
         },
       },
       ebook: {
@@ -116,14 +122,14 @@ export class ProductsController {
           description: 'A no-fluff guide to pricing your freelance work.',
           fileUrl: 'https://drive.google.com/file/d/abc005/view',
           priceUsd: '9.00',
-          creatorId: '550e8400-e29b-41d4-a716-446655440000',
         },
       },
     },
   })
   @ApiCreatedResponse({ description: 'Product created successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
-  create(@Body() dto: CreateProductDto) {
-    return this.products.create(dto);
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateProductDto) {
+    return this.products.create(dto, user.userId);
   }
 }

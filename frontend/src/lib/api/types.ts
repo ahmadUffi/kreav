@@ -49,6 +49,16 @@ export interface AuthUserRaw {
   role: UserRole;
   createdAt: string;
 }
+/** POST /auth/challenge response (SEP-10). */
+export interface ChallengeRaw {
+  transaction: string;
+  networkPassphrase: string;
+}
+/** POST /auth/verify response — session JWT + profile. */
+export interface AuthSessionRaw {
+  token: string;
+  user: AuthUserRaw;
+}
 export interface UserRaw {
   id: string;
   email: string;
@@ -99,7 +109,7 @@ export interface CreateProductBody {
   description?: string;
   fileUrl: string;
   priceUsd: string; // "18.00"
-  creatorId: string;
+  // Fase 1: creatorId comes from the session JWT, not the body.
 }
 
 /* ── Orders ───────────────────────────────────────────────────────────── */
@@ -156,7 +166,7 @@ export interface WalletTxResponseRaw {
   total: number;
 }
 export interface ConnectWalletBody {
-  creatorId: string;
+  // Fase 1: creatorId comes from the session JWT, not the body.
   walletAddress: string;
   provider: WalletProvider;
 }

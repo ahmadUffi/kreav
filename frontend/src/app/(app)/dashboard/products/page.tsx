@@ -58,7 +58,6 @@ export default function DashboardProductsPage() {
 
       {showForm && userId && (
         <NewProductForm
-          creatorId={userId}
           onClose={() => setShowForm(false)}
           onCreated={() => {
             setShowForm(false);
@@ -71,11 +70,9 @@ export default function DashboardProductsPage() {
 }
 
 function NewProductForm({
-  creatorId,
   onClose,
   onCreated,
 }: {
-  creatorId: string;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -91,12 +88,12 @@ function NewProductForm({
     if (!title.trim()) return setLocalErr("Title is required.");
     if (!fileUrl.trim()) return setLocalErr("A file URL is required.");
     if (!PRICE_RE.test(priceUsd)) return setLocalErr("Price must be a number like 18 or 18.00.");
+    // Creator identity comes from the session token (Fase 1).
     const created = await run({
       title: title.trim(),
       description: description.trim() || undefined,
       fileUrl: fileUrl.trim(),
       priceUsd,
-      creatorId,
     });
     if (created) onCreated();
   };
