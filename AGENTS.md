@@ -16,19 +16,50 @@ A buyer (Philippines) pays 10 USDC for a digital product → Soroban contract sp
 ## Repository layout
 
 ```
-KREAV-app/                      ← THE git repo: github.com/ahmadUffi/kreav
+kreav/                          ← THE git repo: github.com/ahmadUffi/kreav
 ├── backend/                    ← NestJS + Prisma + PostgreSQL (modular monolith)
-├── frontend/                   ← Next.js + Tailwind
-├── smartcontract/              ← Soroban contracts (Rust)
+├── frontend/                   ← Next.js (App Router) + Tailwind; API client in src/lib/api
+├── smartcontract/              ← Soroban revenue-split contract (Rust) — src/lib.rs + src/test.rs
+├── integration/                ← TS end-to-end scripts that exercise the deployed contract on Testnet
 ├── docs/                       ← Engineering Bible (all documentation, see README)
-├── compose.yml                 ← local PostgreSQL
+├── compose.yml                 ← local PostgreSQL (Neon is used for hosted dev — see backend/.env)
 ├── .env.example                ← environment variable template
-├── AGENTS.md                   ← this file
+├── AGENTS.md                   ← this file (canonical working agreement)
 └── README.md                   ← project entry point
 ```
 
-- The git repo lives at `KREAV-app/`. Run git commands here.
-- All documentation now lives in `docs/` (organized by domain). See [README.md](./README.md) for the full documentation map + reading order.
+- The git repo lives at the repo root. Run git commands here.
+- All documentation lives in `docs/` (organized by domain). See [README.md](./README.md) for the full documentation map + reading order.
+- `backend/AGENTS.md` mirrors the backend section of this file; **this canonical copy wins** on any conflict.
+
+### Backend module map (`backend/src/`)
+
+NestJS modular monolith. Each module = one bounded context; tests live beside the code (`*.spec.ts`, e2e in `backend/test/`).
+
+| Module | Responsibility | Key HTTP surface |
+|--------|----------------|------------------|
+| `products/` | Product catalog + collaborators | `GET/POST /products`, `GET /products/:id` |
+| `orders/` | Checkout + GCash webhook + order reads | `POST /checkout`, `POST /webhooks/gcash`, `GET /orders`, `GET /orders/:id` |
+| `wallets/` | Connect wallet, balance & tx reads | `POST /wallet/connect`, `GET /wallet/balance`, `GET /wallet/transactions` |
+| `withdrawals/` | Creator payout requests | `POST /withdrawals`, `GET /withdrawals`, `GET /withdrawals/:id` |
+| `users/` | Creator profiles + username check | `GET/PATCH /users/me`, `GET /users/check-username`, `GET /users/:username/profile` |
+| `site/` | Creator mini-site config | `GET/PUT /users/me/site` |
+| `analytics/` | Dashboard metrics | `GET /analytics` |
+| `auth/` | Registration (future: SEP-10) | `POST /auth/register` |
+| `stellar/` | **Internal** — Horizon reads, Soroban settlement, platform keypair, float monitor, explorer links | — |
+| `events/` | In-process event bus (`payment.received`, `settlement.completed`) | — |
+| `prisma/` | `PrismaService` (DB access) | — |
+| `common/` | Health endpoint, startup recovery, filters/interceptors | `GET /health` |
+
+Settlement is event-driven: `orders` emits `payment.received` → `stellar/settlement.service` invokes the Soroban contract → records the result and emits `settlement.completed`. The full API contract is the live **Swagger** (`/api` when the server runs); treat it as the source of truth over this table.
+
+### Smart contract (`smartcontract/src/lib.rs`)
+
+Soroban revenue-split contract (Rust). Public functions: `initialize(platform_wallet, usdc_sac)`, `settle(order_ref, total, recipients)`, `is_settled(order_ref)`, `get_version()`. Deployed to Testnet; the backend invokes it via `SPLIT_CONTRACT_ID`. **In scope to call, not to rewrite** (see agent scope below).
+
+### Integration suite (`integration/`)
+
+Standalone TypeScript scripts (`scripts/01-…` → `99-acceptance.ts`) that drive the deployed contract on Testnet directly (version, initialize check, single/multi settlement, idempotency, validation errors, balances, events). Has its own `package.json` + `.env` (`CONTRACT_ID`, `USDC_SAC`, platform/creator keys). Used to validate the contract independently of the backend.
 
 ## Key documents (new locations)
 
@@ -55,8 +86,8 @@ KREAV-app/                      ← THE git repo: github.com/ahmadUffi/kreav
 | DB | PostgreSQL via Prisma ORM |
 | Blockchain | Stellar (Soroban RPC primary; Horizon for balances/explorer) |
 | Smart contract | Soroban (Rust) — revenue-split contract only |
-| Asset | USDC on Stellar Testnet (classic asset via the SAC bridge) |
-| Deployment | Frontend→Vercel, Backend+DB→Railway, chain→Stellar Testnet |
+| Asset | USDC on Stellar Testnet (classic asset via the SAC bridge; SAC `CBIELTK6…`) |
+| Deployment | Frontend→Vercel, Backend→Railway, DB→Neon (managed Postgres, dev), chain→Stellar Testnet |
 
 ## Source of truth & authority hierarchy
 
@@ -79,10 +110,11 @@ KREAV-app/                      ← THE git repo: github.com/ahmadUffi/kreav
 
 ## Data model & API surface
 
-- Entities: **User, Product, ProductCollaborator, Order, Settlement, SettlementRecipient, Wallet, Withdrawal, NotificationLog**
+- Core entities: **User, Product, ProductCollaborator, Order, Settlement, SettlementRecipient, Wallet, Withdrawal, NotificationLog**
+- Profile/mini-site entities: **SocialLink, CustomLink, FeaturedProduct** (creator public profile + mini-site config)
 - **Order.status:** 13-state machine (v3.1 §20): `CREATED → ... → WITHDRAW_COMPLETED` + failure states (`PAYMENT_FAILED`, `SETTLEMENT_FAILED`, `WITHDRAW_FAILED`, `WAITING_WALLET`, `CANCELLED`)
 - **Settlement:** 1 canonical row + N SettlementRecipient children
-- API: `GET/POST /products`, `POST /checkout`, `POST /webhooks/gcash`, `POST /wallet/connect`, `GET /wallet/balance`, `GET /wallet/transactions`, `POST /wallet/withdraw`
+- API surface: see the Backend module map above (or the live Swagger at `/api`).
 
 See the [Backend PRD](./docs/backend/Backend-PRD.md) for the full spec.
 
@@ -129,7 +161,7 @@ Backlog → [create branch] → In progress → [open PR → develop] → In rev
 ```
 
 - **Types:** `feat`, `fix`, `chore`, `test`, `refactor`, `docs`, `ci`
-- **Scopes (module names):** `config`, `prisma`, `products`, `orders`, `wallets`, `stellar`, `auth`, `users`, `common`
+- **Scopes (module names):** `config`, `prisma`, `products`, `orders`, `wallets`, `withdrawals`, `stellar`, `auth`, `users`, `site`, `analytics`, `events`, `common`
 - Examples:
   - `feat(orders): create checkout endpoint (BE-005)`
   - `test(orders): checkout→webhook happy path (BE-005)`

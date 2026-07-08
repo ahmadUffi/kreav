@@ -4,7 +4,7 @@
  * RAW types mirror the JSON the NestJS API returns — notably money fields are
  * STRINGS (global DecimalToStringInterceptor) and dates are ISO strings. Views
  * are what the UI consumes (money as number, mapped enums). Product/CreatorProfile
- * view shapes are reused from `@/lib/mock` so existing components stay unchanged.
+ * view shapes live in `@/lib/types` and are shared by all components.
  */
 
 /* ── Enums (exact BE string values) ───────────────────────────────────── */

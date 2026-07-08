@@ -3,7 +3,7 @@ import { Badge, Button, Card } from "@/components/ui";
 import ProductCard from "@/components/ProductCard";
 import { listProducts } from "@/lib/api/products";
 import { ApiError } from "@/lib/api/client";
-import type { Product } from "@/lib/mock";
+import type { Product } from "@/lib/types";
 
 /**
  * Storefront landing (server component) — introduces the ready-to-buy products

@@ -6,7 +6,7 @@
  *   deterministically from title/id (presentation-only).
  * - Order/settlement statuses collapse to the 3 states the UI shows.
  */
-import type { Product } from "@/lib/mock";
+import type { Product } from "@/lib/types";
 import type {
   ProductRaw,
   OrderRaw,

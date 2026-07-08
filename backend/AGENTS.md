@@ -29,7 +29,7 @@ Backlog → [create branch] → In progress → [open PR → develop] → In rev
 ```
 
 - **Types:** `feat`, `fix`, `chore`, `test`, `refactor`, `docs`, `ci`
-- **Scopes (module names):** `config`, `prisma`, `products`, `orders`, `wallets`, `stellar`, `auth`, `users`, `common`
+- **Scopes (module names):** `config`, `prisma`, `products`, `orders`, `wallets`, `withdrawals`, `stellar`, `auth`, `users`, `site`, `analytics`, `events`, `common`
 - Examples:
   - `feat(orders): create checkout endpoint (BE-005)`
   - `test(orders): checkout→webhook happy path (BE-005)`

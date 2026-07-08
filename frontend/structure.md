@@ -17,8 +17,8 @@ kreve/
 │   │   ├── page.tsx           # Marketing landing ("/") — assembles all section components
 │   │   ├── (app)/            # App route group (shares AppNav + AppFooter layout)
 │   │   │   ├── layout.tsx     # Shared shell: AppNav + <main> + AppFooter
-│   │   │   ├── store/page.tsx     # Storefront product grid (mock data)
-│   │   │   ├── store/[id]/page.tsx # Product detail page (mock data + buy CTA)
+│   │   │   ├── store/page.tsx     # Storefront product grid (GET /products)
+│   │   │   ├── store/[id]/page.tsx # Product detail page (GET /products/:id + checkout)
 │   │   │   ├── signup/page.tsx    # Onboarding wizard (role→details→wallet→review→create)
 │   │   │   ├── wallet/connect/page.tsx # Connect Freighter wallet (uses WalletConnectPanel)
 │   │   │   └── dashboard/       # Creator dashboard (sidebar layout)
@@ -31,7 +31,7 @@ kreve/
 │   │   │       └── site/page.tsx     # Mini-site editor (controls + live preview)
 │   │   └── u/[username]/      # Public Linktree-style creator mini-site
 │   │       ├── layout.tsx     # Minimal themed public chrome (no app nav)
-│   │       └── page.tsx       # Resolves creator by username (mock)
+│   │       └── page.tsx       # Resolves creator by username (GET /users/:username/profile)
 │   ├── components/
 │   │   ├── Nav.tsx            # Fixed navigation bar (marketing landing only)
 │   │   ├── AppNav.tsx         # App shell nav: Store/Dashboard/Wallet links + theme toggle (refined)
@@ -68,7 +68,8 @@ kreve/
 │   ├── context/
 │   │   └── theme.tsx          # ThemeProvider + useTheme hook (dark/light)
 │   └── lib/
-│       ├── mock.ts            # Static mock data (products, orders, wallet, analytics, creator)
+│       ├── types.ts           # Shared view-model types (Product, CreatorProfile)
+│       ├── api/               # Backend API client (client, mappers, per-module fns)
 │       ├── stellar.ts         # Stellar display helpers (truncateAddress, stellarTxUrl)
 │       └── constants.ts       # Shared constants (COUNTRIES for onboarding)
 ├── public/                    # Static assets

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import Icon, { type IconName } from "@/components/ui/Icon";
-import type { CreatorProfile, Product } from "@/lib/mock";
+import type { CreatorProfile, Product } from "@/lib/types";
 
 const SOCIALS: { key: keyof CreatorProfile["socials"]; icon: IconName; url: (h: string) => string }[] = [
   { key: "instagram", icon: "instagram", url: (h) => `https://instagram.com/${h}` },

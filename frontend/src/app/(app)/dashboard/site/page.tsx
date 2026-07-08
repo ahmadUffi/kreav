@@ -9,7 +9,7 @@ import { getMe } from "@/lib/api/users";
 import { listProducts } from "@/lib/api/products";
 import type { SiteConfigRaw } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
-import type { CreatorProfile, Product } from "@/lib/mock";
+import type { CreatorProfile, Product } from "@/lib/types";
 
 const ACCENTS = ["#FF3BFF", "#00F5FF", "#FFE600", "#FF4D00", "#0A0A0A"];
 

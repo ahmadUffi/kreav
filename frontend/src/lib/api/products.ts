@@ -1,7 +1,7 @@
 import { api } from "./client";
 import { mapProduct } from "./mappers";
 import type { Paginated, ProductRaw, CreateProductBody } from "./types";
-import type { Product } from "@/lib/mock";
+import type { Product } from "@/lib/types";
 
 export interface ProductList {
   items: Product[];

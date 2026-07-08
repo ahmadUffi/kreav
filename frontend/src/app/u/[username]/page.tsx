@@ -2,7 +2,7 @@ import Link from "next/link";
 import CreatorMiniSite from "@/components/CreatorMiniSite";
 import { getPublicProfile } from "@/lib/api/users";
 import { mapProfileProduct } from "@/lib/api/mappers";
-import type { CreatorProfile, Product } from "@/lib/mock";
+import type { CreatorProfile, Product } from "@/lib/types";
 
 export default async function CreatorPublicPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;

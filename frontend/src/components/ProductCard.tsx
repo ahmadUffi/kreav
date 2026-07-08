@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Badge, Card } from "@/components/ui";
-import type { Product } from "@/lib/mock";
+import type { Product } from "@/lib/types";
 
 interface ProductCardProps {
   product: Product;
