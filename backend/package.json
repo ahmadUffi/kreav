@@ -1,7 +1,7 @@
 {
   "name": "kreav-backend",
   "version": "0.0.1",
-  "description": "Kreav \u2014 settlement orchestration layer (NestJS + Prisma + PostgreSQL)",
+  "description": "Kreav — settlement orchestration layer (NestJS + Prisma + PostgreSQL)",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -33,6 +33,7 @@
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/event-emitter": "^3.1.0",
+    "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/swagger": "^11.4.4",
     "@nestjs/throttler": "^6.5.0",

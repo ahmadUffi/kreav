@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { Keypair } from '@stellar/stellar-sdk';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { DecimalToStringInterceptor } from '../src/common/serialization/decimal-to-string.interceptor';
@@ -9,20 +10,37 @@ import { DecimalToStringInterceptor } from '../src/common/serialization/decimal-
  * Wallet endpoints e2e — exercises GET /wallet/balance and
  * GET /wallet/transactions against a real Postgres.
  *
- * Balance is delegated to HorizonService (mocked via test setup —
- * the Horizon URL is typically empty in test env, so balance tests
- * will verify validation and error handling).
+ * Fase 1 contract: both endpoints are JWT-guarded and the wallet address is
+ * resolved server-side from the authenticated creator's connected wallet —
+ * there is no `?address=` query param anymore.
  *
- * Transactions query the SettlementRecipient table.
- *
- * Requires a running Postgres (docker compose up -d kreav-db) + migrations.
+ * Requires a running Postgres + migrations.
  */
 describe('WalletsController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
-  // A valid Stellar public key for testing (G... format).
-  const WALLET_ADDRESS = 'GDA2SQ2PHWIER57TDXKLBSOD3IT4GTAHK5RV2H27LJZAXDBWQ6KYJ72B';
+  /** Session token of a creator WITH a connected wallet. */
+  let token: string;
+  /** The connected wallet address for that creator. */
+  let walletAddress: string;
+  /** Session token of a creator WITHOUT a connected wallet. */
+  let walletlessToken: string;
+
+  const createdUserIds: string[] = [];
+
+  async function registerCreator(tag: string): Promise<{ token: string; id: string }> {
+    const res = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: `wallet-e2e-${tag}+${Date.now()}@kreav.test`,
+        name: `Wallet E2E ${tag}`,
+        role: 'CREATOR',
+      });
+    expect(res.status).toBe(201);
+    createdUserIds.push(res.body.id);
+    return { token: res.body.token, id: res.body.id };
+  }
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -41,103 +59,98 @@ describe('WalletsController (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
+
+    // Creator A: register + connect a wallet.
+    const creatorA = await registerCreator('with-wallet');
+    token = creatorA.token;
+    walletAddress = Keypair.random().publicKey();
+    const connectRes = await request(app.getHttpServer())
+      .post('/wallets')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ walletAddress, provider: 'FREIGHTER' });
+    expect(connectRes.status).toBe(201);
+
+    // Creator B: registered but no wallet connected.
+    const creatorB = await registerCreator('no-wallet');
+    walletlessToken = creatorB.token;
   });
 
   afterAll(async () => {
+    // Cleanup wallets + users created by this suite.
+    await prisma.wallet.deleteMany({ where: { creatorId: { in: createdUserIds } } });
+    await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     await app.close();
   });
 
   describe('GET /wallet/balance', () => {
-    it('400 — rejects an invalid address format', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/wallet/balance')
-        .query({ address: 'not-a-stellar-address' });
-
-      expect(res.status).toBe(400);
-    });
-
-    it('400 — rejects an address with wrong prefix', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/wallet/balance')
-        .query({ address: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' });
-
-      expect(res.status).toBe(400);
-    });
-
-    it('400 — rejects a short address', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/wallet/balance')
-        .query({ address: 'GSHORT' });
-
-      expect(res.status).toBe(400);
-    });
-
-    it('400 — requires address parameter', async () => {
+    it('401 — rejects a request without a bearer token', async () => {
       const res = await request(app.getHttpServer()).get('/wallet/balance');
-
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(401);
     });
 
-    it('200 — accepts a valid Stellar address (may return error from Horizon)', async () => {
-      // With an empty/unconfigured Horizon URL, the call will fail internally,
-      // but the VALIDATION should pass (200 range is for validation; Horizon
-      // error is a 5xx from the downstream call, not a 400).
+    it('401 — rejects an invalid bearer token', async () => {
       const res = await request(app.getHttpServer())
         .get('/wallet/balance')
-        .query({ address: WALLET_ADDRESS });
+        .set('Authorization', 'Bearer not-a-jwt');
+      expect(res.status).toBe(401);
+    });
 
-      // If Horizon is configured, it could succeed; if not, it's a 500 from the
-      // downstream error. Assert that validation passes (not 400).
-      expect(res.status).not.toBe(400);
+    it('404 — creator without a connected wallet', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/wallet/balance')
+        .set('Authorization', `Bearer ${walletlessToken}`);
+      expect(res.status).toBe(404);
+    });
+
+    it('resolves the balance for the connected wallet (may fail downstream on Horizon)', async () => {
+      // With an unconfigured/unreachable Horizon the downstream call may 5xx,
+      // but auth + address resolution must succeed (never 400/401/404).
+      const res = await request(app.getHttpServer())
+        .get('/wallet/balance')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect([400, 401, 404]).not.toContain(res.status);
+      if (res.status === 200) {
+        expect(res.body.address).toBe(walletAddress);
+      }
     });
   });
 
   describe('GET /wallet/transactions', () => {
-    it('400 — rejects an invalid address format', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/wallet/transactions')
-        .query({ address: 'bad-address' });
-
-      expect(res.status).toBe(400);
-    });
-
-    it('400 — requires address parameter', async () => {
+    it('401 — rejects a request without a bearer token', async () => {
       const res = await request(app.getHttpServer()).get('/wallet/transactions');
-
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(401);
     });
 
-    it('200 — returns empty transactions for address with no history', async () => {
-      // Use a unique address that is guaranteed to have no data.
-      const uniqueAddress = 'GBVHJ7YZ7TZKWW47CDN6LTIHBCUX4M5EELYJKBGMCNNTW4PM55ZZ7VZY';
-
+    it('404 — creator without a connected wallet', async () => {
       const res = await request(app.getHttpServer())
         .get('/wallet/transactions')
-        .query({ address: uniqueAddress });
+        .set('Authorization', `Bearer ${walletlessToken}`);
+      expect(res.status).toBe(404);
+    });
+
+    it('200 — returns empty transactions for a fresh wallet', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/wallet/transactions')
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.address).toBe(uniqueAddress);
+      expect(res.body.address).toBe(walletAddress);
       expect(res.body.transactions).toEqual([]);
       expect(res.body.page).toBe(1);
       expect(res.body.limit).toBe(20);
       expect(res.body.total).toBe(0);
     });
 
-    it('200 — returns transactions for an address with settlement history', async () => {
-      // Create test data: a user, product, order, settlement, and recipient.
-      const creator = await prisma.user.create({
-        data: {
-          email: `wallet-e2e+${Date.now()}@kreav.test`,
-          name: 'Wallet E2E Creator',
-          role: 'CREATOR',
-        },
-      });
-
+    it('200 — returns transactions once the wallet has settlement history', async () => {
+      // Create test data: a product, order, settlement, and recipient row
+      // pointing at the connected wallet address.
+      const creatorId = createdUserIds[0];
       const product = await prisma.product.create({
         data: {
           title: 'Test Product',
           priceUsd: '10.00',
-          creatorId: creator.id,
+          creatorId,
         },
       });
 
@@ -152,7 +165,6 @@ describe('WalletsController (e2e)', () => {
         },
       });
 
-      // Create settlement + recipient for the wallet address
       const settlement = await prisma.settlement.create({
         data: {
           orderId: order.id,
@@ -165,7 +177,7 @@ describe('WalletsController (e2e)', () => {
       await prisma.settlementRecipient.create({
         data: {
           settlementId: settlement.id,
-          walletAddress: WALLET_ADDRESS,
+          walletAddress,
           recipientType: 'CREATOR',
           role: 'Author',
           percentage: '95.00',
@@ -173,13 +185,12 @@ describe('WalletsController (e2e)', () => {
         },
       });
 
-      // Query transactions
       const res = await request(app.getHttpServer())
         .get('/wallet/transactions')
-        .query({ address: WALLET_ADDRESS });
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.address).toBe(WALLET_ADDRESS);
+      expect(res.body.address).toBe(walletAddress);
       expect(res.body.transactions.length).toBeGreaterThanOrEqual(1);
 
       const tx = res.body.transactions.find((t: any) => t.orderId === order.id);
@@ -203,13 +214,13 @@ describe('WalletsController (e2e)', () => {
       await prisma.settlement.delete({ where: { id: settlement.id } });
       await prisma.order.delete({ where: { id: order.id } });
       await prisma.product.delete({ where: { id: product.id } });
-      await prisma.user.delete({ where: { id: creator.id } });
     });
 
     it('200 — respects pagination', async () => {
       const res = await request(app.getHttpServer())
         .get('/wallet/transactions')
-        .query({ address: WALLET_ADDRESS, page: 2, limit: 5 });
+        .set('Authorization', `Bearer ${token}`)
+        .query({ page: 2, limit: 5 });
 
       expect(res.status).toBe(200);
       expect(res.body.page).toBe(2);
@@ -219,7 +230,8 @@ describe('WalletsController (e2e)', () => {
     it('400 — rejects invalid page number', async () => {
       const res = await request(app.getHttpServer())
         .get('/wallet/transactions')
-        .query({ address: WALLET_ADDRESS, page: 0 });
+        .set('Authorization', `Bearer ${token}`)
+        .query({ page: 0 });
 
       expect(res.status).toBe(400);
     });
@@ -227,7 +239,8 @@ describe('WalletsController (e2e)', () => {
     it('400 — rejects invalid limit', async () => {
       const res = await request(app.getHttpServer())
         .get('/wallet/transactions')
-        .query({ address: WALLET_ADDRESS, limit: 0 });
+        .set('Authorization', `Bearer ${token}`)
+        .query({ limit: 0 });
 
       expect(res.status).toBe(400);
     });

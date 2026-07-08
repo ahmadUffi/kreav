@@ -2,15 +2,24 @@ import { Body, Controller, HttpCode, Logger, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBody, ApiCreatedResponse, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { RegisterDto, RegisterResponseDto } from './dto';
+import {
+  RegisterDto,
+  RegisterWithTokenResponseDto,
+  ChallengeRequestDto,
+  ChallengeResponseDto,
+  VerifyRequestDto,
+  AuthTokenResponseDto,
+} from './dto';
 
 /**
- * AuthController — BE-021.
+ * AuthController — BE-021 + Fase 1 (SEP-10 wallet auth).
  *
- *   POST /auth/register  — register a new user (email + name + role)
+ *   POST /auth/register   — register a new user (returns session JWT)
+ *   POST /auth/challenge  — SEP-10 challenge tx for a wallet address
+ *   POST /auth/verify     — verify signed challenge → session JWT
  *
- * Email-only registration. No password. Identity is by Stellar wallet.
- * Source: Kreav Backend PRD v3 — §9 User APIs (BE-021).
+ * No password. Creator identity is by Stellar wallet (SEP-10, non-custodial);
+ * registration itself starts a session (register = logged in).
  */
 @ApiTags('Auth')
 @Controller('auth')
@@ -20,10 +29,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   /**
-   * POST /auth/register — create a new user account.
-   *
-   * Creates a user with email, display name, and role. Returns 201 with the
-   * created profile. Throws 409 if the email is already registered.
+   * POST /auth/register — create a new user account + session token.
    */
   @Post('register')
   @HttpCode(201)
@@ -31,8 +37,9 @@ export class AuthController {
   @ApiOperation({
     summary: 'Register a new user',
     description:
-      'Creates a new user account with email, display name, and role. ' +
-      'No password required — identity is by Stellar wallet (non-custodial). ' +
+      'Creates a new user account with email, display name, and role, and returns ' +
+      'a session JWT (registration starts a session). No password — returning creators ' +
+      'log in with their Stellar wallet via /auth/challenge + /auth/verify. ' +
       'Returns 409 Conflict if the email is already registered.',
   })
   @ApiBody({
@@ -50,8 +57,8 @@ export class AuthController {
     },
   })
   @ApiCreatedResponse({
-    description: 'User registered successfully',
-    type: RegisterResponseDto,
+    description: 'User registered successfully (includes session JWT)',
+    type: RegisterWithTokenResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -68,8 +75,51 @@ export class AuthController {
       },
     },
   })
-  async register(@Body() dto: RegisterDto): Promise<RegisterResponseDto> {
+  async register(@Body() dto: RegisterDto): Promise<RegisterWithTokenResponseDto> {
     this.logger.log(`POST /auth/register email=${dto.email} role=${dto.role}`);
     return this.auth.register(dto);
+  }
+
+  /**
+   * POST /auth/challenge — request a SEP-10 challenge for a wallet.
+   */
+  @Post('challenge')
+  @HttpCode(200)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @ApiOperation({
+    summary: 'Request a SEP-10 login challenge',
+    description:
+      'Builds a SEP-10 challenge transaction for the given Stellar wallet address. ' +
+      'Sign it client-side (Freighter signTransaction on Testnet), then POST the ' +
+      'signed XDR to /auth/verify to receive a session JWT.',
+  })
+  @ApiBody({ type: ChallengeRequestDto })
+  @ApiResponse({ status: 200, description: 'Challenge built', type: ChallengeResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid wallet address format' })
+  challenge(@Body() dto: ChallengeRequestDto): ChallengeResponseDto {
+    this.logger.log(`POST /auth/challenge wallet=${dto.walletAddress.slice(0, 8)}...`);
+    return this.auth.buildChallenge(dto.walletAddress);
+  }
+
+  /**
+   * POST /auth/verify — verify a signed SEP-10 challenge → session JWT.
+   */
+  @Post('verify')
+  @HttpCode(200)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @ApiOperation({
+    summary: 'Verify a signed SEP-10 challenge',
+    description:
+      'Verifies the signed challenge transaction (server signature, timebounds, ' +
+      'client wallet signature), resolves the wallet to its Kreav account, and ' +
+      'returns a session JWT. 401 if verification fails or the wallet is not ' +
+      'connected to any account.',
+  })
+  @ApiBody({ type: VerifyRequestDto })
+  @ApiResponse({ status: 200, description: 'Login successful', type: AuthTokenResponseDto })
+  @ApiResponse({ status: 401, description: 'Challenge verification failed / unknown wallet' })
+  async verify(@Body() dto: VerifyRequestDto): Promise<AuthTokenResponseDto> {
+    this.logger.log('POST /auth/verify');
+    return this.auth.verifyChallenge(dto.transaction);
   }
 }

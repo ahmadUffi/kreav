@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -10,7 +11,11 @@ import { DomainExceptionFilter } from '../src/common/exceptions/domain-exception
  * Withdrawal endpoints e2e — exercises the full withdrawal flow against a
  * real Postgres (POST/GET /withdrawals).
  *
- * Requires a running Postgres (docker compose up -d kreav-db) + migrations.
+ * Fase 1 contract: all withdrawal endpoints are JWT-guarded; the wallet
+ * address is resolved server-side from the authenticated creator's connected
+ * wallet — there is no `?address=` query param anymore.
+ *
+ * Requires a running Postgres + migrations.
  */
 describe('WithdrawalsController (e2e)', () => {
   let app: INestApplication;
@@ -18,6 +23,8 @@ describe('WithdrawalsController (e2e)', () => {
 
   const WALLET_ADDRESS = 'GCHOG4QF27OG5WHBY4AIBGEI4LSOTCY3Y4VX22AUNLHTDBWMLZW5OBU3';
   let creatorId: string;
+  /** Session JWT for the test creator (minted directly via JwtService). */
+  let token: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -55,6 +62,11 @@ describe('WithdrawalsController (e2e)', () => {
       });
       creatorId = creator.id;
     }
+
+    // Mint a session token for the creator (JwtModule is global).
+    token = app
+      .get(JwtService)
+      .sign({ sub: creatorId, role: 'CREATOR', email: 'withdrawal-e2e@kreav.test' });
 
     // Ensure wallet exists
     const existingWallet = await prisma.wallet.findFirst({
@@ -117,10 +129,18 @@ describe('WithdrawalsController (e2e)', () => {
   });
 
   describe('POST /withdrawals', () => {
+    it('401 — rejects a request without a bearer token', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/withdrawals')
+        .send({ amount: 5.0, destinationType: 'GCASH', destinationAccount: '0917xxxxxxx' });
+
+      expect(res.status).toBe(401);
+    });
+
     it('202 — creates a withdrawal with PROCESSING status', async () => {
       const res = await request(app.getHttpServer())
         .post('/withdrawals')
-        .query({ address: WALLET_ADDRESS })
+        .set('Authorization', `Bearer ${token}`)
         .send({ amount: 5.0, destinationType: 'GCASH', destinationAccount: '0917xxxxxxx' });
 
       expect(res.status).toBe(202);
@@ -136,7 +156,7 @@ describe('WithdrawalsController (e2e)', () => {
     it('400 — rejects invalid amount (zero)', async () => {
       const res = await request(app.getHttpServer())
         .post('/withdrawals')
-        .query({ address: WALLET_ADDRESS })
+        .set('Authorization', `Bearer ${token}`)
         .send({ amount: 0, destinationType: 'GCASH', destinationAccount: '0917xxxxxxx' });
 
       expect(res.status).toBe(400);
@@ -145,7 +165,7 @@ describe('WithdrawalsController (e2e)', () => {
     it('400 — rejects invalid amount (negative)', async () => {
       const res = await request(app.getHttpServer())
         .post('/withdrawals')
-        .query({ address: WALLET_ADDRESS })
+        .set('Authorization', `Bearer ${token}`)
         .send({ amount: -5.0, destinationType: 'GCASH', destinationAccount: '0917xxxxxxx' });
 
       expect(res.status).toBe(400);
@@ -154,7 +174,7 @@ describe('WithdrawalsController (e2e)', () => {
     it('400 — rejects invalid destination type', async () => {
       const res = await request(app.getHttpServer())
         .post('/withdrawals')
-        .query({ address: WALLET_ADDRESS })
+        .set('Authorization', `Bearer ${token}`)
         .send({ amount: 5.0, destinationType: 'INVALID', destinationAccount: '0917xxxxxxx' });
 
       expect(res.status).toBe(400);
@@ -163,7 +183,7 @@ describe('WithdrawalsController (e2e)', () => {
     it('400 — rejects missing destination account', async () => {
       const res = await request(app.getHttpServer())
         .post('/withdrawals')
-        .query({ address: WALLET_ADDRESS })
+        .set('Authorization', `Bearer ${token}`)
         .send({ amount: 5.0, destinationType: 'GCASH', destinationAccount: '' });
 
       expect(res.status).toBe(400);
@@ -175,7 +195,7 @@ describe('WithdrawalsController (e2e)', () => {
       // First create a withdrawal
       const createRes = await request(app.getHttpServer())
         .post('/withdrawals')
-        .query({ address: WALLET_ADDRESS })
+        .set('Authorization', `Bearer ${token}`)
         .send({ amount: 1.0, destinationType: 'BANK', destinationAccount: '1234567890' });
 
       expect(createRes.status).toBe(202);
@@ -185,7 +205,9 @@ describe('WithdrawalsController (e2e)', () => {
       await new Promise((r) => setTimeout(r, 3000));
 
       // Now poll — should be COMPLETED via lazy transition
-      const getRes = await request(app.getHttpServer()).get(`/withdrawals/${withdrawalId}`);
+      const getRes = await request(app.getHttpServer())
+        .get(`/withdrawals/${withdrawalId}`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(getRes.status).toBe(200);
       expect(getRes.body.status).toBe('COMPLETED');
@@ -194,20 +216,46 @@ describe('WithdrawalsController (e2e)', () => {
       expect(getRes.body.simulation).toBeDefined();
     });
 
+    it("404 — another creator's withdrawal (ownership check, no existence leak)", async () => {
+      // Create a withdrawal as the main creator…
+      const createRes = await request(app.getHttpServer())
+        .post('/withdrawals')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: 1.0, destinationType: 'BANK', destinationAccount: '1234567890' });
+      expect(createRes.status).toBe(202);
+
+      // …then try to read it with a token for a DIFFERENT (fake) creator.
+      const strangerToken = app
+        .get(JwtService)
+        .sign({ sub: '00000000-0000-0000-0000-00000000dead', role: 'CREATOR' });
+
+      const res = await request(app.getHttpServer())
+        .get(`/withdrawals/${createRes.body.withdrawalId}`)
+        .set('Authorization', `Bearer ${strangerToken}`);
+
+      expect(res.status).toBe(404);
+    });
+
     it('404 — for unknown withdrawal ID', async () => {
-      const res = await request(app.getHttpServer()).get(
-        '/withdrawals/00000000-0000-0000-0000-000000000000',
-      );
+      const res = await request(app.getHttpServer())
+        .get('/withdrawals/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(404);
     });
   });
 
   describe('GET /withdrawals', () => {
+    it('401 — rejects a request without a bearer token', async () => {
+      const res = await request(app.getHttpServer()).get('/withdrawals');
+      expect(res.status).toBe(401);
+    });
+
     it('200 — returns paginated withdrawal list', async () => {
       const res = await request(app.getHttpServer())
         .get('/withdrawals')
-        .query({ address: WALLET_ADDRESS, page: 1, limit: 20 });
+        .set('Authorization', `Bearer ${token}`)
+        .query({ page: 1, limit: 20 });
 
       expect(res.status).toBe(200);
       expect(res.body.address).toBe(WALLET_ADDRESS);
@@ -215,14 +263,6 @@ describe('WithdrawalsController (e2e)', () => {
       expect(res.body.total).toBeGreaterThanOrEqual(1);
       expect(res.body.page).toBe(1);
       expect(res.body.limit).toBe(20);
-    });
-
-    it('400 — rejects invalid address', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/withdrawals')
-        .query({ address: 'bad-address' });
-
-      expect(res.status).toBe(400);
     });
   });
 });

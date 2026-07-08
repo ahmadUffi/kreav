@@ -234,12 +234,14 @@ export class WithdrawalsService {
    * If the withdrawal is in PROCESSING and enough time has elapsed,
    * it automatically transitions to COMPLETED.
    */
-  async getWithdrawal(id: string): Promise<Record<string, unknown>> {
+  async getWithdrawal(id: string, requesterCreatorId?: string): Promise<Record<string, unknown>> {
     const withdrawal = await this.prisma.withdrawal.findUnique({
       where: { id },
     });
 
-    if (!withdrawal) {
+    // Ownership check (Fase 1): a creator can only read their own receipts.
+    // Mismatch returns the same 404 as "not found" — no existence leak.
+    if (!withdrawal || (requesterCreatorId && withdrawal.creatorId !== requesterCreatorId)) {
       throw new NotFoundException('Withdrawal not found');
     }
 

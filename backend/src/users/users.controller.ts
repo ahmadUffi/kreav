@@ -1,16 +1,17 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Logger,
-  NotFoundException,
-  Param,
-  Patch,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Logger, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiParam,
+  ApiBody,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import {
   UpdateProfileDto,
   ProfileResponseDto,
@@ -20,14 +21,16 @@ import {
 } from './dto';
 
 /**
- * UsersController — BE-022.
+ * UsersController — BE-022 + Fase 1 (token-scoped identity).
  *
- *   GET  /users/me  — get current user profile
- *   PATCH /users/me — update profile fields
+ *   GET   /users/me  — get current user profile        (JWT)
+ *   PATCH /users/me  — update profile fields           (JWT)
+ *   GET   /users/check-username    — availability      (public)
+ *   GET   /users/:username/profile — public profile    (public)
  *
- * No auth middleware for MVP — uses `?userId=` query param.
+ * Identity comes from the session JWT (JwtAuthGuard) — never from query params.
  *
- * Source: BE-022 — Creator Profile API.
+ * Source: BE-022 — Creator Profile API + ROADMAP Fase 1.
  */
 @ApiTags('Users')
 @Controller('users')
@@ -37,60 +40,45 @@ export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   /**
-   * GET /users/me?userId=<uuid>
-   *
-   * Returns the full profile for the given user ID.
+   * GET /users/me — profile of the authenticated user.
    */
   @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @ApiOperation({
     summary: 'Get current user profile',
     description:
-      'Returns the full profile for the authenticated user. ' +
-      'No auth middleware for MVP — uses ?userId= query param. ' +
-      'Includes all BE-022 profile fields (username, country, bio, avatar emoji, accent).',
-  })
-  @ApiQuery({
-    name: 'userId',
-    description: 'User ID (UUID)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
+      'Returns the full profile for the authenticated user (identity from the ' +
+      'session JWT). Includes all BE-022 profile fields (username, country, bio, ' +
+      'avatar emoji, accent).',
   })
   @ApiResponse({
     status: 200,
     description: 'Profile retrieved successfully',
     type: ProfileResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Invalid userId format' })
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async getProfile(@Query('userId') userId: string): Promise<ProfileResponseDto> {
-    if (!userId) {
-      throw new NotFoundException('userId query parameter is required');
-    }
-    this.logger.log(`GET /users/me?userId=${userId}`);
-    return this.users.getProfile(userId);
+  async getProfile(@CurrentUser() user: AuthUser): Promise<ProfileResponseDto> {
+    this.logger.log(`GET /users/me user=${user.userId}`);
+    return this.users.getProfile(user.userId);
   }
 
   /**
-   * PATCH /users/me?userId=<uuid>
-   *
-   * Updates profile fields. All fields are optional — partial updates supported.
-   * Username uniqueness is enforced (409 Conflict on duplicate).
+   * PATCH /users/me — update profile of the authenticated user.
    */
   @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @ApiOperation({
     summary: 'Update profile',
     description:
-      'Updates the user profile. All fields are optional — partial updates supported. ' +
-      'Username uniqueness is enforced — returns 409 if the username is already taken. ' +
-      'Username format: lowercase letters, numbers, dots, underscores, hyphens. 3–30 characters.',
-  })
-  @ApiQuery({
-    name: 'userId',
-    description: 'User ID (UUID)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
+      'Updates the authenticated user profile. All fields are optional — partial ' +
+      'updates supported. Username uniqueness is enforced — returns 409 if the ' +
+      'username is already taken. Username format: lowercase letters, numbers, ' +
+      'dots, underscores, hyphens. 3–30 characters.',
   })
   @ApiBody({
     type: UpdateProfileDto,
@@ -119,17 +107,15 @@ export class UsersController {
     type: ProfileResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 409, description: 'Username already taken' })
   async updateProfile(
-    @Query('userId') userId: string,
+    @CurrentUser() user: AuthUser,
     @Body() dto: UpdateProfileDto,
   ): Promise<ProfileResponseDto> {
-    if (!userId) {
-      throw new NotFoundException('userId query parameter is required');
-    }
-    this.logger.log(`PATCH /users/me?userId=${userId}`);
-    return this.users.updateProfile(userId, dto);
+    this.logger.log(`PATCH /users/me user=${user.userId}`);
+    return this.users.updateProfile(user.userId, dto);
   }
 
   // ── BE-024: Username Check ───────────────────────────────────────────────

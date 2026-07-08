@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StellarModule } from '../stellar/stellar.module';
+import { WalletsModule } from '../wallets/wallets.module';
 import { WithdrawalsController } from './withdrawals.controller';
 import { WithdrawalsService } from './withdrawals.service';
 
@@ -23,7 +24,7 @@ import { WithdrawalsService } from './withdrawals.service';
  * Source: Kreav Backend PRD v3 — §9 Withdrawal APIs.
  */
 @Module({
-  imports: [PrismaModule, StellarModule],
+  imports: [PrismaModule, StellarModule, WalletsModule],
   controllers: [WithdrawalsController],
   providers: [WithdrawalsService],
   exports: [WithdrawalsService],

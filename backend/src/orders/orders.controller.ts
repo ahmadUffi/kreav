@@ -10,6 +10,7 @@ import {
   Query,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
@@ -21,9 +22,12 @@ import {
   ApiBody,
   ApiCreatedResponse,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { OrdersService } from './orders.service';
+import { JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { CheckoutDto } from './dto/checkout.dto';
 import { GcashWebhookDto } from './dto/gcash-webhook.dto';
 import { OrdersListQueryDto } from './dto/orders-list-query.dto';
@@ -146,24 +150,20 @@ export class OrdersController {
   // ── BE-018: Read endpoints ───────────────────────────────────────────────
 
   /**
-   * GET /orders — paginated order list.
+   * GET /orders — paginated order list for the authenticated creator.
    *
-   * Optionally filter by creatorId to show only orders for a specific creators
-   * products. Results ordered newest-first.
+   * Fase 1: the creator scope comes from the session JWT — the old
+   * `?creatorId=` query param is gone (identity is never a query param).
    */
   @Get('orders')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
-    summary: 'List orders',
+    summary: 'List orders (authenticated creator)',
     description:
-      'Returns a paginated list of orders. Optionally filter by creatorId ' +
-      'to show only orders for a specific creators products. Ordered newest-first. ' +
+      'Returns a paginated list of orders for products owned by the ' +
+      'authenticated creator. Ordered newest-first. ' +
       'Each order includes the product title and price.',
-  })
-  @ApiQuery({
-    name: 'creatorId',
-    description: 'Filter by creator user ID (UUID)',
-    required: false,
-    example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @ApiQuery({
     name: 'page',
@@ -182,16 +182,18 @@ export class OrdersController {
     description: 'Paginated list of orders',
     type: OrdersListResponseDto,
   })
-  async findAll(@Query() query: OrdersListQueryDto): Promise<{
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
+  async findAll(
+    @CurrentUser() user: AuthUser,
+    @Query() query: OrdersListQueryDto,
+  ): Promise<{
     data: Array<Record<string, unknown>>;
     page: number;
     limit: number;
     total: number;
   }> {
-    this.logger.log(
-      `GET /orders?creatorId=${query.creatorId ?? ''}&page=${query.page}&limit=${query.limit}`,
-    );
-    return this.orders.findAll(query);
+    this.logger.log(`GET /orders user=${user.userId} page=${query.page} limit=${query.limit}`);
+    return this.orders.findAll({ ...query, creatorId: user.userId });
   }
 
   /**

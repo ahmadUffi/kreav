@@ -1,25 +1,17 @@
-import { IsEnum, IsNotEmpty, IsString, IsUUID, Matches } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { WalletProvider } from '@prisma/client';
 
 /**
  * Body for POST /wallets.
  *
- * Connects a Stellar wallet address to a creator account.
+ * Connects a Stellar wallet address to the AUTHENTICATED creator account
+ * (Fase 1: creator identity comes from the session JWT, not the body).
  * Non-custodial: only the public key is stored — never the secret key.
  *
- * Source: BE-020 — Wallet Connect API.
+ * Source: BE-020 — Wallet Connect API + ROADMAP Fase 1.
  */
 export class ConnectWalletDto {
-  @ApiProperty({
-    description: 'Creator user ID (UUID)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @IsString()
-  @IsUUID()
-  creatorId!: string;
-
   @ApiProperty({
     description: 'Stellar wallet public key (G...)',
     required: true,

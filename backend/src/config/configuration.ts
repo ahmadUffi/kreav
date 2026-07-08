@@ -17,7 +17,13 @@ export interface AppConfig {
   /** Audit #11 — HMAC secret for verifying GCash webhook signatures. Optional
    * in dev (webhook accepts unsigned), REQUIRED for the on-stage demo. */
   GCASH_WEBHOOK_SECRET?: string;
+  /** Signing secret for session JWTs (SEP-10 wallet auth + register). Falls
+   * back to a dev-only default; MUST be set in production. */
+  JWT_SECRET: string;
 }
+
+/** Dev-only JWT secret fallback — the auth module warns loudly when active. */
+export const DEV_JWT_SECRET = 'kreav-dev-jwt-secret-do-not-use-in-prod';
 
 export const validationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
@@ -28,6 +34,15 @@ export const validationSchema = Joi.object({
     .required(),
   // Optional: when absent, webhook signature verification is skipped (dev/CI).
   GCASH_WEBHOOK_SECRET: Joi.string().optional().allow(''),
+  // Session JWT secret. Required in production; dev/test fall back to a
+  // clearly-marked default so the app still boots for non-auth work.
+  JWT_SECRET: Joi.string()
+    .min(16)
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.required(),
+      otherwise: Joi.optional().default(DEV_JWT_SECRET),
+    }),
 });
 
 export default () => ({
@@ -35,4 +50,5 @@ export default () => ({
   PORT: parseInt(process.env.PORT ?? '3000', 10),
   DATABASE_URL: process.env.DATABASE_URL,
   GCASH_WEBHOOK_SECRET: process.env.GCASH_WEBHOOK_SECRET,
+  JWT_SECRET: process.env.JWT_SECRET ?? DEV_JWT_SECRET,
 });

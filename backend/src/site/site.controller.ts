@@ -1,83 +1,66 @@
-import { Body, Controller, Get, Logger, NotFoundException, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Put, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiQuery, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SiteService } from './site.service';
+import { JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { SiteDto } from './dto';
 
 /**
- * SiteController — BE-025.
+ * SiteController — BE-025 + Fase 1 (token-scoped identity).
  *
- *   GET /users/me/site  — get mini-site configuration
- *   PUT /users/me/site  — atomically replace mini-site config
+ *   GET /users/me/site  — get mini-site configuration   (JWT)
+ *   PUT /users/me/site  — atomically replace config     (JWT)
  *
- * No auth middleware for MVP — uses `?userId=` query param.
+ * Identity comes from the session JWT — never from query params.
  *
- * Source: BE-025 — Creator Mini-Site API.
+ * Source: BE-025 — Creator Mini-Site API + ROADMAP Fase 1.
  */
 @ApiTags('Site')
 @Controller('users/me/site')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class SiteController {
   private readonly logger = new Logger(SiteController.name);
 
   constructor(private readonly site: SiteService) {}
 
   /**
-   * GET /users/me/site?userId=<uuid>
-   *
-   * Returns the full mini-site configuration including social links,
-   * custom links, and featured product IDs.
+   * GET /users/me/site — mini-site config of the authenticated user.
    */
   @Get()
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @ApiOperation({
     summary: 'Get mini-site configuration',
     description:
-      'Returns the full mini-site configuration for the creator: ' +
+      'Returns the full mini-site configuration for the authenticated creator: ' +
       'profile fields (displayName, username, bio, avatarEmoji, accent), ' +
-      'social media links, custom links (Linktree-style), and featured product IDs. ' +
-      'No auth middleware for MVP — uses ?userId= query param.',
-  })
-  @ApiQuery({
-    name: 'userId',
-    description: 'User ID (UUID)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
+      'social media links, custom links (Linktree-style), and featured product IDs.',
   })
   @ApiResponse({
     status: 200,
     description: 'Mini-site configuration retrieved',
     type: SiteDto,
   })
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async getSite(@Query('userId') userId: string): Promise<SiteDto> {
-    if (!userId) {
-      throw new NotFoundException('userId query parameter is required');
-    }
-    this.logger.log(`GET /users/me/site?userId=${userId}`);
-    return this.site.getSite(userId);
+  async getSite(@CurrentUser() user: AuthUser): Promise<SiteDto> {
+    this.logger.log(`GET /users/me/site user=${user.userId}`);
+    return this.site.getSite(user.userId);
   }
 
   /**
-   * PUT /users/me/site?userId=<uuid>
-   *
-   * Atomically replaces the entire mini-site configuration.
-   * All-or-nothing transaction — deletes old relations and creates new ones.
+   * PUT /users/me/site — atomically replace the mini-site config.
    */
   @Put()
   @Throttle({ default: { ttl: 60_000, limit: 20 } })
   @ApiOperation({
     summary: 'Update mini-site configuration',
     description:
-      'Atomically replaces the entire mini-site configuration. ' +
-      'Uses a Prisma transaction — all-or-nothing. ' +
+      'Atomically replaces the entire mini-site configuration for the ' +
+      'authenticated creator. Uses a Prisma transaction — all-or-nothing. ' +
       'Updates profile fields, replaces social links, custom links, and featured products. ' +
       'All fields in the body are required (use previous GET response as base for partial updates).',
-  })
-  @ApiQuery({
-    name: 'userId',
-    description: 'User ID (UUID)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @ApiBody({
     type: SiteDto,
@@ -112,12 +95,10 @@ export class SiteController {
     type: SiteDto,
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async updateSite(@Query('userId') userId: string, @Body() dto: SiteDto): Promise<SiteDto> {
-    if (!userId) {
-      throw new NotFoundException('userId query parameter is required');
-    }
-    this.logger.log(`PUT /users/me/site?userId=${userId}`);
-    return this.site.updateSite(userId, dto);
+  async updateSite(@CurrentUser() user: AuthUser, @Body() dto: SiteDto): Promise<SiteDto> {
+    this.logger.log(`PUT /users/me/site user=${user.userId}`);
+    return this.site.updateSite(user.userId, dto);
   }
 }

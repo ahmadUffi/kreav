@@ -28,15 +28,15 @@ pnpm start:dev              # http://localhost:3000
 
 ## Scripts
 
-| Script | Purpose |
-| --- | --- |
-| `pnpm start:dev` | Run in watch mode |
-| `pnpm build` | Compile to `dist/` |
-| `pnpm lint` | ESLint (with auto-fix) |
+| Script            | Purpose                  |
+| ----------------- | ------------------------ |
+| `pnpm start:dev`  | Run in watch mode        |
+| `pnpm build`      | Compile to `dist/`       |
+| `pnpm lint`       | ESLint (with auto-fix)   |
 | `pnpm lint:check` | ESLint (CI mode, no fix) |
-| `pnpm test` | Unit tests |
-| `pnpm test:e2e` | End-to-end tests |
-| `pnpm format` | Prettier write |
+| `pnpm test`       | Unit tests               |
+| `pnpm test:e2e`   | End-to-end tests         |
+| `pnpm format`     | Prettier write           |
 
 ## Project structure (PRD Section 7)
 

@@ -1,107 +1,94 @@
-import { Controller, Get, Logger, Query } from '@nestjs/common';
+import { Controller, Get, Logger, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { WalletsService } from './wallets.service';
+import { JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import {
-  WalletBalanceQueryDto,
   WalletTransactionsQueryDto,
   WalletBalanceResponseDto,
   WalletTransactionsResponseDto,
 } from './dto';
 
 /**
- * WalletsController — BE-008.
+ * WalletsController — BE-008 + Fase 1 (token-scoped identity).
  *
- *   GET /wallet/balance        — query USDC balance via Horizon
- *   GET /wallet/transactions   — query settlement history from DB
+ *   GET /wallet/balance        — USDC balance of the creator's wallet (JWT)
+ *   GET /wallet/transactions   — settlement history of the creator's wallet (JWT)
+ *
+ * Fase 1: the wallet address is resolved server-side from the authenticated
+ * creator's connected wallet — the old `?address=` query param is gone.
  *
  * Both are read-only. No blockchain writes.
  * Non-custodial: the backend stores only public keys — never secret keys.
  *
- * Source: Kreav Backend PRD v3 — §9 Wallet APIs.
+ * Source: Kreav Backend PRD v3 — §9 Wallet APIs + ROADMAP Fase 1.
  */
 @ApiTags('Wallet')
 @Controller('wallet')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class WalletsController {
   private readonly logger = new Logger(WalletsController.name);
 
   constructor(private readonly wallets: WalletsService) {}
 
   /**
-   * GET /wallet/balance?address=<G...>
-   *
-   * Returns the live USDC balance for a Stellar wallet address,
-   * queried directly from Horizon. Also reports trustline and
-   * account-existence status.
+   * GET /wallet/balance — live USDC balance of the authenticated creator's wallet.
    */
   @Get('balance')
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @ApiOperation({
     summary: 'Get wallet USDC balance',
     description:
-      'Returns the live USDC balance for a Stellar wallet address, queried from Horizon. ' +
-      'Also reports whether the account exists and has a USDC trustline. ' +
-      'Returns "0" for unfunded or untrustlined accounts. No blockchain write.',
-  })
-  @ApiQuery({
-    name: 'address',
-    description: 'Stellar wallet public key (G...)',
-    required: true,
-    example: 'GDA2SQ2PHWIER57TDXKLBSOD3IT4GTAHK5RV2H27LJZAXDBWQ6KYJ72B',
-    pattern: '^G[A-Z2-7]{55}$',
+      "Returns the live USDC balance for the authenticated creator's connected " +
+      'wallet, queried from Horizon. Also reports whether the account exists and ' +
+      'has a USDC trustline. Returns "0" for unfunded or untrustlined accounts. ' +
+      'No blockchain write. 404 if no wallet is connected.',
   })
   @ApiResponse({
     status: 200,
     description: 'Balance retrieved successfully',
     type: WalletBalanceResponseDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid address format — must be a valid Stellar G... key',
-  })
-  async getBalance(@Query() query: WalletBalanceQueryDto): Promise<WalletBalanceResponseDto> {
-    this.logger.log(`GET /wallet/balance?address=${query.address}`);
-    return this.wallets.getBalance(query.address);
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
+  @ApiResponse({ status: 404, description: 'No wallet connected to this account' })
+  async getBalance(@CurrentUser() user: AuthUser): Promise<WalletBalanceResponseDto> {
+    const address = await this.wallets.getAddressForCreator(user.userId);
+    this.logger.log(`GET /wallet/balance user=${user.userId} address=${address.slice(0, 8)}...`);
+    return this.wallets.getBalance(address);
   }
 
   /**
-   * GET /wallet/transactions?address=<G...>&page=1&limit=20
-   *
-   * Returns paginated settlement transaction history for a wallet address.
-   * Queries the Settlement + SettlementRecipient tables from the local DB.
-   * Ordered newest-first.
+   * GET /wallet/transactions — settlement history of the creator's wallet.
    */
   @Get('transactions')
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @ApiOperation({
     summary: 'Get wallet transaction history',
     description:
-      'Returns paginated settlement transactions for a wallet address. ' +
-      'Queries the local Settlement database (not Horizon). Ordered newest-first. ' +
-      'Includes both CREATOR and PLATFORM recipient entries.',
+      "Returns paginated settlement transactions for the authenticated creator's " +
+      'connected wallet. Queries the local Settlement database (not Horizon). ' +
+      'Ordered newest-first. Includes both CREATOR and PLATFORM recipient entries. ' +
+      '404 if no wallet is connected.',
   })
-  @ApiQuery({
-    name: 'address',
-    description: 'Stellar wallet public key (G...)',
-    required: true,
-    example: 'GCHOG4QF27OG5WHBY4AIBGEI4LSOTCY3Y4VX22AUNLHTDBWMLZW5OBU3',
-    pattern: '^G[A-Z2-7]{55}$',
-  })
+  @ApiQuery({ name: 'page', description: 'Page number (1-indexed)', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', description: 'Items per page', required: false, example: 20 })
   @ApiResponse({
     status: 200,
     description: 'Transactions retrieved successfully',
     type: WalletTransactionsResponseDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid address format — must be a valid Stellar G... key',
-  })
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
+  @ApiResponse({ status: 404, description: 'No wallet connected to this account' })
   async getTransactions(
+    @CurrentUser() user: AuthUser,
     @Query() query: WalletTransactionsQueryDto,
   ): Promise<WalletTransactionsResponseDto> {
+    const address = await this.wallets.getAddressForCreator(user.userId);
     this.logger.log(
-      `GET /wallet/transactions?address=${query.address}&page=${query.page}&limit=${query.limit}`,
+      `GET /wallet/transactions user=${user.userId} page=${query.page} limit=${query.limit}`,
     );
-    return this.wallets.getTransactions(query.address, query.page, query.limit);
+    return this.wallets.getTransactions(address, query.page, query.limit);
   }
 }

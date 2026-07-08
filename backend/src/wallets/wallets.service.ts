@@ -132,6 +132,26 @@ export class WalletsService {
     };
   }
 
+  /**
+   * Resolve the connected wallet address for a creator (token-scoped routes).
+   *
+   * Fase 1: wallet/withdrawal endpoints are scoped by the authenticated user,
+   * not by an `?address=` query param — the address is looked up server-side.
+   *
+   * Throws NotFoundException when the creator has no connected wallet.
+   */
+  async getAddressForCreator(creatorId: string): Promise<string> {
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { creatorId },
+      orderBy: { connectedAt: 'desc' },
+      select: { walletAddress: true },
+    });
+    if (!wallet) {
+      throw new NotFoundException('No wallet connected to this account');
+    }
+    return wallet.walletAddress;
+  }
+
   // ── BE-020: Wallet Connect ───────────────────────────────────────────────
 
   /**
