@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import Icon, { type IconName } from "@/components/ui/Icon";
-import { products, type CreatorProfile } from "@/lib/mock";
+import type { CreatorProfile, Product } from "@/lib/mock";
 
 const SOCIALS: { key: keyof CreatorProfile["socials"]; icon: IconName; url: (h: string) => string }[] = [
   { key: "instagram", icon: "instagram", url: (h) => `https://instagram.com/${h}` },
@@ -10,11 +10,20 @@ const SOCIALS: { key: keyof CreatorProfile["socials"]; icon: IconName; url: (h: 
   { key: "youtube", icon: "youtube", url: (h) => `https://youtube.com/${h.startsWith("@") ? h : "@" + h}` },
 ];
 
-/** Public Linktree-style creator page. Used by /u/[username] and the editor preview. */
-export default function CreatorMiniSite({ profile }: { profile: CreatorProfile }) {
+/**
+ * Public Linktree-style creator page. Used by /u/[username] and the editor preview.
+ * `products` is the pool used to resolve `profile.featuredProductIds`.
+ */
+export default function CreatorMiniSite({
+  profile,
+  products = [],
+}: {
+  profile: CreatorProfile;
+  products?: Product[];
+}) {
   const featured = profile.featuredProductIds
     .map((id) => products.find((p) => p.id === id))
-    .filter((p): p is (typeof products)[number] => Boolean(p));
+    .filter((p): p is Product => Boolean(p));
   const socials = SOCIALS.filter((s) => profile.socials[s.key]);
 
   return (

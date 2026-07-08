@@ -5,6 +5,11 @@ import { z } from "zod/v4";
 import { Badge, Card, Button, Input, Stepper } from "@/components/ui";
 import WalletConnectPanel from "@/components/WalletConnectPanel";
 import { COUNTRIES } from "@/lib/constants";
+import { register } from "@/lib/api/auth";
+import { updateMe, checkUsername } from "@/lib/api/users";
+import { connectWallet } from "@/lib/api/wallet";
+import { setUserId, setUsername, setWalletAddress } from "@/lib/api/session";
+import { ApiError } from "@/lib/api/client";
 
 type Role = "creator" | "buyer";
 
@@ -22,8 +27,6 @@ const ROLES: { value: Role; title: string; blurb: string; emoji: string }[] = [
   { value: "creator", title: "I'm a creator", blurb: "Sell ebooks, presets, templates and more.", emoji: "🎨" },
   { value: "buyer", title: "I'm a buyer", blurb: "Discover and buy digital products.", emoji: "🛍️" },
 ];
-
-const TAKEN_USERNAMES = ["admin", "kreav", "support", "maya.shoots"];
 
 const detailsSchema = z.object({
   email: z.email("Enter a valid email address"),
@@ -54,17 +57,14 @@ export default function SignupPage() {
   const [phase, setPhase] = useState<Phase>("form");
   const [data, setData] = useState<Data>({ role: null, email: "", username: "", country: "", walletAddress: null });
   const [errors, setErrors] = useState<{ email?: string; username?: string; country?: string }>({});
+  const [checking, setChecking] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const steps = stepsFor(data.role);
   const kind = stepKind(data.role, step);
   const isLast = step === steps.length - 1;
 
-  // Mock create → success → redirect.
-  useEffect(() => {
-    if (phase !== "submitting") return;
-    const t = setTimeout(() => setPhase("done"), 1100);
-    return () => clearTimeout(t);
-  }, [phase]);
+  // Redirect after a successful create.
   useEffect(() => {
     if (phase !== "done") return;
     const dest = data.role === "buyer" ? "/store" : "/dashboard";
@@ -74,7 +74,7 @@ export default function SignupPage() {
 
   const set = (patch: Partial<Data>) => setData((d) => ({ ...d, ...patch }));
 
-  const validateDetails = () => {
+  const validateDetails = (): boolean => {
     const result = detailsSchema.safeParse({ email: data.email, username: data.username, country: data.country });
     const next: typeof errors = {};
     if (!result.success) {
@@ -83,23 +83,60 @@ export default function SignupPage() {
         if (!next[key]) next[key] = issue.message;
       }
     }
-    if (!next.username && TAKEN_USERNAMES.includes(data.username)) {
-      next.username = "That username is already taken";
-    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
-  const goNext = () => {
+  const submit = async () => {
+    setPhase("submitting");
+    setSubmitError(null);
+    try {
+      const role = data.role === "creator" ? "CREATOR" : "BUYER";
+      // 1. Register (BE accepts email/name/role; name falls back to username).
+      const user = await register({ email: data.email, name: data.username, role });
+      setUserId(user.id);
+      setUsername(data.username);
+      // 2. Persist username + country the register endpoint ignores.
+      await updateMe(user.id, { username: data.username, country: data.country });
+      // 3. Creators: record the connected wallet.
+      if (data.role === "creator" && data.walletAddress) {
+        setWalletAddress(data.walletAddress);
+        try {
+          await connectWallet({ creatorId: user.id, walletAddress: data.walletAddress, provider: "FREIGHTER" });
+        } catch {
+          // Non-fatal: account exists; wallet can be connected later from the wallet page.
+        }
+      }
+      setPhase("done");
+    } catch (e) {
+      setSubmitError(e instanceof ApiError ? e.message : "Couldn't create your account. Try again.");
+      setPhase("form");
+    }
+  };
+
+  const goNext = async () => {
     if (kind === "role") {
       if (!data.role) return;
       setStep(1);
     } else if (kind === "details") {
-      if (validateDetails()) setStep(2);
+      if (!validateDetails()) return;
+      setChecking(true);
+      try {
+        const available = await checkUsername(data.username);
+        if (!available) {
+          setErrors((e) => ({ ...e, username: "That username is already taken" }));
+          return;
+        }
+        setStep(2);
+      } catch (e) {
+        setErrors((e2) => ({ ...e2, username: e instanceof ApiError ? e.message : "Couldn't check username" }));
+      } finally {
+        setChecking(false);
+      }
     } else if (kind === "wallet") {
       if (data.walletAddress) setStep(3);
     } else {
-      setPhase("submitting");
+      await submit();
     }
   };
 
@@ -271,6 +308,12 @@ export default function SignupPage() {
         </Card>
       )}
 
+      {submitError && (
+        <p className="mt-4" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #b23a00)" }}>
+          {submitError}
+        </p>
+      )}
+
       {/* Nav buttons */}
       <div className="mt-7 flex items-center justify-between gap-3">
         {step > 0 ? (
@@ -282,10 +325,10 @@ export default function SignupPage() {
         )}
         <Button
           variant="primary"
-          disabled={(kind === "role" && !data.role) || (kind === "wallet" && !data.walletAddress)}
+          disabled={(kind === "role" && !data.role) || (kind === "wallet" && !data.walletAddress) || checking}
           onClick={goNext}
         >
-          {isLast ? "Create account" : "Continue"}
+          {checking ? "Checking…" : isLast ? "Create account" : "Continue"}
         </Button>
       </div>
     </div>

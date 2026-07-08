@@ -1,21 +1,42 @@
+"use client";
 import { Card, Badge, EmptyState } from "@/components/ui";
-import { orders } from "@/lib/mock";
+import { useSession } from "@/lib/api/useSession";
+import { useApiQuery } from "@/lib/api/hooks";
+import { SessionNotice } from "@/components/SessionNotice";
+import { listOrders } from "@/lib/api/orders";
+import type { OrderStatusView } from "@/lib/api/types";
 
 type Tone = "success" | "warn" | "danger";
-const STATUS_TONE: Record<string, Tone> = {
+const STATUS_TONE: Record<OrderStatusView, Tone> = {
   Paid: "success",
   Pending: "warn",
-  Refunded: "danger",
+  Failed: "danger",
 };
 
 export default function DashboardOrdersPage() {
+  const { ready, userId } = useSession();
+  const { data, loading, error } = useApiQuery(
+    () => listOrders({ creatorId: userId!, limit: 50 }),
+    [userId],
+    ready && !!userId,
+  );
+
+  if (ready && !userId) return <SessionNotice />;
+  const orders = data?.items ?? [];
+
   return (
     <div>
       <h1 className="mb-5" style={{ fontFamily: "var(--font-anton)", fontSize: "clamp(26px, 3.4vw, 38px)", lineHeight: 1.05 }}>
         Orders
       </h1>
 
-      {orders.length === 0 ? (
+      {!ready || loading ? (
+        <p style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>Loading…</p>
+      ) : error ? (
+        <Card className="text-center" style={{ padding: 32 }}>
+          <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{error.message}</p>
+        </Card>
+      ) : orders.length === 0 ? (
         <EmptyState title="No orders yet" description="Orders from buyers will appear here." />
       ) : (
         <Card padding={0} style={{ overflow: "hidden" }}>
@@ -28,7 +49,7 @@ export default function DashboardOrdersPage() {
               <div style={{ minWidth: 200 }}>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>{o.product}</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                  {o.id} · {o.buyer} · {o.date}
+                  {o.buyer} · {o.date}
                 </div>
               </div>
               <div className="flex items-center gap-4">

@@ -1,10 +1,30 @@
 "use client";
+import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Card } from "@/components/ui";
 import WalletConnectPanel from "@/components/WalletConnectPanel";
+import { getUserId, setWalletAddress } from "@/lib/api/session";
+import { connectWallet } from "@/lib/api/wallet";
 
 export default function WalletConnectPage() {
   const router = useRouter();
+  const addressRef = useRef<string | null>(null);
+
+  const onContinue = async () => {
+    const address = addressRef.current;
+    if (address) {
+      setWalletAddress(address);
+      const userId = getUserId();
+      if (userId) {
+        try {
+          await connectWallet({ creatorId: userId, walletAddress: address, provider: "FREIGHTER" });
+        } catch {
+          // Non-fatal — address is still saved locally for the wallet dashboard.
+        }
+      }
+    }
+    router.push("/dashboard");
+  };
 
   return (
     <div className="mx-auto max-w-[560px] px-10 pt-12 pb-[90px]">
@@ -24,7 +44,13 @@ export default function WalletConnectPage() {
       </p>
 
       <Card style={{ padding: 32 }}>
-        <WalletConnectPanel continueLabel="Continue to dashboard" onContinue={() => router.push("/dashboard")} />
+        <WalletConnectPanel
+          onConnected={(address) => {
+            addressRef.current = address;
+          }}
+          continueLabel="Continue to dashboard"
+          onContinue={onContinue}
+        />
       </Card>
 
       <p className="mt-5" style={{ fontFamily: "var(--font-mono)", fontSize: 12, lineHeight: 1.6, color: "var(--muted)" }}>

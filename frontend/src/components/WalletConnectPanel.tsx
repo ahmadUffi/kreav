@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge, Button } from "@/components/ui";
-import { truncateAddress, MOCK_WALLET_ADDRESS } from "@/lib/stellar";
+import { truncateAddress } from "@/lib/stellar";
+import { isConnected, requestAccess, getNetwork } from "@stellar/freighter-api";
 
 export type WalletState =
   | "idle"
@@ -12,32 +13,62 @@ export type WalletState =
   | "wrong-network";
 
 const FREIGHTER_URL = "https://www.freighter.app/";
+const REQUIRED_NETWORK = "TESTNET";
 
 interface WalletConnectPanelProps {
-  /** Called once when the wallet reaches the connected state. */
+  /** Called once when the wallet reaches the connected state, with the real address. */
   onConnected?: (address: string) => void;
   /** Optional primary action shown on the connected state (e.g. "Continue"). */
   continueLabel?: string;
   onContinue?: () => void;
 }
 
+function errMessage(error: unknown): string | null {
+  if (!error) return null;
+  if (typeof error === "string") return error;
+  const m = (error as { message?: string }).message;
+  return m ?? "Something went wrong.";
+}
+
 /**
- * Mock Freighter connect flow + all of its states. Reused by the standalone
- * /wallet/connect page and the onboarding wizard. No real extension calls.
+ * Real Freighter connect flow (@stellar/freighter-api v6). Reused by the
+ * standalone /wallet/connect page and the onboarding wizard. Non-custodial —
+ * we only read the public address; signing stays inside the extension.
  */
 export default function WalletConnectPanel({ onConnected, continueLabel, onContinue }: WalletConnectPanelProps) {
   const [state, setState] = useState<WalletState>("idle");
+  const [address, setAddress] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
 
-  // Mock the handshake: connecting → connected after a beat.
-  useEffect(() => {
-    if (state !== "connecting") return;
-    const t = setTimeout(() => setState("connected"), 1400);
-    return () => clearTimeout(t);
-  }, [state]);
-
-  useEffect(() => {
-    if (state === "connected") onConnected?.(MOCK_WALLET_ADDRESS);
-  }, [state, onConnected]);
+  const connect = async () => {
+    setState("connecting");
+    setDetail(null);
+    try {
+      const conn = await isConnected();
+      if (conn.error || !conn.isConnected) {
+        setState("not-installed");
+        return;
+      }
+      const access = await requestAccess();
+      if (access.error || !access.address) {
+        setDetail(errMessage(access.error));
+        setState("rejected");
+        return;
+      }
+      const net = await getNetwork();
+      if (!net.error && net.network && net.network.toUpperCase() !== REQUIRED_NETWORK) {
+        setDetail(`Freighter is on ${net.network}. Switch to Testnet.`);
+        setState("wrong-network");
+        return;
+      }
+      setAddress(access.address);
+      setState("connected");
+      onConnected?.(access.address);
+    } catch (e) {
+      setDetail(e instanceof Error ? e.message : "Connection failed.");
+      setState("rejected");
+    }
+  };
 
   const heading: React.CSSProperties = { fontFamily: "var(--font-mono)", fontSize: 17, fontWeight: 700, marginBottom: 6 };
   const body: React.CSSProperties = {
@@ -88,7 +119,7 @@ export default function WalletConnectPanel({ onConnected, continueLabel, onConti
     );
   }
 
-  if (state === "connected") {
+  if (state === "connected" && address) {
     return (
       <div className="text-center">
         <div style={{ marginBottom: 12 }}>
@@ -108,9 +139,9 @@ export default function WalletConnectPanel({ onConnected, continueLabel, onConti
             borderRadius: "var(--r-sm, 8px)",
             padding: "9px 14px",
           }}
-          title={MOCK_WALLET_ADDRESS}
+          title={address}
         >
-          {truncateAddress(MOCK_WALLET_ADDRESS)}
+          {truncateAddress(address)}
         </div>
         <div className="flex flex-wrap justify-center gap-3">
           {continueLabel && (
@@ -118,7 +149,7 @@ export default function WalletConnectPanel({ onConnected, continueLabel, onConti
               {continueLabel}
             </Button>
           )}
-          <Button variant="secondary" onClick={() => setState("idle")}>
+          <Button variant="secondary" onClick={() => { setAddress(null); setState("idle"); }}>
             Disconnect
           </Button>
         </div>
@@ -131,8 +162,8 @@ export default function WalletConnectPanel({ onConnected, continueLabel, onConti
       <div className="text-center">
         <div style={{ fontSize: 40, marginBottom: 12 }}>✋</div>
         <div style={heading}>Request rejected</div>
-        <p style={body}>You declined the connection in Freighter. No problem — try again when ready.</p>
-        <Button variant="primary" onClick={() => setState("connecting")}>
+        <p style={body}>{detail ?? "You declined the connection in Freighter. Try again when ready."}</p>
+        <Button variant="primary" onClick={connect}>
           Try again
         </Button>
       </div>
@@ -144,8 +175,8 @@ export default function WalletConnectPanel({ onConnected, continueLabel, onConti
       <div className="text-center">
         <div style={{ fontSize: 40, marginBottom: 12 }}>🔀</div>
         <div style={heading}>Wrong network</div>
-        <p style={body}>Freighter is set to a different network. Switch it to Testnet, then reconnect.</p>
-        <Button variant="primary" onClick={() => setState("connecting")}>
+        <p style={body}>{detail ?? "Switch Freighter to Testnet, then reconnect."}</p>
+        <Button variant="primary" onClick={connect}>
           Reconnect
         </Button>
       </div>
@@ -158,7 +189,7 @@ export default function WalletConnectPanel({ onConnected, continueLabel, onConti
       <div style={{ fontSize: 40, marginBottom: 12 }}>👛</div>
       <div style={heading}>Connect Freighter</div>
       <p style={body}>Link your non-custodial Stellar wallet to start receiving payouts.</p>
-      <Button variant="primary" onClick={() => setState("connecting")}>
+      <Button variant="primary" onClick={connect}>
         Connect Freighter
       </Button>
     </div>

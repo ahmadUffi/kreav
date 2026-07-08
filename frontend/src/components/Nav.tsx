@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "@/context/theme";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 
 export default function Nav() {
+  const router = useRouter();
   const { dark, toggle } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -161,6 +163,7 @@ export default function Nav() {
           </button>
 
           <button
+            onClick={() => router.push("/store")}
             style={{
               fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 800,
               letterSpacing: 1, textTransform: "uppercase",

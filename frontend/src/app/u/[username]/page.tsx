@@ -1,10 +1,35 @@
 import Link from "next/link";
 import CreatorMiniSite from "@/components/CreatorMiniSite";
-import { findCreator } from "@/lib/mock";
+import { getPublicProfile } from "@/lib/api/users";
+import { mapProfileProduct } from "@/lib/api/mappers";
+import type { CreatorProfile, Product } from "@/lib/mock";
 
 export default async function CreatorPublicPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
-  const profile = findCreator(username);
+
+  let profile: CreatorProfile | null = null;
+  let products: Product[] = [];
+
+  try {
+    const raw = await getPublicProfile(username);
+    const handle = `@${raw.username}`;
+    products = raw.products.map((p) => mapProfileProduct(p, handle));
+    profile = {
+      username: raw.username,
+      displayName: raw.displayName,
+      bio: raw.bio ?? "",
+      country: raw.country ?? "",
+      avatarEmoji: raw.avatarEmoji ?? "🙂",
+      accent: raw.accent ?? "#FF3BFF",
+      // Public profile endpoint doesn't expose socials/links (see INTEGRATION_PLAN.md).
+      socials: {},
+      links: [],
+      featuredProductIds: products.map((p) => p.id),
+    };
+  } catch {
+    // 404 or server error → neutral not-found below rather than crashing.
+    profile = null;
+  }
 
   if (!profile) {
     return (
@@ -37,5 +62,5 @@ export default async function CreatorPublicPage({ params }: { params: Promise<{ 
     );
   }
 
-  return <CreatorMiniSite profile={profile} />;
+  return <CreatorMiniSite profile={profile} products={products} />;
 }
