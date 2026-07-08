@@ -10,7 +10,7 @@ export interface Product {
   creator: string;
   /** Price in USD (display only). */
   price: number;
-  category: "Ebook" | "Preset" | "Course" | "Music" | "Template";
+  category: string;
   /** Accent colour from the brand palette, used for the cover tile. */
   accent: string;
   emoji: string;
@@ -165,8 +165,61 @@ export const currentCreator: CreatorProfile = {
   featuredProductIds: ["p1", "p6", "p3"],
 };
 
-/** Lookup used by the public mini-site route. */
-export const creators: CreatorProfile[] = [currentCreator];
+/* Additional creators featured on the storefront. Each maps to products above
+   via the `@handle` in Product.creator, and resolves to a public mini-site
+   at /u/<username>. */
+const deviantBuild: CreatorProfile = {
+  username: "deviantbuild",
+  displayName: "Jacob Lim",
+  bio: "Systems tinkerer from Manila. I build Notion workspaces that actually get used.",
+  country: "Philippines",
+  avatarEmoji: "🗂️",
+  accent: "#00F5FF",
+  socials: { x: "deviantbuild", youtube: "@deviantbuild" },
+  links: [
+    { id: "l1", label: "Free Notion starter kit", url: "https://example.com/notion-starter" },
+    { id: "l2", label: "1:1 workspace setup call", url: "https://example.com/setup" },
+  ],
+  featuredProductIds: ["p2"],
+};
+
+const kiraSound: CreatorProfile = {
+  username: "kira.sound",
+  displayName: "Kira Nguyen",
+  bio: "Lo-fi producer from Hanoi. Loops, stems and ambient beats for your streams and study sessions.",
+  country: "Vietnam",
+  avatarEmoji: "🎧",
+  accent: "#FFE600",
+  socials: { instagram: "kira.sound", tiktok: "kira.sound", youtube: "@kirasound" },
+  links: [
+    { id: "l1", label: "Free sample pack", url: "https://example.com/samples" },
+    { id: "l2", label: "Licensing enquiries", url: "https://example.com/license" },
+  ],
+  featuredProductIds: ["p3", "p8"],
+};
+
+const studioLin: CreatorProfile = {
+  username: "studio.lin",
+  displayName: "Lin Studio",
+  bio: "3D artist & educator. Teaching beginners how to render their first scene from scratch.",
+  country: "Singapore",
+  avatarEmoji: "🎓",
+  accent: "#FF4D00",
+  socials: { instagram: "studio.lin", youtube: "@studiolin" },
+  links: [
+    { id: "l1", label: "Watch a free lesson", url: "https://example.com/lesson" },
+  ],
+  featuredProductIds: ["p5"],
+};
+
+/** Lookup used by the public mini-site route and the storefront. */
+export const creators: CreatorProfile[] = [currentCreator, deviantBuild, kiraSound, studioLin];
 export function findCreator(username: string): CreatorProfile | undefined {
   return creators.find((c) => c.username === username);
+}
+
+/** Products sold by a given creator, matched via the `@handle` on each product. */
+export function productsByCreator(username: string): Product[] {
+  const handle = `@${username}`;
+  return products.filter((p) => p.creator === handle);
 }
