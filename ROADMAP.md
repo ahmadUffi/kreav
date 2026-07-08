@@ -22,18 +22,19 @@
 
 ### Fase 0 — Selesaikan demo (segera, "make it green end-to-end")
 Tujuan: satu jalur demo 3 menit berjalan mulus di Testnet.
-- Isi `SPLIT_CONTRACT_ID` + verifikasi settlement nyata end-to-end (pakai `integration/scripts/*` sebagai pembanding).
-- Tuntaskan integrasi FE↔BE: sambungkan 5 layar yang masih pakai mock ke `src/lib/api/*`.
-- Demo hardening: skeleton/loading & error state (sudah ada `ui/Skeleton`, `ui/ErrorState`, `SessionNotice`); hindari long-load; sembunyikan jargon blockchain kecuali txHash + explorer link.
-- **Verifikasi:** skenario Demo-PRD — creator 0 USDC → buyer checkout $10 → saldo creator 9.50 USDC → klik txHash ke stellar.expert → withdraw.
+- [ ] Isi `SPLIT_CONTRACT_ID` + verifikasi settlement nyata end-to-end (pakai `integration/scripts/*` sebagai pembanding). **← BLOCKED: butuh contract ID dari owner.**
+- [x] Tuntaskan integrasi FE↔BE: `lib/mock.ts` dihapus; tipe view pindah ke `lib/types.ts`; semua layar membaca `src/lib/api/*`.
+- [x] Demo hardening dasar: skeleton/loading & error state (`ui/Skeleton`, `ui/ErrorState`, `SessionNotice`).
+- **Verifikasi:** skenario Demo-PRD — creator 0 USDC → buyer checkout $10 → saldo creator 9.50 USDC → klik txHash ke stellar.expert → withdraw. *(menunggu SPLIT_CONTRACT_ID)*
 
-### Fase 1 — Identitas & keamanan nyata (FONDASI — sebelum uang nyata)
+### Fase 1 — Identitas & keamanan nyata ✅ (inti selesai)
 Tujuan: hentikan "identitas by query param". Prasyarat semua fase berikutnya.
-- **Auth kreator via SEP-10 (Stellar Web Auth)** — paling selaras dengan non-custodial: login = tanda tangan challenge dengan Freighter. Terbitkan session token (JWT/cookie httpOnly) server-side.
-- **Auth pembeli** — magic-link email atau OAuth ringan (pembeli tak wajib punya wallet).
-- **NestJS `AuthGuard` + `@CurrentUser()`** — ambil identitas dari token, **bukan** query/body. Refactor semua endpoint ber-scope-user (`orders`, `users/me`, `wallet`, `withdrawals`, `analytics`, `site`); hapus param `creatorId`/`userId`.
-- Rate limiting per-endpoint (sudah ada `@nestjs/throttler` global) untuk `checkout`, `webhooks/gcash`, `auth`.
-- **Verifikasi:** e2e — request tanpa token / token user lain ditolak (403); Supertest happy-path tetap hijau.
+- [x] **Auth kreator via SEP-10** — `POST /auth/challenge` + `/auth/verify` (stellar-sdk `WebAuth`); login = tanda tangan challenge dengan Freighter; session JWT (`@nestjs/jwt`, `JWT_SECRET`). Halaman `/login` di FE.
+- [x] **Register = logged in** — `POST /auth/register` mengembalikan session JWT (berlaku untuk creator & buyer baru).
+- [x] **`JwtAuthGuard` + `@CurrentUser()`** — identitas dari token; param `creatorId`/`userId`/`address` DIHAPUS dari `orders` (list), `users/me`, `site`, `analytics`, `wallets`, `withdrawals`, `products` (create). Alamat wallet di-resolve server-side; receipt withdrawal punya ownership check (404 tanpa existence leak).
+- [x] **FE token session** — JWT di localStorage, axios interceptor `Authorization: Bearer`; signup/connect/products/withdraw tak lagi mengirim identitas.
+- [x] **Verifikasi:** e2e auth-negatif (401 tanpa token, 404 lintas-owner) + seluruh suite hijau (BE: 125 unit + 43 e2e; FE: build hijau).
+- [ ] Sisa (ditunda): login pembeli returning (magic-link email — butuh provider email), rate-limit khusus `/auth/*` sudah ada via `@Throttle`.
 
 ### Fase 2 — Rel uang nyata (on/off-ramp)
 Tujuan: ganti mock uang dengan integrasi asli, mulai dari satu koridor.
