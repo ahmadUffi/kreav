@@ -36,6 +36,23 @@ Tujuan: hentikan "identitas by query param". Prasyarat semua fase berikutnya.
 - [x] **Verifikasi:** e2e auth-negatif (401 tanpa token, 404 lintas-owner) + seluruh suite hijau (BE: 125 unit + 43 e2e; FE: build hijau).
 - [ ] Sisa (ditunda): login pembeli returning (magic-link email — butuh provider email), rate-limit khusus `/auth/*` sudah ada via `@Throttle`.
 
+### Hasil review SC↔BE↔FE (2026-07-08) — sudah diperbaiki
+Review logic smart contract + integrasi Stellar (dinilai terhadap checklist skill `smart-contracts/security.md`):
+- [x] **`is_settled` pre-check** — kontrak mewajibkan backend cek `is_settled(order_ref)` sebelum submit/retry; sebelumnya TIDAK pernah dipanggil → order yang sudah settled on-chain bisa salah dicap `SETTLEMENT_FAILED` saat recovery. Kini: `SorobanRpcService.isSettled()` (simulate-only; marker ter-arsip = settled) + jalur `recoverAlreadySettled` di `SettlementService` (row ada → SETTLED; txHash diketahui → record; keduanya tidak ada → SETTLED + warning rekonsiliasi manual). Degrade lunak bila RPC down.
+- [x] **`TRY_AGAIN_LATER`** dari `sendTransaction` kini dilempar sebagai `SettlementSubmissionError` — sebelumnya lolos ke polling 30s lalu order menggantung `SETTLEMENT_PENDING` selamanya.
+- [x] **Mirror DB = math kontrak** — recipient terakhir kini dicatat sebagai *remainder* (menyerap dust), identik dengan `calculate_creator_amounts` di kontrak.
+- [x] **Guard `MAX_RECIPIENTS`=10** di backend (mirror konstanta kontrak) — gagal dengan log jelas, bukan simulation error opak.
+- [x] FE: hapus `MOCK_WALLET_ADDRESS` (dead mock, 0 pemakai).
+- **Keselarasan terverifikasi**: fee 500 bps (SC=BE), USDC 7 desimal, encoding `Recipient` ScMap ter-sort + `i128` + `scvString` cocok dengan tipe kontrak, 13 status `OrderStatus` FE=Prisma, enum destinasi withdrawal FE=BE, jaringan TESTNET FE (Freighter) = BE (passphrase), Σbps=10000 dijamin validasi 100.00.
+
+### Temuan review yang DITUNDA (masuk fase di bawah)
+- **Fase 3:** `POST /checkout` men-generate `buyerEmail` placeholder (`buyer+<ts>@kreav.test`) — pengiriman produk butuh email pembeli asli di checkout.
+- **Fase 4 (pra-mainnet / redeploy kontrak):**
+  - `initialize` bisa di-front-run (guard `AlreadyInitialized` ada, tapi siapa pun bisa memanggil duluan dengan wallet mereka) → pakai `__constructor` atau deploy+initialize atomik saat redeploy (skill security.md §3).
+  - Marker idempotensi TTL ~30 hari — setelah arsip, settle ulang aman (simulasi menuntut restore) tapi `is_settled` butuh penanganan restore; dipertimbangkan saat mainnet.
+  - `calculate_creator_amounts` pakai `.expect()` (panic) alih-alih `ContractError::ArithmeticOverflow` — inkonsistensi kecil error-mapping; perbaiki saat upgrade kontrak.
+  - FE `stellarTxUrl` hardcode testnet — parameterkan saat cutover mainnet (BE sudah configurable via `EXPLORER_URL`).
+
 ### Fase 2 — Rel uang nyata (on/off-ramp)
 Tujuan: ganti mock uang dengan integrasi asli, mulai dari satu koridor.
 - **Payment-in nyata** — integrasikan satu PSP/anchor SEP-24 deposit menggantikan mock GCash; pertahankan verifikasi signature webhook.

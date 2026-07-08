@@ -33,10 +33,11 @@ describe('SettlementService', () => {
     };
     settlement: {
       create: jest.Mock;
+      findUnique: jest.Mock;
     };
   };
   let emitter: { emit: jest.Mock };
-  let sorobanRpc: { invokeSettle: jest.Mock };
+  let sorobanRpc: { invokeSettle: jest.Mock; isSettled: jest.Mock };
 
   // ── Test data ──────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ describe('SettlementService', () => {
     status: 'PAYMENT_RECEIVED' as OrderStatus,
     productId: 'product-uuid',
     amountUsd: new Prisma.Decimal('10.00'),
+    txHash: null as string | null,
   };
 
   const MOCK_COLLABORATORS = [
@@ -91,10 +93,11 @@ describe('SettlementService', () => {
     prisma = {
       order: { findUnique: jest.fn(), update: jest.fn() },
       productCollaborator: { findMany: jest.fn() },
-      settlement: { create: jest.fn() },
+      settlement: { create: jest.fn(), findUnique: jest.fn().mockResolvedValue(null) },
     };
     emitter = { emit: jest.fn() };
-    sorobanRpc = { invokeSettle: jest.fn() };
+    // Default: order not yet settled on-chain (pre-check passes through).
+    sorobanRpc = { invokeSettle: jest.fn(), isSettled: jest.fn().mockResolvedValue(false) };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -395,6 +398,83 @@ describe('SettlementService', () => {
       creatorAmountUsd: '9.50', // 95% of $10
       platformAmountUsd: '0.50', // 5% of $10
     });
+  });
+
+  // ── On-chain idempotency pre-check (is_settled) ────────────────────────────
+
+  it('recovers to SETTLED without re-invoking when order is already settled on-chain (row exists)', async () => {
+    prisma.order.findUnique.mockResolvedValue(MOCK_ORDER);
+    prisma.productCollaborator.findMany.mockResolvedValue(MOCK_COLLABORATORS);
+    sorobanRpc.isSettled.mockResolvedValue(true);
+    prisma.settlement.findUnique.mockResolvedValue({ id: 'settlement-uuid', txHash: 'prior-tx' });
+
+    await service.handlePaymentReceived(PAYMENT_PAYLOAD);
+
+    // Money already moved — must NOT invoke settle again.
+    expect(sorobanRpc.invokeSettle).not.toHaveBeenCalled();
+    expect(prisma.order.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: OrderStatus.SETTLED, txHash: 'prior-tx' }),
+      }),
+    );
+  });
+
+  it('records the settlement from the known txHash when already settled on-chain (no row yet)', async () => {
+    prisma.order.findUnique.mockResolvedValue({ ...MOCK_ORDER, txHash: 'crashed-tx-hash' });
+    prisma.productCollaborator.findMany.mockResolvedValue(MOCK_COLLABORATORS);
+    sorobanRpc.isSettled.mockResolvedValue(true);
+    prisma.settlement.findUnique.mockResolvedValue(null);
+    prisma.settlement.create.mockResolvedValue({ id: 'settlement-uuid' });
+
+    await service.handlePaymentReceived(PAYMENT_PAYLOAD);
+
+    expect(sorobanRpc.invokeSettle).not.toHaveBeenCalled();
+    expect(prisma.settlement.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ txHash: 'crashed-tx-hash' }),
+      }),
+    );
+    expect(prisma.order.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: OrderStatus.SETTLED }),
+      }),
+    );
+  });
+
+  it('proceeds with the invoke when the is_settled pre-check itself errors', async () => {
+    prisma.order.findUnique.mockResolvedValue(MOCK_ORDER);
+    prisma.productCollaborator.findMany.mockResolvedValue(MOCK_COLLABORATORS);
+    sorobanRpc.isSettled.mockRejectedValue(new Error('RPC unreachable'));
+    sorobanRpc.invokeSettle.mockResolvedValue(MOCK_INVOKE_SUCCESS);
+    prisma.settlement.create.mockResolvedValue({ id: 'settlement-uuid' });
+
+    await service.handlePaymentReceived(PAYMENT_PAYLOAD);
+
+    // Soft degrade: the contract's own guard is still authoritative.
+    expect(sorobanRpc.invokeSettle).toHaveBeenCalled();
+  });
+
+  // ── MAX_RECIPIENTS guard (mirrors contract constant) ───────────────────────
+
+  it('fails fast when there are more than 10 active collaborators', async () => {
+    prisma.order.findUnique.mockResolvedValue(MOCK_ORDER);
+    prisma.productCollaborator.findMany.mockResolvedValue(
+      // 11 collaborators, shares still sum to 100.00 (10×9.09 + 9.10)
+      Array.from({ length: 11 }, (_, i) => ({
+        walletAddress: `GCREATOR_${i}`,
+        role: 'Collaborator',
+        revenuePercentage: new Prisma.Decimal(i === 10 ? '9.10' : '9.09'),
+      })),
+    );
+
+    await service.handlePaymentReceived(PAYMENT_PAYLOAD);
+
+    expect(sorobanRpc.invokeSettle).not.toHaveBeenCalled();
+    expect(prisma.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: OrderStatus.SETTLEMENT_FAILED }),
+      }),
+    );
   });
 
   // ── Invalid state transition ───────────────────────────────────────────────

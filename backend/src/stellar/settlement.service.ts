@@ -16,6 +16,9 @@ import {
 } from './soroban-rpc.service';
 import { USDC_DECIMALS } from './stellar.config';
 
+/** Mirrors the contract's MAX_RECIPIENTS — settle() rejects vectors above 10. */
+const MAX_RECIPIENTS = 10;
+
 /**
  * SettlementService — BE-007 core.
  *
@@ -81,6 +84,7 @@ export class SettlementService {
           status: true,
           productId: true,
           amountUsd: true,
+          txHash: true,
         },
       });
 
@@ -136,6 +140,20 @@ export class SettlementService {
         return;
       }
 
+      // Mirror the contract's MAX_RECIPIENTS guard so an oversized collaborator
+      // list fails with a clear log instead of an opaque simulation error.
+      if (collaborators.length > MAX_RECIPIENTS) {
+        this.logger.error(
+          `Product ${order.productId} has ${collaborators.length} active collaborators — ` +
+            `contract supports at most ${MAX_RECIPIENTS}. Cannot settle.`,
+        );
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.SETTLEMENT_FAILED },
+        });
+        return;
+      }
+
       // ── Step 3: Build RecipientInput[] ──────────────────────────────
       // shareBps = revenuePercentage * 100 (e.g. 70.50% → 7050 bps)
       const recipients: RecipientInput[] = collaborators.map((c) => ({
@@ -148,6 +166,35 @@ export class SettlementService {
       const totalAmountBase = BigInt(
         new Prisma.Decimal(amountUsd).mul(10 ** USDC_DECIMALS).toFixed(0),
       );
+
+      // ── Step 4b: On-chain idempotency pre-check ─────────────────────
+      // Contract doc (is_settled): "The backend calls this before submitting
+      // a new settlement transaction, and before retrying a failed one."
+      // Without it, a retry of an already-settled order fails with
+      // OrderAlreadySettled and the order is WRONGLY marked SETTLEMENT_FAILED
+      // even though the money moved. Degrade soft: if the read itself fails
+      // (RPC down / contract unset), proceed — the contract remains the
+      // authoritative guard.
+      let alreadySettled = false;
+      try {
+        alreadySettled = await this.sorobanRpc.isSettled(orderId);
+      } catch (err) {
+        this.logger.warn(
+          `is_settled pre-check failed (order=${orderId}) — proceeding with invoke: ` +
+            (err instanceof Error ? err.message : String(err)),
+        );
+      }
+      if (alreadySettled) {
+        await this.recoverAlreadySettled(
+          orderId,
+          amountUsd,
+          totalAmountBase,
+          order.txHash,
+          recipients,
+          collaborators,
+        );
+        return;
+      }
 
       // ── Step 5: Invoke settlement ───────────────────────────────────
       const result = await this.sorobanRpc.invokeSettle(
@@ -187,6 +234,64 @@ export class SettlementService {
   }
 
   /**
+   * Recover DB state for an order that is ALREADY settled on-chain
+   * (is_settled pre-check returned true) — e.g. after a crash between the
+   * on-chain success and the DB write, or a re-emitted payment.received.
+   *
+   * - Settlement row already present → just transition the order to SETTLED.
+   * - No row but we know the txHash    → record the settlement normally.
+   * - No row and no txHash             → transition to SETTLED + loud warning
+   *   (Settlement.txHash is NOT NULL, so the row needs manual reconciliation).
+   */
+  private async recoverAlreadySettled(
+    orderId: string,
+    amountUsd: string,
+    totalAmountBase: bigint,
+    knownTxHash: string | null,
+    recipients: RecipientInput[],
+    collaborators: { walletAddress: string; role: string; revenuePercentage: Prisma.Decimal }[],
+  ): Promise<void> {
+    this.logger.warn(
+      `Order ${orderId} is already settled on-chain — recovering DB state instead of re-invoking.`,
+    );
+
+    const existing = await this.prisma.settlement.findUnique({
+      where: { orderId },
+      select: { id: true, txHash: true },
+    });
+
+    if (existing) {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.SETTLED, txHash: existing.txHash },
+      });
+      this.logger.log(`Order ${orderId} marked SETTLED (settlement row already existed).`);
+      return;
+    }
+
+    if (knownTxHash) {
+      await this.recordSettlementSuccess(
+        orderId,
+        amountUsd,
+        totalAmountBase,
+        knownTxHash,
+        recipients,
+        collaborators,
+      );
+      return;
+    }
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.SETTLED },
+    });
+    this.logger.warn(
+      `Order ${orderId} marked SETTLED but no txHash is known — Settlement row NOT created. ` +
+        'Reconcile manually from the contract events (SettlementExecuted).',
+    );
+  }
+
+  /**
    * Record a successful settlement in PostgreSQL.
    *
    * Creates one Settlement row + (N collaborators + 1 Platform) SettlementRecipient rows.
@@ -218,6 +323,20 @@ export class SettlementService {
       10 ** USDC_DECIMALS,
     );
 
+    // Per-recipient amounts — EXACTLY the contract's algorithm: every
+    // recipient gets floor(pool × share / 10000) except the LAST, who gets
+    // the remainder (absorbing the rounding dust). Keeping the mirror
+    // bit-identical to `calculate_creator_amounts` in smartcontract/src/lib.rs.
+    let distributedBase = 0n;
+    const creatorAmountsBase = recipients.map((r, i) => {
+      if (i === recipients.length - 1) {
+        return creatorPoolBase - distributedBase;
+      }
+      const amountBase = (creatorPoolBase * BigInt(r.shareBps)) / 10000n;
+      distributedBase += amountBase;
+      return amountBase;
+    });
+
     // Create the Settlement row
     await this.prisma.settlement.create({
       data: {
@@ -236,19 +355,15 @@ export class SettlementService {
               amount: platformFeeDecimal,
             },
             // Creator rows (RecipientType.CREATOR)
-            ...recipients.map((r, i) => {
-              const amountBase = (creatorPoolBase * BigInt(r.shareBps)) / 10000n;
-              const amountDecimal = new Prisma.Decimal(amountBase.toString()).div(
+            ...recipients.map((r, i) => ({
+              walletAddress: r.address,
+              recipientType: RecipientType.CREATOR,
+              role: collaborators[i]?.role ?? 'Creator',
+              percentage: collaborators[i]?.revenuePercentage ?? new Prisma.Decimal(0),
+              amount: new Prisma.Decimal(creatorAmountsBase[i].toString()).div(
                 10 ** USDC_DECIMALS,
-              );
-              return {
-                walletAddress: r.address,
-                recipientType: RecipientType.CREATOR,
-                role: collaborators[i]?.role ?? 'Creator',
-                percentage: collaborators[i]?.revenuePercentage ?? new Prisma.Decimal(0),
-                amount: amountDecimal,
-              };
-            }),
+              ),
+            })),
           ],
         },
       },

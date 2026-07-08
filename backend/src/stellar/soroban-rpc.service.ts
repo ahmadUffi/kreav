@@ -5,6 +5,7 @@ import {
   Contract,
   nativeToScVal,
   rpc,
+  scValToNative,
   TransactionBuilder,
   xdr,
 } from '@stellar/stellar-sdk';
@@ -147,6 +148,14 @@ export class SorobanRpcService {
       throw new SettlementSubmissionError(errDetail);
     }
 
+    // TRY_AGAIN_LATER = the tx was NOT accepted into the mempool (congestion).
+    // Without this branch the poll below would burn ~30s on a hash that will
+    // never appear, then leave the order stuck at SETTLEMENT_PENDING forever.
+    if (sendResp.status === 'TRY_AGAIN_LATER') {
+      this.logger.error(`settle submission throttled (orderRef=${orderRef}): TRY_AGAIN_LATER`);
+      throw new SettlementSubmissionError('TRY_AGAIN_LATER');
+    }
+
     // 5. Poll getTransaction until non-NOT_FOUND.
     const txHash = sendResp.hash;
     this.logger.log(`settle submitted (orderRef=${orderRef}, txHash=${txHash}); polling...`);
@@ -201,6 +210,40 @@ export class SorobanRpcService {
   async getTransactionStatus(txHash: string): Promise<'SUCCESS' | 'FAILED' | 'NOT_FOUND'> {
     const result = await this.server.getTransaction(txHash);
     return result.status;
+  }
+
+  /**
+   * Read-only call to the contract's `is_settled(order_ref)` (simulation only —
+   * nothing is submitted). The contract docs mandate this check before any
+   * settle retry: a duplicate invoke would fail with OrderAlreadySettled and
+   * the backend would wrongly mark an already-settled order SETTLEMENT_FAILED.
+   *
+   * A simulation that requires state restoration means the settlement marker
+   * EXISTS but its TTL expired (archived) — that still counts as settled.
+   *
+   * Throws on simulation/network error (caller decides how to degrade).
+   */
+  async isSettled(orderRef: string): Promise<boolean> {
+    const platformKeypair = this.platformKey.getKeypair();
+    const sourceAccount = await this.server.getAccount(platformKeypair.publicKey());
+
+    const tx = new TransactionBuilder(sourceAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: this.config.networkPassphrase,
+    })
+      .addOperation(this.contract.call('is_settled', xdr.ScVal.scvString(orderRef)))
+      .setTimeout(60)
+      .build();
+
+    const sim = await this.server.simulateTransaction(tx);
+    if (rpc.Api.isSimulationError(sim)) {
+      throw new Error(`is_settled simulation failed: ${JSON.stringify(sim.error)}`);
+    }
+    // Archived marker → entry exists but expired. Treat as settled.
+    if (rpc.Api.isSimulationRestore(sim)) {
+      return true;
+    }
+    return scValToNative(sim.result!.retval) === true;
   }
 
   /**
