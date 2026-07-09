@@ -17,6 +17,7 @@ import { AuthModule } from './auth/auth.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { UsersModule } from './users/users.module';
 import { SiteModule } from './site/site.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { SiteModule } from './site/site.module';
     AnalyticsModule,
     UsersModule,
     SiteModule,
+    NotificationsModule,
   ],
   providers: [
     // Activate the global throttle guard so @Throttle() / defaults apply.

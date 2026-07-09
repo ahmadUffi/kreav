@@ -39,7 +39,7 @@ export class OrdersService {
    * PAYMENT_PENDING — modeling the buyer being redirected to the payment
    * provider (GCash). The webhook later drives PAYMENT_PENDING → PAYMENT_RECEIVED.
    */
-  async checkout(productId: string): Promise<{ orderId: string }> {
+  async checkout(productId: string, buyerEmail: string): Promise<{ orderId: string }> {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
       select: { priceUsd: true, creatorId: true },
@@ -51,9 +51,9 @@ export class OrdersService {
     const order = await this.prisma.order.create({
       data: {
         productId,
-        // Buyer is anonymous in the demo (Filipino buyer via GCash). A real
-        // email would come from auth; a placeholder keeps the column NOT NULL.
-        buyerEmail: `buyer+${Date.now()}@kreav.test`,
+        // The buyer's email is captured at checkout — it's where the product
+        // download link is delivered after settlement (product-delivery listener).
+        buyerEmail,
         // Fresh Decimal — do NOT store the product's reference, or a later
         // mutation could corrupt the source row.
         amountUsd: new Prisma.Decimal(product.priceUsd.toFixed(2)),

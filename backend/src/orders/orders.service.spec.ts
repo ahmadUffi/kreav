@@ -53,11 +53,11 @@ describe('OrdersService', () => {
       prisma.product.findUnique.mockResolvedValue(product);
       prisma.order.create.mockResolvedValue({ id: 'o1', status: OrderStatus.PAYMENT_PENDING });
 
-      const result = await service.checkout('p1');
+      const result = await service.checkout('p1', 'buyer@example.com');
 
       const createData = prisma.order.create.mock.calls[0][0].data;
       expect(createData.productId).toBe('p1');
-      expect(createData.buyerEmail).toEqual(expect.any(String));
+      expect(createData.buyerEmail).toBe('buyer@example.com'); // captured from checkout, not a placeholder
       expect(createData.amountUsd.toFixed(2)).toBe('10.00'); // value match, not identity
       expect(createData.status).toBe(OrderStatus.PAYMENT_PENDING);
       expect(result).toEqual({ orderId: 'o1' });
@@ -65,7 +65,9 @@ describe('OrdersService', () => {
 
     it('throws NotFoundException when product does not exist', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
-      await expect(service.checkout('missing')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.checkout('missing', 'buyer@example.com')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
 
     it('stores a fresh decimal copy (not the product reference)', async () => {
@@ -73,7 +75,7 @@ describe('OrdersService', () => {
       prisma.product.findUnique.mockResolvedValue(product);
       prisma.order.create.mockResolvedValue({ id: 'o1' });
 
-      await service.checkout('p1');
+      await service.checkout('p1', 'buyer@example.com');
       const stored = prisma.order.create.mock.calls[0][0].data.amountUsd;
       expect(stored).not.toBe(product.priceUsd); // a NEW Decimal instance
       expect(stored.toFixed(2)).toBe('10.00');

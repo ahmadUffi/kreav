@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -74,15 +75,21 @@ export class OrdersController {
   })
   @ApiBody({
     type: CheckoutDto,
-    description: 'Checkout payload — just the product ID',
+    description: 'Checkout payload — product ID + buyer email (where the product link is sent)',
     examples: {
       sunset: {
         summary: '🌅 Lightroom Sunset Presets',
-        value: { productId: '550e8400-e29b-41d4-a716-446655440000' },
+        value: {
+          productId: '550e8400-e29b-41d4-a716-446655440000',
+          buyerEmail: 'buyer@example.com',
+        },
       },
       notion: {
         summary: '🗂️ Notion Creator OS',
-        value: { productId: '550e8400-e29b-41d4-a716-446655440001' },
+        value: {
+          productId: '550e8400-e29b-41d4-a716-446655440001',
+          buyerEmail: 'buyer@example.com',
+        },
       },
     },
   })
@@ -92,7 +99,7 @@ export class OrdersController {
   })
   @ApiResponse({ status: 404, description: 'Product not found' })
   checkout(@Body() dto: CheckoutDto) {
-    return this.orders.checkout(dto.productId);
+    return this.orders.checkout(dto.productId, dto.buyerEmail);
   }
 
   /**
@@ -145,6 +152,38 @@ export class OrdersController {
     }
 
     return this.orders.handleGcashPayment(dto.orderId, dto.paymentRef);
+  }
+
+  /**
+   * POST /orders/:id/simulate-payment — DEMO ONLY.
+   *
+   * Lets a buyer/judge complete a purchase in-app without a real PSP. Runs the
+   * EXACT same confirmation path as the real webhook (`handleGcashPayment`), so
+   * settlement + product delivery fire identically. Disabled (403) unless
+   * `DEMO_MODE` is on — never exposed in production. The HMAC secret never
+   * touches the browser because the confirmation happens server-side here.
+   *
+   * `paymentRef` is derived from the order id, so repeat clicks are idempotent.
+   */
+  @Post('orders/:id/simulate-payment')
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Simulate a completed payment (demo only)',
+    description:
+      'Confirms payment for an order without a real payment provider, using the ' +
+      'same server-side path as the GCash webhook. Returns 403 when DEMO_MODE is off.',
+  })
+  @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
+  @ApiResponse({ status: 200, description: 'Payment confirmed (settlement triggered)' })
+  @ApiResponse({ status: 403, description: 'DEMO_MODE is disabled' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  async simulatePayment(@Param('id') id: string) {
+    if (!this.config.get<boolean>('DEMO_MODE')) {
+      throw new ForbiddenException('Payment simulation is disabled');
+    }
+    this.logger.log(`POST /orders/${id}/simulate-payment (demo)`);
+    return this.orders.handleGcashPayment(id, `demo-${id}`);
   }
 
   // ── BE-018: Read endpoints ───────────────────────────────────────────────

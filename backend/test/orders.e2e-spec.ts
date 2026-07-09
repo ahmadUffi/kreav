@@ -114,31 +114,45 @@ describe('OrdersController (e2e)', () => {
   // Create a fresh order at CHECKOUT_STARTED for each webhook test. We POST
   // /checkout (the real path) and return the orderId.
   const createOrder = async (): Promise<string> => {
-    const res = await request(app.getHttpServer()).post('/checkout').send({ productId });
+    const res = await request(app.getHttpServer())
+      .post('/checkout')
+      .send({ productId, buyerEmail: 'buyer@example.com' });
     expect(res.status).toBe(201);
     return res.body.orderId as string;
   };
 
   describe('POST /checkout', () => {
     it('201 — creates an order, returns orderId', async () => {
-      const res = await request(app.getHttpServer()).post('/checkout').send({ productId });
+      const res = await request(app.getHttpServer())
+        .post('/checkout')
+        .send({ productId, buyerEmail: 'buyer@example.com' });
       expect(res.status).toBe(201);
       expect(res.body.orderId).toEqual(expect.any(String));
 
       const order = await prisma.order.findUnique({ where: { id: res.body.orderId } });
       expect(order?.status).toBe('PAYMENT_PENDING');
       expect(order?.amountUsd.toFixed(2)).toBe('10.00');
+      expect(order?.buyerEmail).toBe('buyer@example.com');
     });
 
     it('400 — rejects a non-UUID productId', async () => {
-      const res = await request(app.getHttpServer()).post('/checkout').send({ productId: 'nope' });
+      const res = await request(app.getHttpServer())
+        .post('/checkout')
+        .send({ productId: 'nope', buyerEmail: 'buyer@example.com' });
+      expect(res.status).toBe(400);
+    });
+
+    it('400 — rejects a missing/invalid buyerEmail', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/checkout')
+        .send({ productId, buyerEmail: 'not-an-email' });
       expect(res.status).toBe(400);
     });
 
     it('404 — product does not exist', async () => {
       const res = await request(app.getHttpServer())
         .post('/checkout')
-        .send({ productId: '00000000-0000-0000-0000-000000000000' });
+        .send({ productId: '00000000-0000-0000-0000-000000000000', buyerEmail: 'buyer@example.com' });
       expect(res.status).toBe(404);
     });
   });
@@ -187,6 +201,25 @@ describe('OrdersController (e2e)', () => {
           paymentRef,
         }),
       );
+    });
+
+    it('POST /orders/:id/simulate-payment (demo) confirms payment like the webhook', async () => {
+      // DEMO_MODE defaults on in test — the endpoint runs the same path as the
+      // real webhook without any signature/PSP.
+      const orderId = await createOrder();
+
+      const res = await request(app.getHttpServer())
+        .post(`/orders/${orderId}/simulate-payment`)
+        .send({});
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ status: 'paid', orderId });
+
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      expect(['PAYMENT_RECEIVED', 'SETTLEMENT_PENDING', 'SETTLED', 'SETTLEMENT_FAILED']).toContain(
+        order?.status,
+      );
+      expect(order?.paymentRef).toBe(`demo-${orderId}`);
     });
   });
 
