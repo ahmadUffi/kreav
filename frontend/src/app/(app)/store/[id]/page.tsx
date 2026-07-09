@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, Button } from "@/components/ui";
 import { getProduct } from "@/lib/api/products";
-import { checkout, getOrder } from "@/lib/api/orders";
+import { checkout, getOrder, simulatePayment } from "@/lib/api/orders";
 import { useApiQuery, useApiAction } from "@/lib/api/hooks";
 
-type Buy = "idle" | "pending" | "paid" | "failed";
+type Buy = "idle" | "paying" | "pending" | "paid" | "failed";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLLS = 20; // ~60s, then leave it in the pending state
@@ -22,6 +24,10 @@ export default function ProductDetailPage() {
   const { run: runCheckout, pending: creating, error: checkoutErr } = useApiAction(checkout);
   const [buy, setBuy] = useState<Buy>("idle");
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [emailErr, setEmailErr] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [payErr, setPayErr] = useState<string | null>(null);
   const pollsRef = useRef(0);
 
   // Poll the order for payment/settlement status after checkout.
@@ -52,10 +58,31 @@ export default function ProductDetailPage() {
 
   const onBuy = async () => {
     if (!product) return;
-    const oid = await runCheckout(product.id);
+    if (!EMAIL_RE.test(email.trim())) {
+      setEmailErr("Enter a valid email — your product link is sent here.");
+      return;
+    }
+    setEmailErr(null);
+    const oid = await runCheckout(product.id, email.trim());
     if (oid) {
       setOrderId(oid);
+      setBuy("paying"); // show the mock local-payment step
+    }
+  };
+
+  // Demo: simulate the buyer completing a local payment (QRIS/GCash). The
+  // backend runs the same confirmation path as the real PSP webhook.
+  const onPay = async () => {
+    if (!orderId) return;
+    setPayErr(null);
+    setPaying(true);
+    try {
+      await simulatePayment(orderId);
       setBuy("pending");
+    } catch (e) {
+      setPayErr(e instanceof Error ? e.message : "Payment couldn't be processed.");
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -165,18 +192,42 @@ export default function ProductDetailPage() {
                 ✓ Payment received
               </div>
               <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
-                Your order is confirmed and settling on Stellar. Order{" "}
+                Settled on Stellar and the creator was paid in USDC. We&apos;ve emailed your product
+                link to <span style={{ color: "var(--text)" }}>{email}</span>. Order{" "}
                 <span style={{ color: "var(--text)" }}>{orderId}</span>.
               </p>
+            </Card>
+          ) : buy === "paying" ? (
+            <Card style={{ padding: 18 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
+                Pay with your local method
+              </div>
+              <p style={{ margin: "0 0 14px", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
+                Choose how you&apos;d pay (demo — no real charge). The creator receives USDC on Stellar
+                the moment it clears.
+              </p>
+              <div className="mb-4 flex flex-wrap gap-2">
+                {["QRIS", "GCash", "GoPay", "Maya"].map((m) => (
+                  <Badge key={m} tone="neutral">{m}</Badge>
+                ))}
+              </div>
+              <Button variant="primary" fullWidth disabled={paying} onClick={onPay}>
+                {paying ? "Processing payment…" : `Pay $${p.price} (demo)`}
+              </Button>
+              {payErr && (
+                <p className="mt-3" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #b23a00)" }}>
+                  {payErr}
+                </p>
+              )}
             </Card>
           ) : buy === "pending" ? (
             <Card style={{ padding: 18 }}>
               <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>
-                <span className="kv-blink">⏳</span> Waiting for payment…
+                <span className="kv-blink">⏳</span> Settling on Stellar…
               </div>
               <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
-                Order <span style={{ color: "var(--text)" }}>{orderId}</span> is created. Complete the
-                payment with your provider — this page updates automatically once it lands.
+                Payment confirmed for order <span style={{ color: "var(--text)" }}>{orderId}</span>.
+                Splitting revenue to the creator on-chain — this page updates automatically.
               </p>
             </Card>
           ) : buy === "failed" ? (
@@ -187,23 +238,52 @@ export default function ProductDetailPage() {
               <p style={{ margin: "6px 0 12px", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
                 Order <span style={{ color: "var(--text)" }}>{orderId}</span> didn&apos;t go through.
               </p>
-              <Button variant="primary" onClick={onBuy}>
+              <Button variant="primary" onClick={() => setBuy("idle")}>
                 Try again
               </Button>
             </Card>
           ) : (
             <>
+              <label
+                htmlFor="buyer-email"
+                style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600, marginBottom: 7 }}
+              >
+                Email for your product link
+              </label>
+              <input
+                id="buyer-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="mb-3"
+                style={{
+                  width: "100%",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 14,
+                  padding: "12px 14px",
+                  borderRadius: "var(--r-sm, 8px)",
+                  border: "1.5px solid var(--line, rgba(10,10,10,.14))",
+                  background: "var(--card)",
+                  color: "var(--card-text)",
+                }}
+              />
               <Button variant="primary" fullWidth disabled={creating} onClick={onBuy}>
                 {creating ? "Starting checkout…" : `Buy now — $${p.price}`}
               </Button>
+              {emailErr && (
+                <p className="mt-3" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #b23a00)" }}>
+                  {emailErr}
+                </p>
+              )}
               {checkoutErr && (
                 <p className="mt-3" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #b23a00)" }}>
                   {checkoutErr.message}
                 </p>
               )}
               <p className="mt-3" style={{ fontFamily: "var(--font-mono)", fontSize: 12, lineHeight: 1.6, color: "var(--muted)" }}>
-                Checkout creates an order and waits for your payment. Settlement to the creator runs
-                on Stellar. <span style={{ color: "var(--text)" }}>Demo: payment is confirmed by a server-side webhook.</span>
+                Pay with a local method (QRIS/e-wallet). The creator receives USDC on Stellar in
+                seconds, and your download link is emailed once it settles.
               </p>
             </>
           )}

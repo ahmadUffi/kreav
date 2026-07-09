@@ -30,10 +30,22 @@ export interface OrderDetailView {
   settlementTxHash?: string;
 }
 
-/** Start a checkout for a product; returns the new order id (PAYMENT_PENDING). */
-export async function checkout(productId: string): Promise<string> {
-  const res = await api.post<CheckoutRaw>("/checkout", { productId });
+/**
+ * Start a checkout for a product; returns the new order id (PAYMENT_PENDING).
+ * `buyerEmail` is where the product download link is sent after settlement.
+ */
+export async function checkout(productId: string, buyerEmail: string): Promise<string> {
+  const res = await api.post<CheckoutRaw>("/checkout", { productId, buyerEmail });
   return res.orderId;
+}
+
+/**
+ * Demo-only: simulate the buyer completing a local payment. The backend runs
+ * the exact same confirmation path as the real PSP webhook (gated by DEMO_MODE),
+ * so settlement + product delivery fire identically — no manual webhook needed.
+ */
+export async function simulatePayment(orderId: string): Promise<void> {
+  await api.post(`/orders/${orderId}/simulate-payment`, {});
 }
 
 export async function getOrder(id: string): Promise<OrderDetailView> {
