@@ -130,6 +130,9 @@ USDC_ASSET_CODE=
 USDC_ISSUER=
 SPLIT_CONTRACT_ID=
 GCASH_WEBHOOK_SECRET=     # optional in dev; REQUIRED for on-stage demo
+RESEND_API_KEY=          # optional in dev (emails logged, not sent); set to deliver product links
+RESEND_FROM=             # from-address for outgoing email; defaults to Resend shared sender
+DEMO_MODE=               # true → exposes POST /orders/:id/simulate-payment; off in production
 ```
 
 ## Backend working agreement
