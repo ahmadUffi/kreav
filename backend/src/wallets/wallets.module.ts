@@ -3,6 +3,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { StellarModule } from '../stellar/stellar.module';
 import { WalletsController } from './wallets.controller';
 import { WalletsConnectController } from './wallets-connect.controller';
+import { WalletsTrustlineController } from './wallets-trustline.controller';
 import { WalletsService } from './wallets.service';
 
 /**
@@ -19,7 +20,7 @@ import { WalletsService } from './wallets.service';
  */
 @Module({
   imports: [PrismaModule, StellarModule],
-  controllers: [WalletsController, WalletsConnectController],
+  controllers: [WalletsController, WalletsConnectController, WalletsTrustlineController],
   providers: [WalletsService],
   exports: [WalletsService],
 })

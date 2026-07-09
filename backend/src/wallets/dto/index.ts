@@ -4,3 +4,8 @@ export { WalletBalanceResponseDto } from './wallet-balance-response.dto';
 export { WalletTransactionsResponseDto } from './wallet-transaction-response.dto';
 export { ConnectWalletDto } from './connect-wallet.dto';
 export { ConnectWalletResponseDto } from './connect-wallet-response.dto';
+export {
+  PrepareTrustlineResponseDto,
+  SubmitTrustlineDto,
+  SubmitTrustlineResponseDto,
+} from './trustline.dto';
