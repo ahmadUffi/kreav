@@ -2,6 +2,8 @@ import { api } from "./client";
 import { mapWalletTx, parseMoney } from "./mappers";
 import type {
   ConnectWalletBody,
+  PrepareTrustlineRaw,
+  SubmitTrustlineRaw,
   WalletBalanceRaw,
   WalletConnectionRaw,
   WalletTxResponseRaw,
@@ -53,4 +55,37 @@ export async function getWallet(): Promise<WalletView> {
 /** Connect a wallet to the authenticated creator (identity from the JWT). */
 export async function connectWallet(body: ConnectWalletBody): Promise<WalletConnectionRaw> {
   return api.post<WalletConnectionRaw>("/wallets", body);
+}
+
+/**
+ * Sponsored USDC-trustline activation (Fase 1.5).
+ *
+ * The platform builds + signs the transaction and sponsors the reserve + fee;
+ * the creator only co-signs in Freighter. One click, no XLM required.
+ *
+ *   prepare (platform-signed XDR) → Freighter sign → submit (on-chain)
+ *
+ * `signerAddress` is the creator's connected wallet — Freighter signs as it.
+ * Throws Error with a friendly message on rejection/failure.
+ */
+export async function activateUsdc(signerAddress: string): Promise<SubmitTrustlineRaw> {
+  const prepared = await api.post<PrepareTrustlineRaw>("/wallets/trustline/prepare", {});
+
+  const { signTransaction } = await import("@stellar/freighter-api");
+  const signed = await signTransaction(prepared.xdr, {
+    networkPassphrase: prepared.networkPassphrase,
+    address: signerAddress,
+  });
+  if (signed.error || !signed.signedTxXdr) {
+    const message =
+      typeof signed.error === "string"
+        ? signed.error
+        : ((signed.error as { message?: string } | undefined)?.message ??
+          "Signing was cancelled in Freighter.");
+    throw new Error(message);
+  }
+
+  return api.post<SubmitTrustlineRaw>("/wallets/trustline/submit", {
+    signedXdr: signed.signedTxXdr,
+  });
 }

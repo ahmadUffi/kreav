@@ -4,6 +4,7 @@ import { Card, Button, Input } from "@/components/ui";
 import { useSession } from "@/lib/api/useSession";
 import { useApiQuery } from "@/lib/api/hooks";
 import { SessionNotice } from "@/components/SessionNotice";
+import UsdcActivationPanel from "@/components/UsdcActivationPanel";
 import { truncateAddress } from "@/lib/stellar";
 import { getWallet } from "@/lib/api/wallet";
 import { createWithdrawal, getWithdrawal } from "@/lib/api/withdrawals";
@@ -36,6 +37,12 @@ export default function DashboardWalletPage() {
           <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{error.message}</p>
         </Card>
       ) : wallet ? (
+        <>
+        {!wallet.hasUsdcTrustline && (
+          <div className="mb-6">
+            <UsdcActivationPanel address={wallet.address} onActivated={() => refetch()} />
+          </div>
+        )}
         <div className="grid items-start gap-6 md:grid-cols-[minmax(220px,320px)_1fr]">
           {/* Balance */}
           <Card style={{ background: "var(--text)", color: "var(--bg)" }}>
@@ -101,6 +108,7 @@ export default function DashboardWalletPage() {
             )}
           </Card>
         </div>
+        </>
       ) : null}
 
       {showForm && walletAddress && (

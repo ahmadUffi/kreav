@@ -177,6 +177,15 @@ export interface WalletConnectionRaw {
   provider: WalletProvider;
   connectedAt: string;
 }
+export interface PrepareTrustlineRaw {
+  xdr: string;
+  networkPassphrase: string;
+  createsAccount: boolean;
+}
+export interface SubmitTrustlineRaw {
+  txHash: string;
+  explorerLink: string;
+}
 
 /* ── Withdrawals ──────────────────────────────────────────────────────── */
 export interface CreateWithdrawalBody {
