@@ -7,6 +7,7 @@ import { PlatformKeypairService } from './platform-keypair.service';
 import { HorizonService } from './horizon.service';
 import { SorobanRpcService } from './soroban-rpc.service';
 import { SettlementService } from './settlement.service';
+import { SponsorshipService } from './sponsorship.service';
 
 /**
  * Stellar Module — BE-007.
@@ -32,6 +33,7 @@ import { SettlementService } from './settlement.service';
     HorizonService,
     SorobanRpcService,
     SettlementService,
+    SponsorshipService,
     ExplorerService,
     FloatMonitorService,
   ],
@@ -41,6 +43,7 @@ import { SettlementService } from './settlement.service';
     HorizonService,
     PlatformKeypairService,
     SettlementService,
+    SponsorshipService,
     ExplorerService,
   ],
 })

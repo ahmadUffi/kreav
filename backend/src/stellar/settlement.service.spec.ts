@@ -11,6 +11,7 @@ import {
   SettlementSubmissionError,
   SettlementTimeoutError,
 } from './soroban-rpc.service';
+import { HorizonService } from './horizon.service';
 import { USDC_DECIMALS } from './stellar.config';
 
 /**
@@ -38,6 +39,7 @@ describe('SettlementService', () => {
   };
   let emitter: { emit: jest.Mock };
   let sorobanRpc: { invokeSettle: jest.Mock; isSettled: jest.Mock };
+  let horizon: { getUsdcBalance: jest.Mock };
 
   // ── Test data ──────────────────────────────────────────────────────────────
 
@@ -98,6 +100,12 @@ describe('SettlementService', () => {
     emitter = { emit: jest.fn() };
     // Default: order not yet settled on-chain (pre-check passes through).
     sorobanRpc = { invokeSettle: jest.fn(), isSettled: jest.fn().mockResolvedValue(false) };
+    // Default: every recipient already has a USDC trustline (pre-check passes).
+    horizon = {
+      getUsdcBalance: jest
+        .fn()
+        .mockResolvedValue({ balanceUsd: '0', hasUsdcTrustline: true, accountExists: true }),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -105,6 +113,7 @@ describe('SettlementService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: EventEmitter2, useValue: emitter },
         { provide: SorobanRpcService, useValue: sorobanRpc },
+        { provide: HorizonService, useValue: horizon },
       ],
     }).compile();
 
@@ -475,6 +484,42 @@ describe('SettlementService', () => {
         data: expect.objectContaining({ status: OrderStatus.SETTLEMENT_FAILED }),
       }),
     );
+  });
+
+  // ── Recipient trustline pre-check ──────────────────────────────────────────
+
+  it('fails fast to SETTLEMENT_FAILED when a recipient lacks a USDC trustline', async () => {
+    prisma.order.findUnique.mockResolvedValue(MOCK_ORDER);
+    prisma.productCollaborator.findMany.mockResolvedValue(MOCK_COLLABORATORS);
+    // GCREATOR_B has no trustline; the other two do.
+    horizon.getUsdcBalance.mockImplementation(async (address: string) => ({
+      balanceUsd: '0',
+      hasUsdcTrustline: address !== 'GCREATOR_B',
+      accountExists: true,
+    }));
+
+    await service.handlePaymentReceived(PAYMENT_PAYLOAD);
+
+    // Never invoke on-chain — would revert atomically and burn the fee.
+    expect(sorobanRpc.invokeSettle).not.toHaveBeenCalled();
+    expect(prisma.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: OrderStatus.SETTLEMENT_FAILED }),
+      }),
+    );
+  });
+
+  it('proceeds with settlement when a trustline read errors (soft degrade)', async () => {
+    prisma.order.findUnique.mockResolvedValue(MOCK_ORDER);
+    prisma.productCollaborator.findMany.mockResolvedValue(MOCK_COLLABORATORS);
+    horizon.getUsdcBalance.mockRejectedValue(new Error('Horizon unreachable'));
+    sorobanRpc.invokeSettle.mockResolvedValue(MOCK_INVOKE_SUCCESS);
+    prisma.settlement.create.mockResolvedValue({ id: 'settlement-uuid' });
+
+    await service.handlePaymentReceived(PAYMENT_PAYLOAD);
+
+    // Contract remains the authoritative guard — do not block on a read failure.
+    expect(sorobanRpc.invokeSettle).toHaveBeenCalled();
   });
 
   // ── Invalid state transition ───────────────────────────────────────────────

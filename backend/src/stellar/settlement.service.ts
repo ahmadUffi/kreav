@@ -14,6 +14,7 @@ import {
   SettlementSubmissionError,
   SettlementTimeoutError,
 } from './soroban-rpc.service';
+import { HorizonService } from './horizon.service';
 import { USDC_DECIMALS } from './stellar.config';
 
 /** Mirrors the contract's MAX_RECIPIENTS — settle() rejects vectors above 10. */
@@ -51,6 +52,7 @@ export class SettlementService {
     private readonly prisma: PrismaService,
     private readonly emitter: EventEmitter2,
     private readonly sorobanRpc: SorobanRpcService,
+    private readonly horizon: HorizonService,
   ) {}
 
   /**
@@ -161,6 +163,28 @@ export class SettlementService {
         shareBps: c.revenuePercentage.mul(100).toNumber(), // Decimal(5,2) → bps
       }));
 
+      // ── Step 3b: Recipient trustline pre-check ──────────────────────
+      // `settle` is atomic: if ANY recipient lacks a USDC trustline, the SAC
+      // transfer reverts (op_no_trust) and the whole settlement fails on-chain —
+      // burning the fee and blocking every other collaborator. Check first so we
+      // fail fast with an actionable reason instead of an opaque on-chain revert.
+      // Degrade soft: if a Horizon read errors (network), proceed — the contract
+      // remains the authoritative guard.
+      const missingTrustline = await this.findRecipientsMissingTrustline(recipients);
+      if (missingTrustline.length > 0) {
+        this.logger.error(
+          `RECIPIENT_NO_TRUSTLINE (order=${orderId}): ` +
+            `${missingTrustline.length} recipient(s) lack a USDC trustline ` +
+            `[${missingTrustline.map((a) => a.slice(0, 8) + '...').join(', ')}]. ` +
+            'They must activate USDC (POST /wallets/trustline/prepare) before settling.',
+        );
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.SETTLEMENT_FAILED },
+        });
+        return;
+      }
+
       // ── Step 4: Scale to base units (× 10^7) ────────────────────────
       // amountUsd is a decimal string like "10.00"
       const totalAmountBase = BigInt(
@@ -231,6 +255,34 @@ export class SettlementService {
     } catch (err) {
       await this.handleSettlementError(orderId, err);
     }
+  }
+
+  /**
+   * Return the subset of recipient addresses that do NOT have a USDC trustline.
+   *
+   * Reads each recipient's account state from Horizon. If a read throws
+   * (network/Horizon error) we treat that recipient as OK (soft degrade) and let
+   * the contract's atomic transfer be the final guard — we never block a
+   * settlement on a transient read failure.
+   */
+  private async findRecipientsMissingTrustline(
+    recipients: RecipientInput[],
+  ): Promise<string[]> {
+    const checks = await Promise.all(
+      recipients.map(async (r) => {
+        try {
+          const state = await this.horizon.getUsdcBalance(r.address);
+          return state.hasUsdcTrustline ? null : r.address;
+        } catch (err) {
+          this.logger.warn(
+            `Trustline pre-check failed for ${r.address.slice(0, 8)}... — assuming OK: ` +
+              (err instanceof Error ? err.message : String(err)),
+          );
+          return null;
+        }
+      }),
+    );
+    return checks.filter((a): a is string => a !== null);
   }
 
   /**
