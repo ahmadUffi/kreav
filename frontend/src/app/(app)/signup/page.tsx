@@ -55,13 +55,25 @@ export default function SignupPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<Phase>("form");
-  const [data, setData] = useState<Data>({ role: null, email: "", username: "", country: "", walletAddress: null });
+  // Default to creator — buyer accounts are "coming soon".
+  const [data, setData] = useState<Data>({ role: "creator", email: "", username: "", country: "", walletAddress: null });
   const [errors, setErrors] = useState<{ email?: string; username?: string; country?: string }>({});
   const [checking, setChecking] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Arrived from the navbar with a connected wallet → skip role + wallet steps.
+  const [walletPrefilled, setWalletPrefilled] = useState(false);
 
-  const steps = stepsFor(data.role);
-  const kind = stepKind(data.role, step);
+  useEffect(() => {
+    const wallet = new URLSearchParams(window.location.search).get("wallet");
+    if (wallet && /^G[A-Z2-7]{55}$/.test(wallet)) {
+      setData((d) => ({ ...d, role: "creator", walletAddress: wallet }));
+      setWalletPrefilled(true);
+    }
+  }, []);
+
+  // With a prefilled wallet the flow is just details → review.
+  const steps = walletPrefilled ? ["Your details", "Review"] : stepsFor(data.role);
+  const kind: StepKind = walletPrefilled ? (step === 0 ? "details" : "review") : stepKind(data.role, step);
   const isLast = step === steps.length - 1;
 
   // Redirect after a successful create.
@@ -129,7 +141,10 @@ export default function SignupPage() {
           setErrors((e) => ({ ...e, username: "That username is already taken" }));
           return;
         }
-        setStep(2);
+        // Next: review if the wallet is already known, else the wallet step.
+        if (walletPrefilled) setStep(1);
+        else if (data.walletAddress) setStep(3);
+        else setStep(2);
       } catch (e) {
         setErrors((e2) => ({ ...e2, username: e instanceof ApiError ? e.message : "Couldn't check username" }));
       } finally {
@@ -196,15 +211,20 @@ export default function SignupPage() {
       {kind === "role" && (
         <div className="grid grid-cols-2 gap-3">
           {ROLES.map((r) => {
+            const comingSoon = r.value === "buyer";
             const active = data.role === r.value;
             return (
               <button
                 key={r.value}
                 type="button"
-                onClick={() => set({ role: r.value })}
+                disabled={comingSoon}
+                aria-disabled={comingSoon}
+                onClick={() => !comingSoon && set({ role: r.value })}
                 style={{
+                  position: "relative",
                   textAlign: "left",
-                  cursor: "pointer",
+                  cursor: comingSoon ? "not-allowed" : "pointer",
+                  opacity: comingSoon ? 0.55 : 1,
                   background: active ? "var(--surface-2, rgba(10,10,10,.045))" : "var(--card)",
                   color: "var(--card-text)",
                   padding: 16,
@@ -214,6 +234,26 @@ export default function SignupPage() {
                   transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
                 }}
               >
+                {comingSoon && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 12,
+                      right: 12,
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: 0.5,
+                      textTransform: "uppercase",
+                      background: "var(--surface-2, rgba(10,10,10,.08))",
+                      color: "var(--muted)",
+                      borderRadius: 999,
+                      padding: "3px 8px",
+                    }}
+                  >
+                    Coming soon
+                  </span>
+                )}
                 <div style={{ fontSize: 26, marginBottom: 8 }}>{r.emoji}</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700 }}>{r.title}</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.5 }}>

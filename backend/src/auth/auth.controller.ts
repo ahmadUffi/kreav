@@ -1,6 +1,13 @@
-import { Body, Controller, HttpCode, Logger, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Logger, Post, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiBody, ApiCreatedResponse, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import {
   RegisterDto,
@@ -78,6 +85,24 @@ export class AuthController {
   async register(@Body() dto: RegisterDto): Promise<RegisterWithTokenResponseDto> {
     this.logger.log(`POST /auth/register email=${dto.email} role=${dto.role}`);
     return this.auth.register(dto);
+  }
+
+  /**
+   * GET /auth/wallet-status — is this wallet already linked to an account?
+   * Lets the client decide login-vs-onboard before any SEP-10 signature.
+   */
+  @Get('wallet-status')
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  @ApiOperation({
+    summary: 'Check whether a wallet is registered',
+    description:
+      'Returns { registered: boolean } for a Stellar wallet address. Used to route ' +
+      'a returning wallet to SEP-10 login and a new wallet to creator onboarding.',
+  })
+  @ApiQuery({ name: 'address', description: 'Stellar public key (G...)', required: true })
+  @ApiResponse({ status: 200, description: 'Registration status', schema: { example: { registered: true } } })
+  async walletStatus(@Query('address') address: string): Promise<{ registered: boolean }> {
+    return this.auth.walletStatus(address ?? '');
   }
 
   /**

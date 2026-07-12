@@ -100,6 +100,21 @@ export class AuthService {
   }
 
   /**
+   * Report whether a wallet is already linked to a Kreav account.
+   *
+   * Pre-auth, read-only. The navbar uses this to branch: a registered wallet
+   * goes through SEP-10 login; an unknown wallet is sent to creator onboarding
+   * (so a brand-new user never signs a challenge that would only fail).
+   */
+  async walletStatus(walletAddress: string): Promise<{ registered: boolean }> {
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { walletAddress },
+      select: { id: true },
+    });
+    return { registered: !!wallet };
+  }
+
+  /**
    * Build a SEP-10 challenge transaction for a wallet address.
    * The client signs it with Freighter and POSTs it back to /auth/verify.
    */

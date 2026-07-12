@@ -6,6 +6,15 @@ export async function register(body: RegisterBody): Promise<AuthUserRaw & { toke
   return api.post<AuthUserRaw & { token: string }>("/auth/register", body);
 }
 
+/**
+ * Is this wallet already linked to a Kreav account? Lets the navbar route a
+ * returning wallet to SEP-10 login and a new wallet to creator onboarding,
+ * without a doomed signature prompt.
+ */
+export async function walletStatus(address: string): Promise<{ registered: boolean }> {
+  return api.get<{ registered: boolean }>("/auth/wallet-status", { address });
+}
+
 /** SEP-10 step 1 — request a challenge transaction for a wallet address. */
 export async function getChallenge(walletAddress: string): Promise<ChallengeRaw> {
   return api.post<ChallengeRaw>("/auth/challenge", { walletAddress });
