@@ -1,4 +1,10 @@
-import { BadGatewayException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { WithdrawalStatus } from '@prisma/client';
 import { STELLAR_CONFIG, type StellarConfig } from '../../stellar/stellar.config';
 
@@ -139,6 +145,17 @@ export class AnchorSep24Service {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  /** Pull the human message out of a SEP error body (`{ "error": "..." }`). */
+  private extractAnchorError(text: string): string | null {
+    try {
+      const body = JSON.parse(text) as { error?: unknown };
+      if (typeof body.error === 'string' && body.error.trim()) return body.error.trim();
+    } catch {
+      /* non-JSON — fall through */
+    }
+    return null;
+  }
+
   private async request<T>(url: string, init: RequestInit): Promise<T> {
     let res: Response;
     try {
@@ -150,7 +167,14 @@ export class AnchorSep24Service {
     const text = await res.text();
     if (!res.ok) {
       this.logger.error(`Anchor ${res.status} (${url}): ${text.slice(0, 300)}`);
-      throw new BadGatewayException(`Anchor returned ${res.status}`);
+      // Surface the anchor's own message (e.g. "amount is less than asset's
+      // minimum limit: 0.2") so the creator sees the actionable reason. A 4xx is
+      // the creator's input problem (→ 400); a 5xx is the anchor's (→ 502).
+      const reason = this.extractAnchorError(text);
+      if (res.status >= 400 && res.status < 500) {
+        throw new BadRequestException(reason ? `Anchor: ${reason}` : `Anchor rejected the request`);
+      }
+      throw new BadGatewayException(reason ? `Anchor: ${reason}` : `Anchor returned ${res.status}`);
     }
     try {
       return JSON.parse(text) as T;

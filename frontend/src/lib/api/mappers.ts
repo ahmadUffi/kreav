@@ -131,18 +131,23 @@ export function mapOrder(raw: OrderRaw): OrderView {
 
 /* ── Wallet transactions ──────────────────────────────────────────────── */
 export function mapWalletTx(raw: WalletTxRaw): WalletTxView {
-  // A settlement crediting the creator's wallet is money in.
-  const isCredit = raw.recipientType === "CREATOR";
-  const label = raw.role
-    ? `Settlement — ${raw.role}`
-    : `Settlement (${raw.recipientType.toLowerCase()})`;
+  // Withdrawals are money out; a settlement crediting the creator is money in.
+  const isWithdrawal = raw.kind === "WITHDRAWAL";
+  const isCredit = raw.direction
+    ? raw.direction === "credit"
+    : raw.recipientType === "CREATOR";
+  const label = isWithdrawal
+    ? `Withdrawal${raw.destination ? ` — ${raw.destination}` : ""}`
+    : raw.role
+      ? `Settlement — ${raw.role}`
+      : `Settlement (${raw.recipientType.toLowerCase()})`;
   return {
     id: raw.id,
     label,
     amount: parseMoney(raw.amount),
     type: isCredit ? "credit" : "debit",
     date: toDateOnly(raw.createdAt),
-    explorerLink: raw.explorerLink,
+    explorerLink: raw.explorerLink || undefined,
   };
 }
 

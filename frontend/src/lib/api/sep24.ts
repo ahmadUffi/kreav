@@ -82,6 +82,7 @@ export async function sendUsdcToAnchor(
   const signedXdr = await signXdr(built.xdr, built.networkPassphrase, walletAddress);
   const { txHash } = await api.post<{ txHash: string }>("/withdrawals/anchor/submit-payment", {
     signedXdr,
+    id,
   });
   return txHash;
 }

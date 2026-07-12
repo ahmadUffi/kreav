@@ -156,14 +156,18 @@ export interface WalletBalanceRaw {
 }
 export interface WalletTxRaw {
   id: string;
+  // Discriminates incoming settlements from outgoing withdrawals (Fase 2A).
+  kind?: "SETTLEMENT" | "WITHDRAWAL";
+  direction?: "credit" | "debit";
   orderId: string;
   txHash: string;
   totalAmount: string;
   amount: string;
-  recipientType: "CREATOR" | "PLATFORM" | "AFFILIATE" | "TREASURY";
+  recipientType: "CREATOR" | "PLATFORM" | "AFFILIATE" | "TREASURY" | "";
   role: string;
   percentage: string;
-  status: SettlementStatus;
+  destination?: string;
+  status: string;
   explorerLink: string;
   createdAt: string;
 }
@@ -271,7 +275,7 @@ export interface WalletTxView {
   amount: number;
   type: "credit" | "debit";
   date: string;
-  explorerLink: string;
+  explorerLink?: string;
 }
 
 export interface WalletView {

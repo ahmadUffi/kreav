@@ -307,6 +307,8 @@ model Withdrawal {
   status             WithdrawalStatus @default(REQUESTED)
   // SEP-24 anchor transaction id (Fase 2A off-ramp) — null for simulated withdrawals.
   anchorTransactionId String?         @map("anchor_transaction_id")
+  // On-chain hash of the creator→anchor USDC send (Fase 2A) — null until sent.
+  txHash             String?          @map("tx_hash")
   createdAt          DateTime         @default(now()) @map("created_at")
   completedAt        DateTime?        @map("completed_at")
 

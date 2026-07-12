@@ -91,15 +91,20 @@ export default function DashboardWalletPage() {
                   <div>
                     <div style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>{t.label}</div>
                     <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                      {t.date} ·{" "}
-                      <a
-                        href={t.explorerLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "var(--muted)", textDecoration: "underline", textUnderlineOffset: 2 }}
-                      >
-                        view on explorer ↗
-                      </a>
+                      {t.date}
+                      {t.explorerLink && (
+                        <>
+                          {" · "}
+                          <a
+                            href={t.explorerLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: "var(--muted)", textDecoration: "underline", textUnderlineOffset: 2 }}
+                          >
+                            view on explorer ↗
+                          </a>
+                        </>
+                      )}
                     </div>
                   </div>
                   <span
@@ -397,6 +402,17 @@ function AnchorWithdrawFlow({
     const amt = parseFloat(amount);
     if (!Number.isFinite(amt) || amt < 0.01) return setErr("Enter an amount of at least 0.01.");
     if (amt > maxAmount) return setErr(`You can withdraw at most $${maxAmount.toLocaleString("en-US")}.`);
+    // Open the popup NOW — synchronously inside the click gesture — so the
+    // browser makes it a real popup WINDOW, not a tab. (Opening it after the
+    // awaits below loses the user-gesture context and Chrome falls back to a
+    // tab.) We navigate the blank popup to the anchor URL once we have it.
+    const w = 460;
+    const h = 720;
+    const left = Math.max(0, Math.round((window.screen.width - w) / 2));
+    const top = Math.max(0, Math.round((window.screen.height - h) / 2));
+    const features = `popup,width=${w},height=${h},left=${left},top=${top}`;
+    const popup = window.open("about:blank", "kreav-anchor", features);
+
     setPhase("authorizing");
     try {
       const anchorToken = await authenticateAnchor(walletAddress);
@@ -404,9 +420,16 @@ function AnchorWithdrawFlow({
       const { url, id } = await startAnchorWithdrawal(anchorToken, amt);
       setTxId(id);
       setInteractiveUrl(url);
-      window.open(url, "_blank", "noopener,noreferrer"); // may be popup-blocked → link shown too
+      if (popup && !popup.closed) {
+        popup.location.href = url;
+        popup.focus?.();
+      } else {
+        // Popup was blocked → the "Re-open anchor form" link is the fallback.
+        window.open(url, "kreav-anchor", features);
+      }
       setPhase("interactive");
     } catch (e) {
+      if (popup && !popup.closed) popup.close();
       setErr(e instanceof ApiError || e instanceof Error ? e.message : "Could not reach the anchor.");
       setPhase("form");
     }

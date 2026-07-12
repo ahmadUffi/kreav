@@ -117,13 +117,18 @@ export class WithdrawalsAnchorController {
     const tx = await this.anchor.getTransaction(anchorToken, id);
 
     // Mirror the anchor status onto our Withdrawal row (idempotent on read).
+    // Reconcile the amount to the anchor's authoritative `amount_in` — the
+    // creator may have changed it in the anchor's own form (the Kreav amount is
+    // only a prefill), so the record must reflect what actually moved.
     const status = this.anchor.mapStatus(tx.status);
+    const data: { status: typeof status; completedAt: Date | null; amount?: Prisma.Decimal } = {
+      status,
+      completedAt: status === 'COMPLETED' ? new Date() : null,
+    };
+    if (tx.amountIn) data.amount = new Prisma.Decimal(tx.amountIn);
     await this.prisma.withdrawal.updateMany({
       where: { anchorTransactionId: id },
-      data: {
-        status,
-        completedAt: status === 'COMPLETED' ? new Date() : null,
-      },
+      data,
     });
 
     return {
@@ -168,6 +173,11 @@ export class WithdrawalsAnchorController {
     this.assertEnabled();
     const address = await this.wallets.getAddressForCreator(user.userId);
     const txHash = await this.sponsorship.submitWithdrawPayment(dto.signedXdr, address);
+    // Record the on-chain send hash so it surfaces in the wallet's Recent transactions.
+    await this.prisma.withdrawal.updateMany({
+      where: { anchorTransactionId: dto.id },
+      data: { txHash },
+    });
     return { txHash };
   }
 

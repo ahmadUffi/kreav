@@ -64,6 +64,8 @@ export class WalletsService {
     address: string;
     transactions: Array<{
       id: string;
+      kind: 'SETTLEMENT' | 'WITHDRAWAL';
+      direction: 'credit' | 'debit';
       orderId: string;
       txHash: string;
       explorerLink: string;
@@ -72,6 +74,7 @@ export class WalletsService {
       recipientType: string;
       role: string;
       percentage: string;
+      destination: string;
       status: string;
       createdAt: string;
     }>;
@@ -81,47 +84,82 @@ export class WalletsService {
   }> {
     const skip = (page - 1) * limit;
 
-    const [rows, total] = await Promise.all([
+    // toFixed(2) matches the DecimalToStringInterceptor convention — "9.50" not "9.5".
+    const fmt = (d: { toFixed?: (n: number) => string } | null | undefined): string =>
+      d?.toFixed?.(2) ?? String(d);
+    const iso = (d: Date | string): string => (d instanceof Date ? d.toISOString() : String(d));
+    const ts = (d: Date | string): number => new Date(d).getTime();
+
+    // Withdrawals are keyed by creator, settlements by wallet address — resolve
+    // the creator so we can show BOTH incoming settlements and outgoing
+    // withdrawals in one merged, newest-first history.
+    const walletRow = await this.prisma.wallet.findFirst({
+      where: { walletAddress: address },
+      select: { creatorId: true },
+    });
+
+    const [settlementRows, withdrawalRows] = await Promise.all([
       this.prisma.settlementRecipient.findMany({
         where: { walletAddress: address },
         include: {
           settlement: {
-            select: {
-              orderId: true,
-              txHash: true,
-              totalAmount: true,
-              status: true,
-              createdAt: true,
-            },
+            select: { orderId: true, txHash: true, totalAmount: true, status: true, createdAt: true },
           },
         },
         orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
       }),
-      this.prisma.settlementRecipient.count({
-        where: { walletAddress: address },
-      }),
+      walletRow
+        ? this.prisma.withdrawal.findMany({
+            where: { creatorId: walletRow.creatorId },
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
     ]);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma nested include shape is complex
-    const transactions = rows.map((row: any) => ({
+    const settlementTx = settlementRows.map((row: any) => ({
       id: row.id,
+      kind: 'SETTLEMENT' as const,
+      direction: (row.recipientType === 'CREATOR' ? 'credit' : 'debit') as 'credit' | 'debit',
       orderId: row.settlement.orderId,
       txHash: row.settlement.txHash,
       explorerLink: this.explorer.txUrl(row.settlement.txHash),
-      // toFixed(2) matches the DecimalToStringInterceptor convention — "9.50" not "9.5"
-      totalAmount: row.settlement.totalAmount?.toFixed?.(2) ?? String(row.settlement.totalAmount),
-      amount: row.amount?.toFixed?.(2) ?? String(row.amount),
+      totalAmount: fmt(row.settlement.totalAmount),
+      amount: fmt(row.amount),
       recipientType: row.recipientType,
       role: row.role,
-      percentage: row.percentage?.toFixed?.(2) ?? String(row.percentage),
+      percentage: fmt(row.percentage),
+      destination: '',
       status: row.settlement.status,
-      createdAt:
-        row.settlement.createdAt instanceof Date
-          ? row.settlement.createdAt.toISOString()
-          : String(row.settlement.createdAt),
+      createdAt: iso(row.settlement.createdAt),
+      _sort: ts(row.settlement.createdAt),
     }));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma model shape
+    const withdrawalTx = withdrawalRows.map((w: any) => ({
+      id: w.id,
+      kind: 'WITHDRAWAL' as const,
+      direction: 'debit' as const,
+      orderId: '',
+      txHash: w.txHash ?? '',
+      explorerLink: w.txHash ? this.explorer.txUrl(w.txHash) : '',
+      totalAmount: fmt(w.amount),
+      amount: fmt(w.amount),
+      recipientType: '',
+      role: '',
+      percentage: '',
+      destination: w.destinationType,
+      status: w.status,
+      createdAt: iso(w.createdAt),
+      _sort: ts(w.createdAt),
+    }));
+
+    // Merge both sources, newest-first, then paginate the combined list.
+    const merged = [...settlementTx, ...withdrawalTx].sort((a, b) => b._sort - a._sort);
+    const total = merged.length;
+    const transactions = merged
+      .slice(skip, skip + limit)
+      .map(({ _sort: _unused, ...t }) => t);
 
     return {
       address,

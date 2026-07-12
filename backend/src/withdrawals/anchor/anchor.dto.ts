@@ -41,4 +41,9 @@ export class AnchorSubmitPaymentDto {
   @IsString()
   @IsNotEmpty()
   signedXdr!: string;
+
+  @ApiProperty({ description: 'Anchor SEP-24 transaction id (to record the tx hash against)' })
+  @IsString()
+  @IsNotEmpty()
+  id!: string;
 }
