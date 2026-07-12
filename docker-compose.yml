@@ -14,6 +14,11 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
+    # Explicit resolvers: the host's systemd-resolved stub (127.0.0.53) is not
+    # reachable from inside containers, which breaks DNS (Neon, Stellar, ...).
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     expose:
       - '3000'
     healthcheck:
@@ -43,11 +48,17 @@ services:
     ports:
       - '80:80'
       - '443:443'
+    # Explicit resolvers so ACME (Let's Encrypt) hostname lookups succeed; the
+    # host stub resolver (127.0.0.53) is unreachable from the container.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     environment:
       # Consumed by ./Caddyfile via Caddy's native env substitution.
       APP_DOMAIN: ${APP_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}
       FUTURE_DOMAIN: ${FUTURE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
