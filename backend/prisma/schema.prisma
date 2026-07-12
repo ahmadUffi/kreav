@@ -305,6 +305,8 @@ model Withdrawal {
   destinationAccount String           @map("destination_account")
   reference          String           @unique @map("reference")
   status             WithdrawalStatus @default(REQUESTED)
+  // SEP-24 anchor transaction id (Fase 2A off-ramp) — null for simulated withdrawals.
+  anchorTransactionId String?         @map("anchor_transaction_id")
   createdAt          DateTime         @default(now()) @map("created_at")
   completedAt        DateTime?        @map("completed_at")
 

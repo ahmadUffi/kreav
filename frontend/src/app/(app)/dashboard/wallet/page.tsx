@@ -8,10 +8,19 @@ import UsdcActivationPanel from "@/components/UsdcActivationPanel";
 import { truncateAddress } from "@/lib/stellar";
 import { getWallet } from "@/lib/api/wallet";
 import { createWithdrawal, getWithdrawal } from "@/lib/api/withdrawals";
+import {
+  authenticateAnchor,
+  startAnchorWithdrawal,
+  pollAnchorTx,
+  sendUsdcToAnchor,
+} from "@/lib/api/sep24";
 import type { WithdrawalDestination, WithdrawalReceipt } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
 
 const DESTINATIONS: WithdrawalDestination[] = ["GCASH", "GOPAY", "PAYNOW", "BANK"];
+
+/** Fase 2A: when enabled, the Withdraw button opens the real SEP-24 anchor flow. */
+const ANCHOR_ENABLED = process.env.NEXT_PUBLIC_ANCHOR_ENABLED === "true";
 
 export default function DashboardWalletPage() {
   const { ready, walletAddress } = useSession();
@@ -112,11 +121,20 @@ export default function DashboardWalletPage() {
       ) : null}
 
       {showForm && walletAddress && (
-        <WithdrawForm
-          maxAmount={wallet?.balance ?? 0}
-          onClose={() => setShowForm(false)}
-          onDone={() => refetch()}
-        />
+        ANCHOR_ENABLED ? (
+          <AnchorWithdrawFlow
+            walletAddress={walletAddress}
+            maxAmount={wallet?.balance ?? 0}
+            onClose={() => setShowForm(false)}
+            onDone={() => refetch()}
+          />
+        ) : (
+          <WithdrawForm
+            maxAmount={wallet?.balance ?? 0}
+            onClose={() => setShowForm(false)}
+            onDone={() => refetch()}
+          />
+        )
       )}
     </div>
   );
@@ -299,6 +317,234 @@ function WithdrawForm({
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+type AnchorPhase =
+  | "form"
+  | "authorizing"
+  | "interactive"
+  | "awaiting_transfer"
+  | "sending"
+  | "polling"
+  | "done"
+  | "failed";
+
+/**
+ * Real SEP-24 off-ramp (Fase 2A). Non-custodial: the creator signs the SEP-10
+ * challenge and the USDC send in Freighter; the backend proxies the anchor.
+ * Reuses the WithdrawForm modal shell + poll pattern.
+ */
+function AnchorWithdrawFlow({
+  walletAddress,
+  maxAmount,
+  onClose,
+  onDone,
+}: {
+  walletAddress: string;
+  maxAmount: number;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [phase, setPhase] = useState<AnchorPhase>("form");
+  const [token, setToken] = useState<string | null>(null);
+  const [txId, setTxId] = useState<string | null>(null);
+  const [interactiveUrl, setInteractiveUrl] = useState<string | null>(null);
+  const [anchorStatus, setAnchorStatus] = useState<string>("");
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const pollsRef = useRef(0);
+
+  const dismissable = phase === "form" || phase === "done" || phase === "failed";
+
+  // Poll the anchor transaction while the withdrawal is in flight.
+  useEffect(() => {
+    const active = phase === "interactive" || phase === "awaiting_transfer" || phase === "polling";
+    if (!active || !token || !txId) return;
+    pollsRef.current = 0;
+    const timer = setInterval(async () => {
+      pollsRef.current += 1;
+      try {
+        const res = await pollAnchorTx(txId, token);
+        setAnchorStatus(res.status);
+        if (res.mappedStatus === "COMPLETED") {
+          setPhase("done");
+          clearInterval(timer);
+          onDone();
+          return;
+        }
+        if (res.mappedStatus === "FAILED") {
+          setErr(`Anchor reported: ${res.status}`);
+          setPhase("failed");
+          clearInterval(timer);
+          return;
+        }
+        if (res.status === "pending_user_transfer_start" && phase === "interactive") {
+          setPhase("awaiting_transfer");
+        }
+      } catch {
+        /* transient — keep polling */
+      }
+      if (pollsRef.current >= 80) clearInterval(timer);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [phase, token, txId, onDone]);
+
+  const start = async () => {
+    setErr(null);
+    const amt = parseFloat(amount);
+    if (!Number.isFinite(amt) || amt < 0.01) return setErr("Enter an amount of at least 0.01.");
+    if (amt > maxAmount) return setErr(`You can withdraw at most $${maxAmount.toLocaleString("en-US")}.`);
+    setPhase("authorizing");
+    try {
+      const anchorToken = await authenticateAnchor(walletAddress);
+      setToken(anchorToken);
+      const { url, id } = await startAnchorWithdrawal(anchorToken, amt);
+      setTxId(id);
+      setInteractiveUrl(url);
+      window.open(url, "_blank", "noopener,noreferrer"); // may be popup-blocked → link shown too
+      setPhase("interactive");
+    } catch (e) {
+      setErr(e instanceof ApiError || e instanceof Error ? e.message : "Could not reach the anchor.");
+      setPhase("form");
+    }
+  };
+
+  const sendFunds = async () => {
+    if (!token || !txId) return;
+    setErr(null);
+    setPhase("sending");
+    try {
+      const hash = await sendUsdcToAnchor(walletAddress, txId, token);
+      setTxHash(hash);
+      setPhase("polling");
+    } catch (e) {
+      setErr(e instanceof ApiError || e instanceof Error ? e.message : "The USDC transfer failed.");
+      setPhase("awaiting_transfer");
+    }
+  };
+
+  return (
+    <div
+      onClick={dismissable ? onClose : undefined}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 200,
+        background: "rgba(10,10,10,.5)",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        padding: "8vh 16px",
+        overflowY: "auto",
+      }}
+    >
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460 }}>
+        <Card style={{ padding: 24 }}>
+          <div className="mb-4 flex items-center justify-between">
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 700 }}>
+              Cash out (SEP-24)
+            </span>
+            <button onClick={onClose} aria-label="Close" style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 18, color: "var(--muted)" }}>
+              ✕
+            </button>
+          </div>
+
+          {phase === "form" && (
+            <>
+              <Input
+                id="anchor-amount"
+                label={`Amount (USDC) — available $${maxAmount.toLocaleString("en-US")}`}
+                placeholder="11.40"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <p style={{ margin: "10px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                You&apos;ll sign in with Freighter, complete KYC + payout details in the anchor
+                window, then send your USDC to the anchor.
+              </p>
+              {err && <p style={{ margin: "12px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #b23a00)" }}>{err}</p>}
+              <div className="mt-5 flex justify-end gap-3">
+                <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button variant="primary" onClick={start}>Start cash out</Button>
+              </div>
+            </>
+          )}
+
+          {phase === "authorizing" && (
+            <StepNote emoji="🔑" title="Authorizing with the anchor…" note="Approve the signature request in Freighter." />
+          )}
+
+          {phase === "interactive" && (
+            <div className="text-center" style={{ padding: "8px 0" }}>
+              <StepNote emoji="📝" title="Complete the anchor form" note="A window opened for KYC + payout details. Finish it, then come back — we’ll detect it automatically." />
+              {interactiveUrl && (
+                <a href={interactiveUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 10, fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--text)", textDecoration: "underline" }}>
+                  Re-open anchor form ↗
+                </a>
+              )}
+              <p style={{ margin: "10px 0 0", fontFamily: "var(--font-mono)", fontSize: 11.5, color: "var(--muted)" }}>
+                {anchorStatus ? `Status: ${anchorStatus}` : "Waiting for the anchor…"}
+              </p>
+            </div>
+          )}
+
+          {phase === "awaiting_transfer" && (
+            <div className="text-center" style={{ padding: "8px 0" }}>
+              <StepNote emoji="💸" title="Send your USDC" note="The anchor is ready. Send your USDC to complete the cash out — approve the transfer in Freighter." />
+              {err && <p style={{ margin: "10px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #b23a00)" }}>{err}</p>}
+              <div className="mt-4 flex justify-center">
+                <Button variant="primary" onClick={sendFunds}>Send USDC</Button>
+              </div>
+            </div>
+          )}
+
+          {(phase === "sending" || phase === "polling") && (
+            <StepNote
+              emoji="⏳"
+              title={phase === "sending" ? "Submitting your transfer…" : "Waiting for the anchor to pay out…"}
+              note={anchorStatus ? `Status: ${anchorStatus}` : "This can take a moment."}
+            />
+          )}
+
+          {(phase === "done" || phase === "failed") && (
+            <div>
+              <div className="mb-3" style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: phase === "done" ? "var(--tone-success-fg, #0a7a45)" : "var(--tone-danger-fg, #b23a00)" }}>
+                {phase === "done" ? "✓ Cash out complete" : "Cash out failed"}
+              </div>
+              {txId && <ReceiptRow label="Anchor tx" value={txId.slice(0, 12) + "…"} />}
+              <ReceiptRow label="Amount" value={`$${amount}`} />
+              {anchorStatus && <ReceiptRow label="Status" value={anchorStatus} />}
+              {txHash && (
+                <ReceiptRow
+                  label="USDC transfer"
+                  value={
+                    <a href={`https://stellar.expert/explorer/testnet/tx/${txHash}`} target="_blank" rel="noreferrer" style={{ color: "var(--text)", textDecoration: "underline" }}>
+                      view on explorer ↗
+                    </a>
+                  }
+                />
+              )}
+              {err && <p style={{ margin: "12px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #b23a00)" }}>{err}</p>}
+              <div className="mt-5 flex justify-end">
+                <Button variant="primary" onClick={onClose}>Done</Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function StepNote({ emoji, title, note }: { emoji: string; title: string; note: string }) {
+  return (
+    <div className="text-center" style={{ padding: "12px 0" }}>
+      <div className="kv-blink" style={{ fontSize: 36, marginBottom: 10 }}>{emoji}</div>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>{title}</div>
+      <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6 }}>{note}</p>
     </div>
   );
 }

@@ -65,6 +65,10 @@ describe('SorobanRpcService', () => {
     splitContractId: 'CCONTRACT',
     networkPassphrase: 'Test SDF Network ; September 2015',
     explorerUrl: 'https://stellar.expert/explorer/testnet',
+    anchorWebAuthUrl: 'https://testanchor.stellar.org/auth',
+    anchorTransferServerUrl: 'https://testanchor.stellar.org/sep24',
+    anchorHomeDomain: 'testanchor.stellar.org',
+    anchorEnabled: false,
   };
 
   beforeEach(async () => {

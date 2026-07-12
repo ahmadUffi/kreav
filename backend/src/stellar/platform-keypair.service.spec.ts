@@ -32,6 +32,10 @@ describe('PlatformKeypairService', () => {
     splitContractId: 'contract',
     networkPassphrase: 'Test SDF Network ; September 2015',
     explorerUrl: 'https://stellar.expert/explorer/testnet',
+    anchorWebAuthUrl: 'https://testanchor.stellar.org/auth',
+    anchorTransferServerUrl: 'https://testanchor.stellar.org/sep24',
+    anchorHomeDomain: 'testanchor.stellar.org',
+    anchorEnabled: false,
   };
 
   async function makeService(secret: string | undefined): Promise<PlatformKeypairService> {

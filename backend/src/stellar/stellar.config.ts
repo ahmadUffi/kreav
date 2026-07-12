@@ -29,6 +29,14 @@ export interface StellarConfig {
   networkPassphrase: string;
   /** Base URL for the Stellar block explorer (e.g. stellar.expert). BE-010. */
   explorerUrl: string;
+  /** SEP-10 web-auth endpoint of the off-ramp anchor (Fase 2A). */
+  anchorWebAuthUrl: string;
+  /** SEP-24 transfer server of the off-ramp anchor (Fase 2A). */
+  anchorTransferServerUrl: string;
+  /** Anchor home domain — used as the SEP-10 client_domain / home_domain. */
+  anchorHomeDomain: string;
+  /** Feature flag: enable the real SEP-24 off-ramp path (else simulation). */
+  anchorEnabled: boolean;
 }
 
 /** Default Stellar.expert explorer URL for testnet. */
@@ -39,6 +47,16 @@ export const USDC_TESTNET_ISSUER = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT
 
 /** USDC uses 7 decimals on Stellar (ED-7). DB stores Decimal(18,2). */
 export const USDC_DECIMALS = 7;
+
+/**
+ * SDF public SEP-24 test anchor — no approval / allowlist needed, and its USDC
+ * issuer matches USDC_TESTNET_ISSUER, so a creator's settled USDC off-ramps with
+ * no asset mismatch. Same SEP-10 + SEP-24 protocol as MoneyGram, so the
+ * production swap is just changing these URLs. ROADMAP Fase 2A.
+ */
+export const ANCHOR_TESTNET_WEB_AUTH_URL = 'https://testanchor.stellar.org/auth';
+export const ANCHOR_TESTNET_TRANSFER_SERVER_URL = 'https://testanchor.stellar.org/sep24';
+export const ANCHOR_TESTNET_HOME_DOMAIN = 'testanchor.stellar.org';
 
 /**
  * Build a StellarConfig from the ConfigService (env).
@@ -57,6 +75,17 @@ export function loadStellarConfig(get: (key: string) => string | undefined): Ste
 
   // Optional: block explorer URL (BE-010). Falls back to stellar.expert testnet.
   const explorerUrl = get('EXPLORER_URL') ?? EXPLORER_TESTNET_URL;
+
+  // Optional: off-ramp anchor (Fase 2A). Defaults to the SDF test anchor and is
+  // OFF unless ANCHOR_ENABLED is explicitly truthy — so the simulated withdrawal
+  // stays the default and nothing breaks if the anchor is down.
+  const anchor = {
+    anchorWebAuthUrl: get('ANCHOR_WEB_AUTH_URL') ?? ANCHOR_TESTNET_WEB_AUTH_URL,
+    anchorTransferServerUrl:
+      get('ANCHOR_TRANSFER_SERVER_URL') ?? ANCHOR_TESTNET_TRANSFER_SERVER_URL,
+    anchorHomeDomain: get('ANCHOR_HOME_DOMAIN') ?? ANCHOR_TESTNET_HOME_DOMAIN,
+    anchorEnabled: /^(1|true|yes)$/i.test(get('ANCHOR_ENABLED') ?? ''),
+  };
 
   const missing = Object.entries(required)
     .filter(([, v]) => !v)
@@ -82,6 +111,7 @@ export function loadStellarConfig(get: (key: string) => string | undefined): Ste
       splitContractId: required.splitContractId ?? '',
       networkPassphrase: STELLAR_TESTNET_PASSPHRASE,
       explorerUrl,
+      ...anchor,
     } satisfies StellarConfig;
   }
 
@@ -89,6 +119,7 @@ export function loadStellarConfig(get: (key: string) => string | undefined): Ste
     ...required,
     networkPassphrase: STELLAR_TESTNET_PASSPHRASE,
     explorerUrl,
+    ...anchor,
   } as StellarConfig;
 }
 
