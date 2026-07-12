@@ -1,7 +1,21 @@
 // Kreav — Prisma schema
-// Source of truth: Kreav Backend PRD v3, Section 8 (Data Model).
-// Entities are added in BE-003; this baseline just establishes the datasource
-// and generator so the migrate workflow is proven.
+// Source of truth: Kreav Backend PRD v3 + v3.1 Addendum.
+//   §8 Data Model (v3) — restructured in v3.1 into Domain-Driven Design.
+//   §18 Notification, §19 Collaborative Split, §20 Failure Handling.
+//
+// Domains:
+//   👤 User      — User
+//   🛒 Commerce  — Product, ProductCollaborator, Order, Settlement, SettlementRecipient
+//   💰 Wallet    — Wallet, Withdrawal
+//   📧 Infra     — NotificationLog
+//
+// Naming convention (BE-004):
+//   - Model fields are camelCase (so Prisma returns camelCase JSON, e.g.
+//     `priceUsd`, `creatorId` — the natural API shape).
+//   - Each field uses `@map` to point at its snake_case DB column. The DB
+//     schema (column names) is unchanged by this convention.
+//   - Money is ALWAYS Decimal (never float). Stellar addresses are public keys
+//     only (non-custodial — NO secret-key / seed-phrase columns anywhere).
 
 generator client {
   provider = "prisma-client-js"
@@ -10,4 +24,318 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums (Postgres-native)
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  CREATOR
+  BUYER
+  ADMIN
+}
+
+enum WalletProvider {
+  FREIGHTER
+  LOBSTR
+}
+
+enum CollaboratorStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// v3.1 §20 — Order lifecycle + failure states. Only valid transitions allowed.
+enum OrderStatus {
+  // lifecycle
+  CREATED
+  CHECKOUT_STARTED
+  PAYMENT_PENDING
+  PAYMENT_RECEIVED
+  SETTLEMENT_PENDING
+  SETTLED
+  WITHDRAW_PENDING
+  WITHDRAW_COMPLETED
+  // failure states
+  PAYMENT_FAILED
+  SETTLEMENT_FAILED
+  WITHDRAW_FAILED
+  WAITING_WALLET
+  CANCELLED
+}
+
+enum SettlementStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+/// Recipient of a settlement. MVP uses ONLY `CREATOR` + `PLATFORM` (the 95/5 split).
+/// `AFFILIATE` / `TREASURY` are reserved for future recipient types — NOT in the MVP
+/// (do NOT add a Treasury node/wallet to diagrams or flows; the Final Architecture
+/// Treasury node was removed — see Kreav Final Architecture Review §Inconsistencies).
+enum RecipientType {
+  CREATOR
+  PLATFORM
+  AFFILIATE
+  TREASURY
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationChannel {
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// 👤 User Domain
+// ---------------------------------------------------------------------------
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(BUYER)
+  // BE-022 — Creator Profile fields (all nullable for gradual onboarding).
+  username    String? @unique
+  country     String?
+  bio         String?
+  avatarEmoji String? @map("avatar_emoji")
+  accent      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  products     Product[]
+  wallets      Wallet[]
+  withdrawals  Withdrawal[]
+  // BE-025 — Mini-site relations.
+  socialLinks       SocialLink[]
+  customLinks       CustomLink[]
+  featuredProducts  FeaturedProduct[]
+
+  @@map("users")
+}
+
+// ── BE-025: Mini-Site models ────────────────────────────────────────────────
+
+/// Social media links displayed on the public mini-site.
+model SocialLink {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  platform  String   // INSTAGRAM | X | TIKTOK | YOUTUBE
+  handle    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@map("social_links")
+}
+
+/// Custom links (Linktree-style) on the public mini-site.
+model CustomLink {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  label     String
+  url       String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("custom_links")
+}
+
+/// Featured products selected to appear prominently on the mini-site.
+model FeaturedProduct {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("featured_products")
+}
+
+// ---------------------------------------------------------------------------
+// 🛒 Commerce Domain
+// ---------------------------------------------------------------------------
+
+model Product {
+  id          String   @id @default(uuid())
+  creatorId   String   @map("creator_id")
+  title       String
+  description String?
+  // Digital product file/access URL — public for demo (Opsi 1).
+  fileUrl     String?  @map("file_url")
+  // Money — Decimal, never float.
+  priceUsd    Decimal  @db.Decimal(18, 2) @map("price_usd")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  creator       User                  @relation(fields: [creatorId], references: [id])
+  collaborators ProductCollaborator[]
+  orders        Order[]
+  featuredBy    FeaturedProduct[]
+
+  @@index([creatorId])
+  @@map("products")
+}
+
+/// v3.1 §19 — Collaborative Revenue Split.
+/// role is free-text (metadata); status is enum (app state).
+model ProductCollaborator {
+  id                 String             @id @default(uuid())
+  productId          String             @map("product_id")
+  walletAddress      String             @map("wallet_address")
+  // Free-text: Author, Illustrator, Editor, Translator, Co-Creator, Affiliate, ...
+  role               String
+  revenuePercentage  Decimal            @db.Decimal(5, 2) @map("revenue_percentage")
+  status             CollaboratorStatus @default(ACTIVE)
+  createdAt          DateTime           @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status])
+  @@map("product_collaborators")
+}
+
+model Order {
+  // ADR H2 — this `id` is the contract's `order_ref` (idempotency key passed to
+  // the Soroban `settle` fn). A duplicate settle for the same order_ref is
+  // rejected by the contract. Separate from `paymentRef` (the GCash Payment
+  // Transaction ID, which idempotency-checks the webhook side).
+  id         String      @id @default(uuid())
+  productId  String      @map("product_id")
+  buyerEmail String      @map("buyer_email")
+  amountUsd  Decimal     @db.Decimal(18, 2) @map("amount_usd")
+  status     OrderStatus @default(CREATED)
+  // Populated on settlement.
+  txHash     String?     @map("tx_hash")
+  // v3.1 §20 — idempotency key (Payment Transaction ID). Unique.
+  paymentRef String?     @map("payment_ref")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  product    Product      @relation(fields: [productId], references: [id])
+  settlement Settlement?
+
+  @@unique([paymentRef])
+  @@index([status])
+  @@map("orders")
+}
+
+/// One canonical on-chain settlement event (v3.1 §19).
+model Settlement {
+  id          String           @id @default(uuid())
+  orderId     String           @unique @map("order_id")
+  totalAmount Decimal          @db.Decimal(18, 2) @map("total_amount")
+  txHash      String           @map("tx_hash")
+  status      SettlementStatus @default(PENDING)
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  order       Order                 @relation(fields: [orderId], references: [id])
+  recipients  SettlementRecipient[]
+  withdrawals Withdrawal[]
+
+  @@index([status])
+  @@map("settlements")
+}
+
+/// Accounting breakdown — every recipient of a settlement (v3.1 §19).
+model SettlementRecipient {
+  id            String        @id @default(uuid())
+  settlementId  String        @map("settlement_id")
+  walletAddress String        @map("wallet_address")
+  recipientType RecipientType @map("recipient_type")
+  // Free-text role label (mirrors the collaborator role or "Platform").
+  role          String
+  percentage    Decimal       @db.Decimal(5, 2)
+  amount        Decimal       @db.Decimal(18, 2)
+  // ADR H3 / audit #9 — audit timestamp for chronological recipient ordering
+  // (reconciliation + dispute forensics). Every other money/lifecycle model has one.
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  @@index([settlementId])
+  @@map("settlement_recipients")
+}
+
+// ---------------------------------------------------------------------------
+// 💰 Wallet Domain
+// ---------------------------------------------------------------------------
+
+/// Non-custodial: stores ONLY the public key. NEVER secret/seed/private keys.
+model Wallet {
+  id            String         @id @default(uuid())
+  creatorId     String         @map("creator_id")
+  walletAddress String         @map("wallet_address")
+  provider      WalletProvider
+  connectedAt   DateTime       @default(now()) @map("connected_at")
+
+  creator User @relation(fields: [creatorId], references: [id])
+
+  @@index([creatorId])
+  @@map("wallets")
+}
+
+/// v3.1 — dedicated Withdrawal entity (replaces generic Transaction.withdrawal).
+model Withdrawal {
+  id                 String           @id @default(uuid())
+  creatorId          String           @map("creator_id")
+  settlementId       String?          @map("settlement_id")
+  settlementTxHash   String?          @map("settlement_tx_hash")
+  amount             Decimal          @db.Decimal(18, 2)
+  destinationType    String           @map("destination_type")
+  destinationAccount String           @map("destination_account")
+  reference          String           @unique @map("reference")
+  status             WithdrawalStatus @default(REQUESTED)
+  // SEP-24 anchor transaction id (Fase 2A off-ramp) — null for simulated withdrawals.
+  anchorTransactionId String?         @map("anchor_transaction_id")
+  // On-chain hash of the creator→anchor USDC send (Fase 2A) — null until sent.
+  txHash             String?          @map("tx_hash")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  completedAt        DateTime?        @map("completed_at")
+
+  creator    User        @relation(fields: [creatorId], references: [id])
+  settlement Settlement? @relation(fields: [settlementId], references: [id])
+
+  @@index([creatorId, createdAt])
+  @@map("withdrawals")
+}
+
+// ---------------------------------------------------------------------------
+// 📧 Infrastructure
+// ---------------------------------------------------------------------------
+
+/// v3.1 §18 — durable retry state for notifications. NOT business data.
+model NotificationLog {
+  id                  String              @id @default(uuid())
+  recipient           String
+  channel             NotificationChannel @default(EMAIL)
+  event               String
+  status              NotificationStatus  @default(PENDING)
+  attempts            Int                 @default(0)
+  lastError           String?             @map("last_error")
+  providerMessageId   String?             @map("provider_message_id")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  @@index([status, event])
+  @@map("notification_logs")
 }

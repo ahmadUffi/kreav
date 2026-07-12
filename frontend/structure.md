@@ -13,10 +13,29 @@ kreve/
 ├── src/
 │   ├── app/
 │   │   ├── globals.css        # Tailwind v4 @theme tokens + dark-mode CSS vars
-│   │   ├── layout.tsx         # Root layout: Google fonts, <html> attrs, metadata
-│   │   └── page.tsx           # Single-page entry — assembles all section components
+│   │   ├── layout.tsx         # Root layout: Google fonts, <html> attrs, metadata, global ThemeProvider
+│   │   ├── page.tsx           # Marketing landing ("/") — assembles all section components
+│   │   ├── (app)/            # App route group (shares AppNav + AppFooter layout)
+│   │   │   ├── layout.tsx     # Shared shell: AppNav + <main> + AppFooter
+│   │   │   ├── store/page.tsx     # Storefront product grid (GET /products)
+│   │   │   ├── store/[id]/page.tsx # Product detail page (GET /products/:id + checkout)
+│   │   │   ├── signup/page.tsx    # Onboarding wizard (role→details→wallet→review→create)
+│   │   │   ├── wallet/connect/page.tsx # Connect Freighter wallet (uses WalletConnectPanel)
+│   │   │   └── dashboard/       # Creator dashboard (sidebar layout)
+│   │   │       ├── layout.tsx       # Sidebar shell (Overview/Products/Orders/Wallet/Site/Settings)
+│   │   │       ├── page.tsx         # Overview — KPIs + revenue/top-product charts + recent orders
+│   │   │       ├── products/page.tsx
+│   │   │       ├── orders/page.tsx
+│   │   │       ├── wallet/page.tsx
+│   │   │       ├── settings/page.tsx
+│   │   │       └── site/page.tsx     # Mini-site editor (controls + live preview)
+│   │   └── u/[username]/      # Public Linktree-style creator mini-site
+│   │       ├── layout.tsx     # Minimal themed public chrome (no app nav)
+│   │       └── page.tsx       # Resolves creator by username (GET /users/:username/profile)
 │   ├── components/
-│   │   ├── Nav.tsx            # Fixed navigation bar
+│   │   ├── Nav.tsx            # Fixed navigation bar (marketing landing only)
+│   │   ├── AppNav.tsx         # App shell nav: Store/Dashboard/Wallet links + theme toggle (refined)
+│   │   ├── AppFooter.tsx      # Slim app-surface footer (marketing Footer stays brutalist)
 │   │   ├── Hero.tsx           # Above-the-fold section with map canvas
 │   │   ├── MapCanvas.tsx      # Three.js Asia map (client-only, ssr:false)
 │   │   ├── Marquee.tsx        # GSAP infinite ticker strip
@@ -26,9 +45,33 @@ kreve/
 │   │   ├── Features.tsx       # 2×2 feature grid
 │   │   ├── CreatorSpotlight.tsx # Horizontal-scroll creator cards
 │   │   ├── Waitlist.tsx       # Zod-validated email form + animated counter
-│   │   └── Footer.tsx         # 4-column footer with ghost KREAV wordmark
-│   └── context/
-│       └── theme.tsx          # ThemeProvider + useTheme hook (dark/light)
+│   │   ├── Footer.tsx         # 4-column footer with ghost KREAV wordmark
+│   │   ├── ProductCard.tsx    # Storefront product card (Link → /store/[id])
+│   │   ├── WalletConnectPanel.tsx # Mock Freighter connect + all states (reused)
+│   │   ├── CreatorMiniSite.tsx # Linktree-style profile (public page + editor preview)
+│   │   ├── charts/           # Hand-built SVG charts (no deps)
+│   │   │   ├── Sparkline.tsx  # KPI mini trend
+│   │   │   ├── AreaChart.tsx  # revenue area+line
+│   │   │   └── BarChart.tsx   # horizontal bars (top products)
+│   │   └── ui/               # Reusable primitives (refined app surface)
+│   │       ├── Button.tsx     # variant primary/secondary/ghost
+│   │       ├── Card.tsx       # theme-aware card, opt-in hover lift
+│   │       ├── Badge.tsx      # chip w/ colour tones (accent/neutral/success/warn/danger)
+│   │       ├── Input.tsx      # labelled input + inline error + focus ring
+│   │       ├── Skeleton.tsx   # loading placeholder (kv-skeleton keyframe)
+│   │       ├── EmptyState.tsx # empty state + optional CTA
+│   │       ├── ErrorState.tsx # error state + optional retry
+│   │       ├── Icon.tsx       # inline line-icon set (SVG, currentColor)
+│   │       ├── Stepper.tsx    # onboarding progress indicator
+│   │       ├── StatCard.tsx   # KPI card (value + delta + sparkline)
+│   │       └── index.ts       # barrel export
+│   ├── context/
+│   │   └── theme.tsx          # ThemeProvider + useTheme hook (dark/light)
+│   └── lib/
+│       ├── types.ts           # Shared view-model types (Product, CreatorProfile)
+│       ├── api/               # Backend API client (client, mappers, per-module fns)
+│       ├── stellar.ts         # Stellar display helpers (truncateAddress, stellarTxUrl)
+│       └── constants.ts       # Shared constants (COUNTRIES for onboarding)
 ├── public/                    # Static assets
 ├── structure.md               # ← this file
 ├── role.md                    # AI agent working rules
@@ -43,8 +86,10 @@ kreve/
 
 ## Page Composition (`page.tsx`)
 
+> `ThemeProvider` now lives in the root `layout.tsx` (wraps every route, including the `(app)` group). The landing `page.tsx` no longer wraps it.
+
 ```
-ThemeProvider
+RootLayout → ThemeProvider
 └── root <div> (CSS var background/color)
     ├── Nav
     ├── Hero
