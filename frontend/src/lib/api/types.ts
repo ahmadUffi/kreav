@@ -104,12 +104,21 @@ export interface ProductRaw {
   createdAt: string;
   creator: { id: string; name: string };
 }
+/** One revenue-split recipient. Shares across a product must sum to 100. */
+export interface CreateProductCollaborator {
+  walletAddress: string; // Stellar public key (G… 56 chars)
+  role: string; // free-text: Author, Illustrator, Editor, …
+  revenuePercentage: string; // "50.00"
+}
+
 export interface CreateProductBody {
   title: string;
   description?: string;
   fileUrl: string;
   priceUsd: string; // "18.00"
   // Fase 1: creatorId comes from the session JWT, not the body.
+  // Optional revenue split. Omit → backend auto-adds the creator at 100%.
+  collaborators?: CreateProductCollaborator[];
 }
 
 /* ── Orders ───────────────────────────────────────────────────────────── */

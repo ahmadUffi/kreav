@@ -1,5 +1,51 @@
-import { IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+/**
+ * A single revenue-split collaborator supplied at product-creation time.
+ *
+ * `walletAddress` is a Stellar public key (starts with `G`, base32, 56 chars).
+ * `revenuePercentage` is a STRING decimal (Decimal(5,2), 0–2 fractional digits)
+ * so we never lose money-split precision to float. The service validates that
+ * every collaborator list sums to exactly 100.00.
+ */
+export class CreateCollaboratorDto {
+  @ApiProperty({
+    description: 'Stellar public key of the collaborator (revenue recipient)',
+    example: 'GCHOG4QF27OG5WHBY4AIBGEI4LSOTCY3Y4VX22AUNLHTDBWMLZW5OBU3',
+  })
+  @IsString()
+  @Matches(/^G[A-Z2-7]{55}$/, {
+    message: 'walletAddress must be a valid Stellar public key (G... 56 chars)',
+  })
+  walletAddress!: string;
+
+  @ApiProperty({
+    description: 'Free-text role label (Author, Illustrator, Editor, ...)',
+    example: 'Author',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'role must not be empty' })
+  role!: string;
+
+  @ApiProperty({
+    description: 'Revenue share percent (string, 0–2 decimals). List must sum to 100.',
+    example: '50.00',
+  })
+  @IsString()
+  @Matches(/^\d+(\.\d{1,2})?$/, {
+    message: 'revenuePercentage must be a decimal string with up to 2 fractional digits',
+  })
+  revenuePercentage!: string;
+}
 
 /**
  * Body for POST /products.
@@ -11,7 +57,12 @@ import { ApiProperty } from '@nestjs/swagger';
  *
  * `fileUrl` is the digital product download/access link (required).
  *
- * Source: Kreav Backend PRD v3 — §9 Product APIs.
+ * `collaborators` is OPTIONAL — the revenue-split recipient list. When omitted,
+ * the product creator is auto-added as the sole collaborator at 100% (their
+ * connected wallet), so every product is settleable out of the box. When
+ * provided, the shares must sum to exactly 100.00.
+ *
+ * Source: Kreav Backend PRD v3 — §9 Product APIs; v3.1 §19 Collaborative Split.
  */
 export class CreateProductDto {
   @ApiProperty({
@@ -51,4 +102,16 @@ export class CreateProductDto {
     message: 'priceUsd must be a decimal string with up to 2 fractional digits (e.g. "10.00")',
   })
   priceUsd!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional revenue-split collaborators. If omitted, the creator becomes the ' +
+      'sole collaborator at 100%. If provided, shares must sum to exactly 100.00.',
+    type: [CreateCollaboratorDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateCollaboratorDto)
+  collaborators?: CreateCollaboratorDto[];
 }
