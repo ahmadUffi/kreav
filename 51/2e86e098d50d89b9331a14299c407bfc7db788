@@ -1,0 +1,36 @@
+frontend/next.config.ts
+  s_2bafa2ba7782f3::t_e70edcb85eef61 4-5
+frontend/.dockerignore
+  s_2bafa2ba7782f3::t_d0482ffa478bb8 1-11
+docker-compose.yml
+  s_2bafa2ba7782f3::t_ec0b2776bcf18e 1-61
+Caddyfile
+  s_2bafa2ba7782f3::t_c01511c6609500 1-21
+.env.example
+  s_2bafa2ba7782f3::t_8405c75b4c8906 1,3-6,8-13,15-18
+backend/.dockerignore
+  s_2bafa2ba7782f3::t_45f1e07bfd919e 1-12
+backend/Dockerfile
+  s_2bafa2ba7782f3::t_bdfd0f62f6da18 1-22,27-34
+  s_2bafa2ba7782f3::t_82ead73c91cd1d 23-26
+frontend/Dockerfile
+  s_2bafa2ba7782f3::t_6930af1f8263d4 1-32
+.github/workflows/deploy.yml
+  s_2bafa2ba7782f3::t_35a615c7d756e5 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "512e86e098d50d89b9331a14299c407bfc7db788",
+  "prompts": {},
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
