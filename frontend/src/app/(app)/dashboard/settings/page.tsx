@@ -6,6 +6,7 @@ import { SessionNotice } from "@/components/SessionNotice";
 import { getMe, updateMe } from "@/lib/api/users";
 import { setUsername as persistUsername } from "@/lib/api/session";
 import { ApiError } from "@/lib/api/client";
+import { FormFieldsSkeleton } from "@/components/skeletons";
 
 export default function DashboardSettingsPage() {
   const { ready, userId } = useSession();
@@ -72,7 +73,7 @@ export default function DashboardSettingsPage() {
           Profile
         </div>
         {state === "loading" ? (
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>Loading…</p>
+          <FormFieldsSkeleton rows={3} />
         ) : (
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>

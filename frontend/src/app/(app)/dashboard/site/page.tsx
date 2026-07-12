@@ -10,6 +10,7 @@ import { listProducts } from "@/lib/api/products";
 import type { SiteConfigRaw } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
 import type { CreatorProfile, Product } from "@/lib/types";
+import { FormSkeleton } from "@/components/skeletons";
 
 const ACCENTS = ["#FF3BFF", "#00F5FF", "#FFE600", "#FF4D00", "#0A0A0A"];
 
@@ -96,7 +97,7 @@ export default function DashboardSitePage() {
   if (ready && !userId) return <SessionNotice />;
 
   if (state === "loading" || !profile) {
-    return <p style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>Loading…</p>;
+    return <FormSkeleton rows={6} />;
   }
   if (state === "error") {
     return (

@@ -110,7 +110,11 @@ export class WalletsService {
       }),
       walletRow
         ? this.prisma.withdrawal.findMany({
-            where: { creatorId: walletRow.creatorId },
+            // Only COMPLETED withdrawals are real money-out events. An abandoned
+            // or in-flight withdrawal (PROCESSING/REQUESTED/FAILED) must NOT show
+            // up as a transaction — matches the balance ledger, which also only
+            // counts COMPLETED withdrawals.
+            where: { creatorId: walletRow.creatorId, status: 'COMPLETED' },
             orderBy: { createdAt: 'desc' },
           })
         : Promise.resolve([]),

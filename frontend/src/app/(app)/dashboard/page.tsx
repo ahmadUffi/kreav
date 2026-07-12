@@ -8,6 +8,7 @@ import { useApiQuery } from "@/lib/api/hooks";
 import { SessionNotice } from "@/components/SessionNotice";
 import { getAnalytics } from "@/lib/api/analytics";
 import { listOrders } from "@/lib/api/orders";
+import { DashboardOverviewSkeleton } from "@/components/skeletons";
 
 export default function DashboardOverviewPage() {
   const { ready, userId } = useSession();
@@ -49,7 +50,7 @@ export default function DashboardOverviewPage() {
           <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{error.message}</p>
         </Card>
       ) : !ready || loading || !analytics ? (
-        <p style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>Loading…</p>
+        <DashboardOverviewSkeleton />
       ) : (
         <>
           {/* KPIs */}

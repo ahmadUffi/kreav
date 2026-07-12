@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon, { type IconName } from "@/components/ui/Icon";
+import TrustlineBanner from "@/components/TrustlineBanner";
 
 const ITEMS: { label: string; href: string; icon: IconName }[] = [
   { label: "Overview", href: "/dashboard", icon: "overview" },
@@ -35,7 +36,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="min-w-0 flex-1">
+          <TrustlineBanner />
+          {children}
+        </div>
       </div>
     </div>
   );

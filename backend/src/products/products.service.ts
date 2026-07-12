@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CollaboratorStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { HorizonService } from '../stellar/horizon.service';
 import { PaginationDto } from './dto/pagination.dto';
 import { CreateCollaboratorDto, CreateProductDto } from './dto/create-product.dto';
 
@@ -21,7 +22,10 @@ export class ProductsService {
     creator: { select: { id: true, name: true } },
   } as const satisfies Prisma.ProductInclude;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly horizon: HorizonService,
+  ) {}
 
   /**
    * Paginated product list, optionally filtered by creator.
@@ -122,6 +126,10 @@ export class ProductsService {
           `Collaborator revenue percentages must sum to 100.00 (got ${sum.toString()}).`,
         );
       }
+      // Every collaborator must be a payable recipient: registered on Kreav AND
+      // holding a USDC trustline. Otherwise the on-chain settle would revert
+      // (op_no_trust) and burn the fee for everyone. Fail fast at add-time.
+      await this.assertCollaboratorsEligible(parsed.map((c) => c.walletAddress));
       return parsed;
     }
 
@@ -136,6 +144,21 @@ export class ProductsService {
         'Connect a wallet before creating a product — the creator must be a revenue recipient.',
       );
     }
+    // Solo products still need a payable wallet: enforce the creator's own USDC
+    // trustline before creation (same rule as collaborators).
+    let state: { hasUsdcTrustline: boolean };
+    try {
+      state = await this.horizon.getUsdcBalance(wallet.walletAddress);
+    } catch {
+      throw new BadRequestException(
+        "Couldn't verify your USDC trustline right now — please try again.",
+      );
+    }
+    if (!state.hasUsdcTrustline) {
+      throw new BadRequestException(
+        'Activate your USDC trustline before creating a product — both solo and collaborative products need a wallet that can receive USDC.',
+      );
+    }
     return [
       {
         walletAddress: wallet.walletAddress,
@@ -143,5 +166,45 @@ export class ProductsService {
         revenuePercentage: new Prisma.Decimal(100),
       },
     ];
+  }
+
+  /**
+   * Ensure every collaborator wallet can actually be paid: it must be registered
+   * on Kreav (present in the Wallet table) AND hold a USDC trustline (checked via
+   * Horizon). Throws a 400 with an actionable message for the first failure.
+   * Unlike settlement's soft-degrade pre-check, add-time verification is strict —
+   * if Horizon can't be reached we cannot confirm the trustline, so we reject.
+   */
+  private async assertCollaboratorsEligible(wallets: string[]): Promise<void> {
+    const unique = [...new Set(wallets)];
+    const short = (a: string) => `${a.slice(0, 8)}…`;
+
+    await Promise.all(
+      unique.map(async (address) => {
+        const registered = await this.prisma.wallet.findFirst({
+          where: { walletAddress: address },
+          select: { id: true },
+        });
+        if (!registered) {
+          throw new BadRequestException(
+            `Collaborator wallet ${short(address)} is not registered on Kreav — they must connect their wallet first.`,
+          );
+        }
+
+        let state: { hasUsdcTrustline: boolean };
+        try {
+          state = await this.horizon.getUsdcBalance(address);
+        } catch {
+          throw new BadRequestException(
+            `Couldn't verify the USDC trustline for ${short(address)} right now — please try again.`,
+          );
+        }
+        if (!state.hasUsdcTrustline) {
+          throw new BadRequestException(
+            `Collaborator wallet ${short(address)} has no USDC trustline — they must activate USDC before being added as a collaborator.`,
+          );
+        }
+      }),
+    );
   }
 }

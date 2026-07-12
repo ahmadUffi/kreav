@@ -5,6 +5,8 @@ import { useSession } from "@/lib/api/useSession";
 import { useApiQuery, useApiAction } from "@/lib/api/hooks";
 import { SessionNotice } from "@/components/SessionNotice";
 import { listProducts, createProduct } from "@/lib/api/products";
+import { getBalance } from "@/lib/api/wallet";
+import { ProductGridSkeleton } from "@/components/skeletons";
 import type { CreateProductCollaborator } from "@/lib/api/types";
 
 const PRICE_RE = /^\d+(\.\d{1,2})?$/;
@@ -42,6 +44,9 @@ export default function DashboardProductsPage() {
     ready && !!userId,
   );
   const [showForm, setShowForm] = useState(false);
+  // Product creation needs a payable wallet — gate the CTA on a USDC trustline.
+  const { data: balance } = useApiQuery(() => getBalance(), [userId], ready && !!userId);
+  const canCreate = !!balance?.hasUsdcTrustline;
 
   if (ready && !userId) return <SessionNotice />;
   const products = data?.items ?? [];
@@ -52,17 +57,33 @@ export default function DashboardProductsPage() {
         <h1 style={{ fontFamily: "var(--font-anton)", fontSize: "clamp(26px, 3.4vw, 38px)", lineHeight: 1.05 }}>
           Products
         </h1>
-        <Button variant="primary" onClick={() => setShowForm(true)}>+ New product</Button>
+        <Button
+          variant="primary"
+          disabled={!canCreate}
+          title={canCreate ? undefined : "Activate your USDC trustline first"}
+          onClick={() => canCreate && setShowForm(true)}
+        >
+          + New product
+        </Button>
       </div>
 
       {!ready || loading ? (
-        <p style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>Loading…</p>
+        <ProductGridSkeleton />
       ) : error ? (
         <Card className="text-center" style={{ padding: 32 }}>
           <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{error.message}</p>
         </Card>
       ) : products.length === 0 ? (
-        <EmptyState title="No products yet" description="Publish your first digital product to start selling." actionLabel="New product" onAction={() => setShowForm(true)} />
+        <EmptyState
+          title="No products yet"
+          description={
+            canCreate
+              ? "Publish your first digital product to start selling."
+              : "Activate your USDC trustline (banner above) to publish your first product."
+          }
+          actionLabel={canCreate ? "New product" : undefined}
+          onAction={canCreate ? () => setShowForm(true) : undefined}
+        />
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-5">
           {products.map((p) => (

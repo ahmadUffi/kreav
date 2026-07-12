@@ -4,6 +4,7 @@ import { useSession } from "@/lib/api/useSession";
 import { useApiQuery } from "@/lib/api/hooks";
 import { SessionNotice } from "@/components/SessionNotice";
 import { listOrders } from "@/lib/api/orders";
+import { OrderListSkeleton } from "@/components/skeletons";
 import type { OrderStatusView } from "@/lib/api/types";
 
 type Tone = "success" | "warn" | "danger";
@@ -31,7 +32,7 @@ export default function DashboardOrdersPage() {
       </h1>
 
       {!ready || loading ? (
-        <p style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>Loading…</p>
+        <OrderListSkeleton />
       ) : error ? (
         <Card className="text-center" style={{ padding: 32 }}>
           <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{error.message}</p>

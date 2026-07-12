@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/sep24";
 import type { WithdrawalDestination, WithdrawalReceipt } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
+import { WalletSkeleton } from "@/components/skeletons";
 
 const DESTINATIONS: WithdrawalDestination[] = ["GCASH", "GOPAY", "PAYNOW", "BANK"];
 
@@ -40,7 +41,7 @@ export default function DashboardWalletPage() {
       </h1>
 
       {!ready || loading ? (
-        <p style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>Loading…</p>
+        <WalletSkeleton />
       ) : error ? (
         <Card className="text-center" style={{ padding: 32 }}>
           <p style={{ margin: 0, fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{error.message}</p>
