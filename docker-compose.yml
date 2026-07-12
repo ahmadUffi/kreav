@@ -14,6 +14,11 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
+    # Pin the in-container port to 3000 regardless of PORT in backend/.env.
+    # Caddy, `expose`, and the healthcheck all target 3000; a mismatched PORT
+    # (e.g. 3001) makes the app unreachable → 502. `environment` overrides env_file.
+    environment:
+      PORT: 3000
     # Explicit resolvers: the host's systemd-resolved stub (127.0.0.53) is not
     # reachable from inside containers, which breaks DNS (Neon, Stellar, ...).
     dns:
