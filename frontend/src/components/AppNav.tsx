@@ -36,6 +36,7 @@ export default function AppNav() {
   const [connecting, setConnecting] = useState(false);
   const [connectErr, setConnectErr] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   // Load the avatar/profile fields once signed in.
   useEffect(() => {
@@ -115,6 +116,7 @@ export default function AppNav() {
 
   return (
     <nav
+      className="px-4 md:px-10"
       style={{
         position: "sticky",
         top: 0,
@@ -122,7 +124,8 @@ export default function AppNav() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "14px 40px",
+        paddingTop: 14,
+        paddingBottom: 14,
         background: "color-mix(in srgb, var(--bg) 88%, transparent)",
         backdropFilter: "blur(8px)",
         borderBottom: "1px solid var(--line, rgba(10,10,10,.14))",
@@ -144,28 +147,30 @@ export default function AppNav() {
 
       {/* Links + connect/avatar + theme toggle */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {links.map(({ label, href }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                textDecoration: "none",
-                fontFamily: "var(--font-mono)",
-                fontSize: 13,
-                fontWeight: active ? 700 : 500,
-                color: active ? "var(--text)" : "var(--muted)",
-                background: active ? "var(--surface-2, rgba(10,10,10,.06))" : "transparent",
-                padding: "7px 12px",
-                borderRadius: "var(--r-sm, 8px)",
-                transition: "color 0.15s, background 0.15s",
-              }}
-            >
-              {label}
-            </Link>
-          );
-        })}
+        <div className="hidden md:flex" style={{ alignItems: "center", gap: 8 }}>
+          {links.map(({ label, href }) => {
+            const active = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <Link
+                key={href}
+                href={href}
+                style={{
+                  textDecoration: "none",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 13,
+                  fontWeight: active ? 700 : 500,
+                  color: active ? "var(--text)" : "var(--muted)",
+                  background: active ? "var(--surface-2, rgba(10,10,10,.06))" : "transparent",
+                  padding: "7px 12px",
+                  borderRadius: "var(--r-sm, 8px)",
+                  transition: "color 0.15s, background 0.15s",
+                }}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </div>
 
         {/* Auth control */}
         {ready && !signedIn && (
@@ -239,7 +244,7 @@ export default function AppNav() {
               >
                 {avatar.emoji}
               </span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--text)" }}>
+              <span className="hidden sm:inline" style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--text)" }}>
                 {walletAddress ? truncateAddress(walletAddress) : displayName}
               </span>
               <span style={{ fontSize: 10, color: "var(--muted)" }}>▾</span>
@@ -302,6 +307,86 @@ export default function AppNav() {
         >
           {dark ? "☀" : "☾"}
         </button>
+
+        {/* Mobile nav menu */}
+        <div className="md:hidden" style={{ position: "relative" }}>
+          <button
+            onClick={() => setNavOpen((o) => !o)}
+            aria-label="Menu"
+            aria-expanded={navOpen}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              color: "var(--text)",
+              border: "1px solid var(--line, rgba(10,10,10,.14))",
+              borderRadius: "var(--r-sm, 8px)",
+              padding: "7px 8px",
+              cursor: "pointer",
+            }}
+          >
+            {navOpen ? (
+              <svg width="18" height="18" viewBox="0 0 18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <line x1="3" y1="3" x2="15" y2="15" />
+                <line x1="15" y1="3" x2="3" y2="15" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <line x1="2" y1="5" x2="16" y2="5" />
+                <line x1="2" y1="9" x2="16" y2="9" />
+                <line x1="2" y1="13" x2="16" y2="13" />
+              </svg>
+            )}
+          </button>
+
+          {navOpen && (
+            <>
+              {/* click-away layer */}
+              <div onClick={() => setNavOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 8px)",
+                  right: 0,
+                  zIndex: 200,
+                  minWidth: 180,
+                  background: "var(--card)",
+                  color: "var(--card-text)",
+                  border: "1px solid var(--line, rgba(10,10,10,.14))",
+                  borderRadius: "var(--r, 10px)",
+                  boxShadow: "var(--shadow, 0 8px 24px rgba(10,10,10,.18))",
+                  overflow: "hidden",
+                  padding: 6,
+                }}
+              >
+                {links.map(({ label, href }) => {
+                  const active = pathname === href || pathname.startsWith(href + "/");
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setNavOpen(false)}
+                      style={{
+                        display: "block",
+                        textDecoration: "none",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 13,
+                        fontWeight: active ? 700 : 500,
+                        color: active ? "var(--card-text)" : "var(--muted)",
+                        background: active ? "var(--surface-2, rgba(10,10,10,.06))" : "transparent",
+                        padding: "10px 12px",
+                        borderRadius: "var(--r-sm, 8px)",
+                      }}
+                    >
+                      {label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
