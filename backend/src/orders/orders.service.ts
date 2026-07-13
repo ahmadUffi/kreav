@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ExplorerService } from '../stellar/explorer.service';
 import { AppEvents } from '../events/event-names';
 import type {
   PaymentReceivedPayload,
@@ -30,6 +31,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emitter: EventEmitter2,
+    private readonly explorer: ExplorerService,
   ) {}
 
   /**
@@ -206,12 +208,12 @@ export class OrdersService {
    * GET /orders/:id — single order with product details.
    * Throws 404 if not found.
    */
-  async findOne(id: string): Promise<Record<string, unknown>> {
+  async findOne(id: string, requesterCreatorId?: string): Promise<Record<string, unknown>> {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
         product: {
-          select: { id: true, title: true, priceUsd: true },
+          select: { id: true, title: true, priceUsd: true, creatorId: true },
         },
         settlement: {
           select: {
@@ -220,36 +222,56 @@ export class OrdersService {
             totalAmount: true,
             status: true,
             createdAt: true,
+            recipients: {
+              select: {
+                walletAddress: true,
+                recipientType: true,
+                role: true,
+                percentage: true,
+                amount: true,
+              },
+              orderBy: { createdAt: 'asc' },
+            },
           },
         },
       },
     });
 
-    if (!order) {
+    // Owner-scoped: mismatch returns the same 404 as not-found (no existence leak,
+    // and no buyerEmail exposure to non-owners).
+    if (!order || (requesterCreatorId && order.product.creatorId !== requesterCreatorId)) {
       throw new NotFoundException('Order not found');
     }
+
+    const s = order.settlement;
+    const money = (d: { toFixed?: (n: number) => string } | null | undefined) =>
+      d?.toFixed?.(2) ?? String(d);
 
     return {
       id: order.id,
       productId: order.product.id,
       productTitle: order.product.title,
-      productPrice: order.product.priceUsd?.toFixed?.(2) ?? String(order.product.priceUsd),
+      productPrice: money(order.product.priceUsd),
       buyerEmail: order.buyerEmail,
-      amountUsd: order.amountUsd?.toFixed?.(2) ?? String(order.amountUsd),
+      amountUsd: money(order.amountUsd),
       status: order.status,
       paymentRef: order.paymentRef ?? undefined,
       txHash: order.txHash ?? undefined,
-      settlement: order.settlement
+      settlement: s
         ? {
-            id: order.settlement.id,
-            txHash: order.settlement.txHash,
-            totalAmount:
-              order.settlement.totalAmount?.toFixed?.(2) ?? String(order.settlement.totalAmount),
-            status: order.settlement.status,
-            createdAt:
-              order.settlement.createdAt instanceof Date
-                ? order.settlement.createdAt.toISOString()
-                : String(order.settlement.createdAt),
+            id: s.id,
+            txHash: s.txHash,
+            explorerLink: this.explorer.txUrl(s.txHash),
+            totalAmount: money(s.totalAmount),
+            status: s.status,
+            createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
+            recipients: s.recipients.map((r) => ({
+              walletAddress: r.walletAddress,
+              recipientType: r.recipientType,
+              role: r.role,
+              percentage: money(r.percentage),
+              amount: money(r.amount),
+            })),
           }
         : undefined,
       createdAt:

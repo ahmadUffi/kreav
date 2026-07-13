@@ -4,10 +4,18 @@ import { Card, Button, EmptyState, Input } from "@/components/ui";
 import { useSession } from "@/lib/api/useSession";
 import { useApiQuery, useApiAction } from "@/lib/api/hooks";
 import { SessionNotice } from "@/components/SessionNotice";
-import { listProducts, createProduct } from "@/lib/api/products";
+import {
+  listProducts,
+  createProduct,
+  updateProduct,
+  getProduct,
+  archiveProduct,
+  restoreProduct,
+} from "@/lib/api/products";
 import { getBalance } from "@/lib/api/wallet";
 import { ProductGridSkeleton } from "@/components/skeletons";
-import type { CreateProductCollaborator } from "@/lib/api/types";
+import type { CreateProductCollaborator, CreateProductBody } from "@/lib/api/types";
+import type { Product } from "@/lib/types";
 
 const PRICE_RE = /^\d+(\.\d{1,2})?$/;
 const PCT_RE = /^\d+(\.\d{1,2})?$/;
@@ -44,9 +52,40 @@ export default function DashboardProductsPage() {
     ready && !!userId,
   );
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   // Product creation needs a payable wallet — gate the CTA on a USDC trustline.
   const { data: balance } = useApiQuery(() => getBalance(), [userId], ready && !!userId);
   const canCreate = !!balance?.hasUsdcTrustline;
+
+  // Open the form in edit mode: fetch the full product (list rows lack the
+  // collaborator split) then hydrate.
+  const startEdit = async (id: string) => {
+    setBusyId(id);
+    try {
+      const full = await getProduct(id);
+      setEditing(full);
+      setShowForm(true);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const toggleArchive = async (p: Product) => {
+    setBusyId(p.id);
+    try {
+      if (p.status === "ARCHIVED") await restoreProduct(p.id);
+      else await archiveProduct(p.id);
+      refetch();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditing(null);
+  };
 
   if (ready && !userId) return <SessionNotice />;
   const products = data?.items ?? [];
@@ -86,28 +125,61 @@ export default function DashboardProductsPage() {
         />
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-5">
-          {products.map((p) => (
-            <Card key={p.id} hover padding={0} style={{ overflow: "hidden" }}>
-              <div className="flex h-[100px] items-center justify-center" style={{ background: p.accent, fontSize: 40 }}>
-                {p.emoji}
-              </div>
-              <div className="p-4">
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{p.title}</div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>{p.category}</span>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 800 }}>${p.price}</span>
+          {products.map((p) => {
+            const archived = p.status === "ARCHIVED";
+            const busy = busyId === p.id;
+            return (
+              <Card key={p.id} padding={0} style={{ overflow: "hidden", opacity: archived ? 0.6 : 1 }}>
+                <div className="relative flex h-[100px] items-center justify-center" style={{ background: p.accent, fontSize: 40 }}>
+                  {p.emoji}
+                  {archived && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        left: 8,
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                        background: "var(--card)",
+                        color: "var(--muted)",
+                        borderRadius: 999,
+                        padding: "3px 8px",
+                      }}
+                    >
+                      Archived
+                    </span>
+                  )}
                 </div>
-              </div>
-            </Card>
-          ))}
+                <div className="p-4">
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{p.title}</div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>{p.category}</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 800 }}>${p.price}</span>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="secondary" onClick={() => void startEdit(p.id)} disabled={busy} style={{ flex: 1, padding: "8px 10px", fontSize: 12 }}>
+                      Edit
+                    </Button>
+                    <Button variant="ghost" onClick={() => void toggleArchive(p)} disabled={busy} style={{ padding: "8px 10px", fontSize: 12 }}>
+                      {archived ? "Restore" : "Archive"}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 
       {showForm && userId && (
         <NewProductForm
-          onClose={() => setShowForm(false)}
+          editing={editing}
+          onClose={closeForm}
           onCreated={() => {
-            setShowForm(false);
+            closeForm();
             refetch();
           }}
         />
@@ -117,23 +189,36 @@ export default function DashboardProductsPage() {
 }
 
 function NewProductForm({
+  editing,
   onClose,
   onCreated,
 }: {
+  editing?: Product | null;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const { walletAddress } = useSession();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
-  const [priceUsd, setPriceUsd] = useState("");
-  const [splitEnabled, setSplitEnabled] = useState(false);
-  const [collaborators, setCollaborators] = useState<CreateProductCollaborator[]>([
-    { walletAddress: "", role: "", revenuePercentage: "" },
-  ]);
+  const isEdit = !!editing;
+  // Seed collaborators from the edited product, creator wallet first (row 0 is
+  // always the locked creator row). >1 recipient → split was enabled.
+  const seededCollabs = (editing?.collaborators ?? [])
+    .slice()
+    .sort((a, b) => (a.walletAddress === walletAddress ? -1 : b.walletAddress === walletAddress ? 1 : 0));
+
+  const [title, setTitle] = useState(editing?.title ?? "");
+  const [description, setDescription] = useState(editing?.description ?? "");
+  const [fileUrl, setFileUrl] = useState(editing?.fileUrl ?? "");
+  const [priceUsd, setPriceUsd] = useState(editing ? editing.price.toFixed(2) : "");
+  const [splitEnabled, setSplitEnabled] = useState(seededCollabs.length > 1);
+  const [collaborators, setCollaborators] = useState<CreateProductCollaborator[]>(
+    seededCollabs.length > 1
+      ? seededCollabs.map((c) => ({ ...c }))
+      : [{ walletAddress: "", role: "", revenuePercentage: "" }],
+  );
   const [localErr, setLocalErr] = useState<string | null>(null);
-  const { run, pending, error } = useApiAction(createProduct);
+  const { run, pending, error } = useApiAction(
+    isEdit ? (body: CreateProductBody) => updateProduct(editing!.id, body) : createProduct,
+  );
 
   const updateCollaborator = (i: number, patch: Partial<CreateProductCollaborator>) =>
     setCollaborators((prev) => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
@@ -263,7 +348,7 @@ function NewProductForm({
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460 }}>
         <Card style={{ padding: 24 }}>
           <div className="mb-4 flex items-center justify-between">
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 700 }}>New product</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 700 }}>{isEdit ? "Edit product" : "New product"}</span>
             <button onClick={onClose} aria-label="Close" style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 18, color: "var(--muted)" }}>
               ✕
             </button>
@@ -394,7 +479,7 @@ function NewProductForm({
           <div className="mt-5 flex justify-end gap-3">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
             <Button variant="primary" disabled={pending} onClick={submit}>
-              {pending ? "Creating…" : "Create product"}
+              {pending ? "Saving…" : isEdit ? "Save changes" : "Create product"}
             </Button>
           </div>
         </Card>

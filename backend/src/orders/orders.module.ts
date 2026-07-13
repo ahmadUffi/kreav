@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { StellarModule } from '../stellar/stellar.module';
 
 /**
  * Orders Module — BE-005.
@@ -11,7 +12,7 @@ import { PrismaModule } from '../prisma/prisma.module';
  * AppModule, so OrdersService can inject it without a local import here.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, StellarModule],
   controllers: [OrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

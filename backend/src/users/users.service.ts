@@ -135,19 +135,45 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({
       where: { username },
       include: {
-        products: {
-          select: {
-            id: true,
-            title: true,
-            priceUsd: true,
+        socialLinks: { select: { platform: true, handle: true } },
+        customLinks: { select: { label: true, url: true }, orderBy: { sortOrder: 'asc' } },
+        // Creator's curated featured products (ACTIVE only), in chosen order.
+        featuredProducts: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            product: { select: { id: true, title: true, priceUsd: true, status: true } },
           },
-          orderBy: { createdAt: 'desc' },
         },
       },
     });
 
     if (!user) {
       throw new NotFoundException(`Creator "${username}" not found`);
+    }
+
+    const money = (d: { toFixed?: (n: number) => string } | null | undefined) =>
+      d?.toFixed?.(2) ?? String(d);
+
+    // Featured (ACTIVE) in the creator's chosen order.
+    let products = user.featuredProducts
+      .map((fp) => fp.product)
+      .filter((p) => p && p.status === 'ACTIVE')
+      .map((p) => ({ id: p.id, title: p.title, priceUsd: money(p.priceUsd) }));
+
+    // Fallback: no featured picked → recent ACTIVE products so the page isn't empty.
+    if (products.length === 0) {
+      const recent = await this.prisma.product.findMany({
+        where: { creatorId: user.id, status: 'ACTIVE' },
+        select: { id: true, title: true, priceUsd: true },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+      });
+      products = recent.map((p) => ({ id: p.id, title: p.title, priceUsd: money(p.priceUsd) }));
+    }
+
+    const socials: { instagram?: string; x?: string; tiktok?: string; youtube?: string } = {};
+    for (const sl of user.socialLinks) {
+      socials[sl.platform.toLowerCase() as keyof typeof socials] = sl.handle;
     }
 
     return {
@@ -157,11 +183,9 @@ export class UsersService {
       country: user.country ?? undefined,
       avatarEmoji: user.avatarEmoji ?? undefined,
       accent: user.accent ?? undefined,
-      products: user.products.map((p) => ({
-        id: p.id,
-        title: p.title,
-        priceUsd: p.priceUsd?.toFixed?.(2) ?? String(p.priceUsd),
-      })),
+      products,
+      socials,
+      links: user.customLinks.map((cl) => ({ label: cl.label, url: cl.url })),
     };
   }
 }

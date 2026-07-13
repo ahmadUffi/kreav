@@ -1,8 +1,41 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import CreatorMiniSite from "@/components/CreatorMiniSite";
 import { getPublicProfile } from "@/lib/api/users";
 import { mapProfileProduct } from "@/lib/api/mappers";
+import type { PublicProfileRaw } from "@/lib/api/types";
 import type { CreatorProfile, Product } from "@/lib/types";
+
+// Cache the fetch so generateMetadata + the page share one request (axios isn't
+// deduped by Next's fetch cache).
+const loadProfile = cache(async (username: string): Promise<PublicProfileRaw | null> => {
+  try {
+    return await getPublicProfile(username);
+  } catch {
+    return null;
+  }
+});
+
+/** Per-creator metadata so the shared link previews richly (bio IG / WA / X). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}): Promise<Metadata> {
+  const { username } = await params;
+  const raw = await loadProfile(username);
+  if (!raw) return { title: "Creator not found · Kreav" };
+  const title = `${raw.displayName} (@${raw.username}) · Kreav`;
+  const description =
+    raw.bio || `${raw.displayName}'s digital products on Kreav — pay instantly with USDC.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "profile", url: `/u/${raw.username}` },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
 
 export default async function CreatorPublicPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -10,8 +43,8 @@ export default async function CreatorPublicPage({ params }: { params: Promise<{ 
   let profile: CreatorProfile | null = null;
   let products: Product[] = [];
 
-  try {
-    const raw = await getPublicProfile(username);
+  const raw = await loadProfile(username);
+  if (raw) {
     const handle = `@${raw.username}`;
     products = raw.products.map((p) => mapProfileProduct(p, handle));
     profile = {
@@ -21,14 +54,10 @@ export default async function CreatorPublicPage({ params }: { params: Promise<{ 
       country: raw.country ?? "",
       avatarEmoji: raw.avatarEmoji ?? "🙂",
       accent: raw.accent ?? "#FF3BFF",
-      // Public profile endpoint doesn't expose socials/links (see INTEGRATION_PLAN.md).
-      socials: {},
-      links: [],
+      socials: raw.socials ?? {},
+      links: (raw.links ?? []).map((l, i) => ({ id: `l${i}`, label: l.label, url: l.url })),
       featuredProductIds: products.map((p) => p.id),
     };
-  } catch {
-    // 404 or server error → neutral not-found below rather than crashing.
-    profile = null;
   }
 
   if (!profile) {

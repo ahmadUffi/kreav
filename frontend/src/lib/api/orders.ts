@@ -17,6 +17,13 @@ export interface OrderList {
   limit: number;
 }
 
+export interface SettlementRecipientView {
+  walletAddress: string;
+  type: "CREATOR" | "PLATFORM" | "AFFILIATE" | "TREASURY";
+  role: string;
+  percentage: string;
+  amount: number;
+}
 export interface OrderDetailView {
   id: string;
   productId: string;
@@ -27,7 +34,13 @@ export interface OrderDetailView {
   buyer: string;
   date: string;
   txHash?: string;
-  settlementTxHash?: string;
+  settlement?: {
+    txHash: string;
+    explorerLink: string;
+    totalAmount: number;
+    status: string;
+    recipients: SettlementRecipientView[];
+  };
 }
 
 /**
@@ -60,7 +73,21 @@ export async function getOrder(id: string): Promise<OrderDetailView> {
     buyer: raw.buyerEmail,
     date: toDateOnly(raw.createdAt),
     txHash: raw.txHash,
-    settlementTxHash: raw.settlement?.txHash,
+    settlement: raw.settlement
+      ? {
+          txHash: raw.settlement.txHash,
+          explorerLink: raw.settlement.explorerLink,
+          totalAmount: parseMoney(raw.settlement.totalAmount),
+          status: raw.settlement.status,
+          recipients: raw.settlement.recipients.map((r) => ({
+            walletAddress: r.walletAddress,
+            type: r.recipientType,
+            role: r.role,
+            percentage: r.percentage,
+            amount: parseMoney(r.amount),
+          })),
+        }
+      : undefined,
   };
 }
 
