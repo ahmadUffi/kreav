@@ -29,11 +29,11 @@ export default function Footer() {
   return (
     <footer
       id="pricing"
+      className="px-6 pb-9 pt-14 md:px-10 md:pb-[34px] md:pt-[70px]"
       style={{
         position: "relative",
         background: "var(--bg)",
         borderTop: "4px solid #0A0A0A",
-        padding: "70px 40px 34px",
         overflow: "hidden",
       }}
     >
@@ -58,18 +58,16 @@ export default function Footer() {
       </div>
 
       <div
+        className="grid grid-cols-2 gap-8 md:grid-cols-[1.5fr_1fr_1fr_1fr] md:gap-[30px]"
         style={{
           position: "relative",
           zIndex: 2,
-          display: "grid",
-          gridTemplateColumns: "1.5fr 1fr 1fr 1fr",
-          gap: 30,
           maxWidth: 1280,
           margin: "0 auto 46px",
         }}
       >
         {/* Brand */}
-        <div>
+        <div className="col-span-2 md:col-span-1">
           <div
             onMouseEnter={doGlitch}
             style={{
