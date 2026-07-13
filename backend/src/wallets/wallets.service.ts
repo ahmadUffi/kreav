@@ -88,7 +88,6 @@ export class WalletsService {
     const fmt = (d: { toFixed?: (n: number) => string } | null | undefined): string =>
       d?.toFixed?.(2) ?? String(d);
     const iso = (d: Date | string): string => (d instanceof Date ? d.toISOString() : String(d));
-    const ts = (d: Date | string): number => new Date(d).getTime();
 
     // Withdrawals are keyed by creator, settlements by wallet address — resolve
     // the creator so we can show BOTH incoming settlements and outgoing
@@ -136,7 +135,6 @@ export class WalletsService {
       destination: '',
       status: row.settlement.status,
       createdAt: iso(row.settlement.createdAt),
-      _sort: ts(row.settlement.createdAt),
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma model shape
@@ -155,15 +153,15 @@ export class WalletsService {
       destination: w.destinationType,
       status: w.status,
       createdAt: iso(w.createdAt),
-      _sort: ts(w.createdAt),
     }));
 
-    // Merge both sources, newest-first, then paginate the combined list.
-    const merged = [...settlementTx, ...withdrawalTx].sort((a, b) => b._sort - a._sort);
+    // Merge both sources, newest-first (createdAt is ISO-8601 → lexical = chrono),
+    // then paginate the combined list.
+    const merged = [...settlementTx, ...withdrawalTx].sort((a, b) =>
+      a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
+    );
     const total = merged.length;
-    const transactions = merged
-      .slice(skip, skip + limit)
-      .map(({ _sort: _unused, ...t }) => t);
+    const transactions = merged.slice(skip, skip + limit);
 
     return {
       address,
