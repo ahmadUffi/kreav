@@ -91,6 +91,8 @@ export interface PublicProfileRaw {
   avatarEmoji?: string;
   accent?: string;
   products: { id: string; title: string; priceUsd: string; category?: string }[];
+  socials?: { instagram?: string; x?: string; tiktok?: string; youtube?: string };
+  links?: { label: string; url: string }[];
 }
 
 /* ── Products ─────────────────────────────────────────────────────────── */
@@ -100,9 +102,12 @@ export interface ProductRaw {
   description: string | null;
   fileUrl: string | null;
   priceUsd: string;
+  status?: "ACTIVE" | "ARCHIVED";
   creatorId: string;
   createdAt: string;
   creator: { id: string; name: string };
+  // Present on GET /products/:id — the ACTIVE revenue-split set (for edit hydration).
+  collaborators?: CreateProductCollaborator[];
 }
 /** One revenue-split recipient. Shares across a product must sum to 100. */
 export interface CreateProductCollaborator {
@@ -133,14 +138,23 @@ export interface OrderRaw {
   txHash?: string;
   createdAt: string;
 }
+export interface SettlementRecipientRaw {
+  walletAddress: string;
+  recipientType: "CREATOR" | "PLATFORM" | "AFFILIATE" | "TREASURY";
+  role: string;
+  percentage: string;
+  amount: string;
+}
 export interface OrderDetailRaw extends OrderRaw {
   productId: string;
   settlement?: {
     id: string;
     txHash: string;
+    explorerLink: string;
     totalAmount: string;
     status: SettlementStatus;
     createdAt: string;
+    recipients: SettlementRecipientRaw[];
   };
 }
 export interface CheckoutRaw {

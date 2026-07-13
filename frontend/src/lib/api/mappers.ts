@@ -75,6 +75,9 @@ export function mapProduct(raw: ProductRaw): Product {
     accent: deriveAccent(raw.id),
     emoji,
     description: raw.description ?? undefined,
+    fileUrl: raw.fileUrl ?? undefined,
+    status: raw.status,
+    collaborators: raw.collaborators,
   };
 }
 

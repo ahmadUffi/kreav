@@ -22,6 +22,9 @@ const pressStart2P = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
+  // Absolute base for OG/Twitter URLs (share previews). Set NEXT_PUBLIC_SITE_URL
+  // to the deployed origin in prod; localhost fallback for dev.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "Kreav — Sell Your Digital Work Everywhere",
   description:
     "Sell your ebooks, presets, and templates to buyers across Asia. Get paid instantly, in your own currency.",

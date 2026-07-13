@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CollaboratorStatus, Prisma } from '@prisma/client';
+import { CollaboratorStatus, Prisma, ProductStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorizonService } from '../stellar/horizon.service';
 import { PaginationDto } from './dto/pagination.dto';
 import { CreateCollaboratorDto, CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 /**
  * ProductsService — Prisma-backed product catalog operations.
@@ -39,7 +40,11 @@ export class ProductsService {
   }> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const where: Prisma.ProductWhereInput = query.creatorId ? { creatorId: query.creatorId } : {};
+    // Owner-scoped list (dashboard, creatorId set) shows every status incl.
+    // ARCHIVED; the public storefront (no creatorId) shows only ACTIVE.
+    const where: Prisma.ProductWhereInput = query.creatorId
+      ? { creatorId: query.creatorId }
+      : { status: ProductStatus.ACTIVE };
 
     const [data, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -61,12 +66,85 @@ export class ProductsService {
   async findOne(id: string): Promise<Record<string, unknown>> {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: this.includeCreator,
+      include: {
+        ...this.includeCreator,
+        // ACTIVE collaborators so the edit form can hydrate the revenue split.
+        collaborators: {
+          where: { status: CollaboratorStatus.ACTIVE },
+          select: { walletAddress: true, role: true, revenuePercentage: true },
+        },
+      },
     });
     if (!product) {
       throw new NotFoundException('Product not found');
     }
     return product;
+  }
+
+  /** Load a product and assert the caller owns it (else 404 — no existence leak). */
+  private async loadOwnedProduct(id: string, creatorId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    if (!product || product.creatorId !== creatorId) {
+      throw new NotFoundException('Product not found');
+    }
+    return product;
+  }
+
+  /**
+   * Update a product (owner only). Scalar fields are patched when present.
+   * When `collaborators` is provided, the whole ACTIVE set is REPLACED
+   * (same validation as create). Past settlements are unaffected — they store
+   * their own copy of role/percentage in SettlementRecipient.
+   */
+  async update(
+    id: string,
+    dto: UpdateProductDto,
+    creatorId: string,
+  ): Promise<Record<string, unknown>> {
+    await this.loadOwnedProduct(id, creatorId);
+
+    const data: Prisma.ProductUpdateInput = {};
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.fileUrl !== undefined) data.fileUrl = dto.fileUrl;
+    if (dto.priceUsd !== undefined) data.priceUsd = new Prisma.Decimal(dto.priceUsd);
+
+    // Optional collaborator replacement (validated + eligibility-checked).
+    if (dto.collaborators && dto.collaborators.length > 0) {
+      const collaborators = await this.resolveCollaborators(dto.collaborators, creatorId);
+      await this.prisma.$transaction([
+        this.prisma.productCollaborator.deleteMany({ where: { productId: id } }),
+        this.prisma.productCollaborator.createMany({
+          data: collaborators.map((c) => ({
+            productId: id,
+            walletAddress: c.walletAddress,
+            role: c.role,
+            revenuePercentage: c.revenuePercentage,
+            status: CollaboratorStatus.ACTIVE,
+          })),
+        }),
+      ]);
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data,
+      include: this.includeCreator,
+    });
+  }
+
+  /** Archive (soft-delete) or restore a product. Owner only. */
+  async setStatus(
+    id: string,
+    creatorId: string,
+    status: ProductStatus,
+  ): Promise<Record<string, unknown>> {
+    await this.loadOwnedProduct(id, creatorId);
+    return this.prisma.product.update({
+      where: { id },
+      data: { status },
+      include: this.includeCreator,
+    });
   }
 
   /**

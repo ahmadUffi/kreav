@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { ProductStatus } from '@prisma/client';
 import {
   ApiTags,
   ApiOperation,
@@ -14,6 +15,7 @@ import { JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PaginationDto } from './dto/pagination.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 /**
  * ProductsController — public product catalog endpoints.
@@ -131,5 +133,45 @@ export class ProductsController {
   @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateProductDto) {
     return this.products.create(dto, user.userId);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update a product (owner only)',
+    description:
+      'Patches the given fields. If `collaborators` is provided, the revenue-split ' +
+      'set is replaced wholesale (same validation as create). 404 if the product is ' +
+      "not found or not owned by the caller.",
+  })
+  @ApiParam({ name: 'id', description: 'Product ID (UUID)' })
+  @ApiBody({ type: UpdateProductDto })
+  @ApiResponse({ status: 200, description: 'Product updated' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Product not found / not owned' })
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateProductDto) {
+    return this.products.update(id, dto, user.userId);
+  }
+
+  @Patch(':id/archive')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Archive a product (owner only)',
+    description: 'Soft-deletes: hides the product from the storefront but keeps order history.',
+  })
+  @ApiParam({ name: 'id', description: 'Product ID (UUID)' })
+  archive(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.products.setStatus(id, user.userId, ProductStatus.ARCHIVED);
+  }
+
+  @Patch(':id/restore')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Restore an archived product (owner only)' })
+  @ApiParam({ name: 'id', description: 'Product ID (UUID)' })
+  restore(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.products.setStatus(id, user.userId, ProductStatus.ACTIVE);
   }
 }

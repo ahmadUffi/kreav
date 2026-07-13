@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge, Button, Card } from "@/components/ui";
 import ProductCard from "@/components/ProductCard";
+import StoreBrowser from "@/components/StoreBrowser";
 import { listProducts } from "@/lib/api/products";
 import { ApiError } from "@/lib/api/client";
 import type { Product } from "@/lib/types";
@@ -120,17 +121,8 @@ export default async function StorePage() {
             </div>
           </section>
 
-          {/* All products */}
-          <section className="mb-20">
-            <h2 className="mb-6" style={{ fontFamily: "var(--font-anton)", fontSize: "clamp(24px, 3vw, 36px)", lineHeight: 1.05 }}>
-              All products
-            </h2>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5">
-              {products.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          </section>
+          {/* All products — search / category filter / pagination (client) */}
+          <StoreBrowser products={products} />
 
           {/* Meet the creators */}
           <section id="creators" className="mb-20 scroll-mt-20">
