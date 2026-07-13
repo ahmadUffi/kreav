@@ -67,8 +67,23 @@ export class PublicProfileResponseDto {
   accent?: string;
 
   @ApiProperty({
-    description: "Creator's products",
+    description: "Creator's featured products (or recent active ones as fallback)",
     type: [PublicProfileProductDto],
   })
   products!: PublicProfileProductDto[];
+
+  @ApiProperty({
+    description: 'Social media handles',
+    required: false,
+    example: { instagram: 'maya.shoots' },
+  })
+  socials?: { instagram?: string; x?: string; tiktok?: string; youtube?: string };
+
+  @ApiProperty({
+    description: 'Custom links (Linktree-style)',
+    type: 'array',
+    required: false,
+    example: [{ label: 'My workflow', url: 'https://example.com' }],
+  })
+  links?: { label: string; url: string }[];
 }

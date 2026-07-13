@@ -66,12 +66,15 @@ function toSiteConfig(p: CreatorProfile): SiteConfigRaw {
 export default function DashboardSitePage() {
   const { ready, userId } = useSession();
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
+  const [snapshot, setSnapshot] = useState<CreatorProfile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Read-only by default — the creator clicks Edit to unlock, then Save/Cancel.
+  const [editMode, setEditMode] = useState(false);
   const linkId = useRef(1000);
 
   useEffect(() => {
@@ -80,7 +83,9 @@ export default function DashboardSitePage() {
     Promise.all([getSite(), getMe(), listProducts({ creatorId: userId, limit: 100 })])
       .then(([site, me, prods]) => {
         if (!alive) return;
-        setProfile(toProfile(site, me.country ?? ""));
+        const prof = toProfile(site, me.country ?? "");
+        setProfile(prof);
+        setSnapshot(prof);
         setProducts(prods.items);
         setState("ready");
       })
@@ -146,7 +151,10 @@ export default function DashboardSitePage() {
     setSaving(true);
     try {
       const updated = await saveSite(toSiteConfig(p));
-      setProfile(toProfile(updated, p.country));
+      const np = toProfile(updated, p.country);
+      setProfile(np);
+      setSnapshot(np);
+      setEditMode(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -156,13 +164,26 @@ export default function DashboardSitePage() {
     }
   };
 
+  const cancelEdit = () => {
+    if (snapshot) setProfile(snapshot);
+    setError(null);
+    setEditMode(false);
+  };
+
+  const siteBase =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    (typeof window !== "undefined" ? window.location.origin : "");
+
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 style={{ fontFamily: "var(--font-anton)", fontSize: "clamp(26px, 3.4vw, 38px)", lineHeight: 1.05 }}>Mini-site</h1>
           <p className="mt-1" style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>
-            Your shareable page: <span style={{ color: "var(--text)" }}>kreav.app/u/{p.username}</span>
+            Your shareable page:{" "}
+            <span style={{ color: "var(--text)" }}>
+              {siteBase.replace(/^https?:\/\//, "")}/u/{p.username}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -172,9 +193,16 @@ export default function DashboardSitePage() {
           <a href={`/u/${p.username}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
             <Button variant="secondary">View live</Button>
           </a>
-          <Button variant="primary" disabled={saving} onClick={save}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
+          {editMode ? (
+            <>
+              <Button variant="ghost" disabled={saving} onClick={cancelEdit}>Cancel</Button>
+              <Button variant="primary" disabled={saving} onClick={save}>
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            </>
+          ) : (
+            <Button variant="primary" onClick={() => setEditMode(true)}>Edit</Button>
+          )}
           {saved && <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-success-fg, #0a7a45)" }}>✓ Saved</span>}
         </div>
       </div>
@@ -183,8 +211,20 @@ export default function DashboardSitePage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Controls */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Controls — locked until Edit is clicked (native fieldset disables all) */}
+        <fieldset
+          disabled={!editMode}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+            border: 0,
+            padding: 0,
+            margin: 0,
+            minWidth: 0,
+            opacity: editMode ? 1 : 0.75,
+          }}
+        >
           <Card style={{ padding: 20 }}>
             <div className="mb-4" style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>Profile</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -278,7 +318,7 @@ export default function DashboardSitePage() {
               </div>
             )}
           </Card>
-        </div>
+        </fieldset>
 
         {/* Live preview */}
         <div>

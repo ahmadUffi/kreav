@@ -91,6 +91,8 @@ export interface PublicProfileRaw {
   avatarEmoji?: string;
   accent?: string;
   products: { id: string; title: string; priceUsd: string; category?: string }[];
+  socials?: { instagram?: string; x?: string; tiktok?: string; youtube?: string };
+  links?: { label: string; url: string }[];
 }
 
 /* ── Products ─────────────────────────────────────────────────────────── */
