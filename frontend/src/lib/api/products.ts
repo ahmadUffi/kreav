@@ -24,3 +24,18 @@ export async function getProduct(id: string): Promise<Product> {
 export async function createProduct(body: CreateProductBody): Promise<Product> {
   return mapProduct(await api.post<ProductRaw>("/products", body));
 }
+
+/** Update a product (owner only). Send only changed fields; collaborators replace the split. */
+export async function updateProduct(id: string, body: Partial<CreateProductBody>): Promise<Product> {
+  return mapProduct(await api.patch<ProductRaw>(`/products/${id}`, body));
+}
+
+/** Archive (soft-delete) a product — hides it from the storefront. */
+export async function archiveProduct(id: string): Promise<Product> {
+  return mapProduct(await api.patch<ProductRaw>(`/products/${id}/archive`, {}));
+}
+
+/** Restore an archived product. */
+export async function restoreProduct(id: string): Promise<Product> {
+  return mapProduct(await api.patch<ProductRaw>(`/products/${id}/restore`, {}));
+}

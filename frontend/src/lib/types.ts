@@ -18,6 +18,12 @@ export interface Product {
   emoji: string;
   /** Short marketing blurb shown on the product detail page. */
   description?: string;
+  /** Download/access URL (needed to hydrate the edit form). */
+  fileUrl?: string;
+  /** Lifecycle — ARCHIVED products are hidden from the storefront. */
+  status?: "ACTIVE" | "ARCHIVED";
+  /** ACTIVE revenue-split recipients (present on detail fetch, for the edit form). */
+  collaborators?: { walletAddress: string; role: string; revenuePercentage: string }[];
 }
 
 /* ── Creator profile + public mini-site (Linktree-style) ─────────────── */

@@ -239,11 +239,14 @@ export class OrdersController {
    * GET /orders/:id — single order with settlement details.
    */
   @Get('orders/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Get order by ID',
+    summary: 'Get order by ID (owner only)',
     description:
-      'Returns a single order with product and settlement details. ' +
-      'Throws 404 if the order is not found.',
+      'Returns a single order with product + settlement breakdown (95/5 split, ' +
+      'recipients, explorer link). Scoped to the authenticated creator — 404 if the ' +
+      'order is not found or not owned by the caller.',
   })
   @ApiParam({
     name: 'id',
@@ -251,9 +254,12 @@ export class OrdersController {
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @ApiResponse({ status: 200, description: 'Order found' })
-  @ApiResponse({ status: 404, description: 'Order not found' })
-  async findOne(@Param('id') id: string): Promise<Record<string, unknown>> {
-    this.logger.log(`GET /orders/${id}`);
-    return this.orders.findOne(id);
+  @ApiResponse({ status: 404, description: 'Order not found / not owned' })
+  async findOne(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<Record<string, unknown>> {
+    this.logger.log(`GET /orders/${id} user=${user.userId}`);
+    return this.orders.findOne(id, user.userId);
   }
 }
