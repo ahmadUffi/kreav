@@ -5,6 +5,12 @@ import { listProducts } from "@/lib/api/products";
 import { ApiError } from "@/lib/api/client";
 import type { Product } from "@/lib/types";
 
+// Render per-request (not baked at build) so the storefront always reflects the
+// live DB. Without this the page is statically prerendered at build time — if the
+// API is unreachable / DB empty during build, `/store` bakes in an empty list and
+// never re-fetches at runtime (every other page is client/dynamic, so they work).
+export const dynamic = "force-dynamic";
+
 /**
  * Storefront landing (server component) — introduces the ready-to-buy products
  * and the creators behind them, sourced from `GET /products`. The backend has no
