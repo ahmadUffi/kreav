@@ -182,12 +182,12 @@ export default function Nav() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden"
+          className="flex md:hidden"
           onClick={() => setMenuOpen((o) => !o)}
           aria-label="Toggle menu"
           aria-expanded={menuOpen}
           style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
+            alignItems: "center", justifyContent: "center",
             background: "transparent", color: linkColor,
             border: `2px solid ${linkColor}`, padding: 8, cursor: "pointer",
           }}
