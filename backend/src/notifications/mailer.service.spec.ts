@@ -38,12 +38,10 @@ describe('MailerService', () => {
   it('SENT with provider id when the API accepts', async () => {
     configValues.RESEND_API_KEY = 're_test_key';
     service = await build();
-    jest
-      .spyOn(global, 'fetch' as never)
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: 'msg_123' }),
-      } as never);
+    jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'msg_123' }),
+    } as never);
 
     const result = await service.send({ to: 'a@b.com', subject: 'Hi', html: '<p>hi</p>' });
 
@@ -54,13 +52,11 @@ describe('MailerService', () => {
   it('FAILED when the API rejects', async () => {
     configValues.RESEND_API_KEY = 're_test_key';
     service = await build();
-    jest
-      .spyOn(global, 'fetch' as never)
-      .mockResolvedValue({
-        ok: false,
-        status: 422,
-        text: async () => 'invalid from',
-      } as never);
+    jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+      ok: false,
+      status: 422,
+      text: async () => 'invalid from',
+    } as never);
 
     const result = await service.send({ to: 'a@b.com', subject: 'Hi', html: '<p>hi</p>' });
 

@@ -102,7 +102,13 @@ export class WalletsService {
         where: { walletAddress: address },
         include: {
           settlement: {
-            select: { orderId: true, txHash: true, totalAmount: true, status: true, createdAt: true },
+            select: {
+              orderId: true,
+              txHash: true,
+              totalAmount: true,
+              status: true,
+              createdAt: true,
+            },
           },
         },
         orderBy: { createdAt: 'desc' },

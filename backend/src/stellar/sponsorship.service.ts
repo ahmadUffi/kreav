@@ -234,7 +234,9 @@ export class SponsorshipService {
 
     try {
       const result = await this.server.submitTransaction(tx);
-      this.logger.log(`Submitted withdraw payment for ${expectedFrom.slice(0, 8)}...: ${result.hash}`);
+      this.logger.log(
+        `Submitted withdraw payment for ${expectedFrom.slice(0, 8)}...: ${result.hash}`,
+      );
       return result.hash;
     } catch (err: unknown) {
       const detail = this.extractHorizonError(err);

@@ -265,9 +265,7 @@ export class SettlementService {
    * the contract's atomic transfer be the final guard — we never block a
    * settlement on a transient read failure.
    */
-  private async findRecipientsMissingTrustline(
-    recipients: RecipientInput[],
-  ): Promise<string[]> {
+  private async findRecipientsMissingTrustline(recipients: RecipientInput[]): Promise<string[]> {
     const checks = await Promise.all(
       recipients.map(async (r) => {
         try {
@@ -412,9 +410,7 @@ export class SettlementService {
               recipientType: RecipientType.CREATOR,
               role: collaborators[i]?.role ?? 'Creator',
               percentage: collaborators[i]?.revenuePercentage ?? new Prisma.Decimal(0),
-              amount: new Prisma.Decimal(creatorAmountsBase[i].toString()).div(
-                10 ** USDC_DECIMALS,
-              ),
+              amount: new Prisma.Decimal(creatorAmountsBase[i].toString()).div(10 ** USDC_DECIMALS),
             })),
           ],
         },

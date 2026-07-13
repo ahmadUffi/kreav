@@ -189,7 +189,9 @@ export class WithdrawalsAnchorController {
 
   private requireToken(token: string | undefined): string {
     if (!token) {
-      throw new UnauthorizedException('Missing x-anchor-token (authenticate with the anchor first)');
+      throw new UnauthorizedException(
+        'Missing x-anchor-token (authenticate with the anchor first)',
+      );
     }
     return token;
   }

@@ -121,7 +121,9 @@ export class AnchorSep24Service {
    */
   mapStatus(anchorStatus: string): WithdrawalStatus {
     if (anchorStatus === 'completed') return WithdrawalStatus.COMPLETED;
-    if (['error', 'refunded', 'no_market', 'too_small', 'too_large', 'expired'].includes(anchorStatus)) {
+    if (
+      ['error', 'refunded', 'no_market', 'too_small', 'too_large', 'expired'].includes(anchorStatus)
+    ) {
       return WithdrawalStatus.FAILED;
     }
     return WithdrawalStatus.PROCESSING;
@@ -161,7 +163,9 @@ export class AnchorSep24Service {
     try {
       res = await fetch(url, init);
     } catch (err) {
-      this.logger.error(`Anchor request failed (${url}): ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Anchor request failed (${url}): ${err instanceof Error ? err.message : String(err)}`,
+      );
       throw new BadGatewayException('Anchor is unreachable');
     }
     const text = await res.text();
