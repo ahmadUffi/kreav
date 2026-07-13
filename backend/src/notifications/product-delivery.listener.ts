@@ -73,9 +73,7 @@ export class ProductDeliveryListener {
         },
       });
 
-      this.logger.log(
-        `Product delivery for order ${orderId} → ${buyerEmail}: ${result.status}`,
-      );
+      this.logger.log(`Product delivery for order ${orderId} → ${buyerEmail}: ${result.status}`);
     } catch (err) {
       // Never let a delivery failure escape into the event pipeline.
       this.logger.error(

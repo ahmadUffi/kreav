@@ -100,7 +100,11 @@ export class AuthController {
       'a returning wallet to SEP-10 login and a new wallet to creator onboarding.',
   })
   @ApiQuery({ name: 'address', description: 'Stellar public key (G...)', required: true })
-  @ApiResponse({ status: 200, description: 'Registration status', schema: { example: { registered: true } } })
+  @ApiResponse({
+    status: 200,
+    description: 'Registration status',
+    schema: { example: { registered: true } },
+  })
   async walletStatus(@Query('address') address: string): Promise<{ registered: boolean }> {
     return this.auth.walletStatus(address ?? '');
   }

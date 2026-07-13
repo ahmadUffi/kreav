@@ -152,7 +152,10 @@ describe('OrdersController (e2e)', () => {
     it('404 — product does not exist', async () => {
       const res = await request(app.getHttpServer())
         .post('/checkout')
-        .send({ productId: '00000000-0000-0000-0000-000000000000', buyerEmail: 'buyer@example.com' });
+        .send({
+          productId: '00000000-0000-0000-0000-000000000000',
+          buyerEmail: 'buyer@example.com',
+        });
       expect(res.status).toBe(404);
     });
   });

@@ -13,11 +13,7 @@ import { SponsorshipService } from '../stellar/sponsorship.service';
 import { ExplorerService } from '../stellar/explorer.service';
 import { JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import {
-  PrepareTrustlineResponseDto,
-  SubmitTrustlineDto,
-  SubmitTrustlineResponseDto,
-} from './dto';
+import { PrepareTrustlineResponseDto, SubmitTrustlineDto, SubmitTrustlineResponseDto } from './dto';
 
 /**
  * WalletsTrustlineController — Fase 1.5 (sponsored onboarding).
@@ -53,7 +49,7 @@ export class WalletsTrustlineController {
   @ApiOperation({
     summary: 'Prepare a sponsored USDC trustline',
     description:
-      "Builds a transaction that establishes a USDC trustline on the authenticated " +
+      'Builds a transaction that establishes a USDC trustline on the authenticated ' +
       "creator's connected wallet, with the reserve sponsored and the fee paid by " +
       'the platform (CAP-33). The transaction is already signed by the platform; the ' +
       'wallet only needs to add its signature and POST it back to /submit. ' +
