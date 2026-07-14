@@ -1,0 +1,26 @@
+# Kreav — Caddy reverse proxy with automatic HTTPS.
+# Domains are injected from the environment (see docker-compose.yml → caddy.environment,
+# sourced from the root .env). Nothing is hard-coded.
+
+# Global options — ACME account email for Let's Encrypt (cert expiry notices).
+{
+	email {$ACME_EMAIL}
+}
+
+# Frontend — kreav.space
+{$APP_DOMAIN} {
+	encode gzip zstd
+	reverse_proxy frontend:3000
+}
+
+# Backend API — api.kreav.space
+{$API_DOMAIN} {
+	encode gzip zstd
+	reverse_proxy backend:3000
+}
+
+# Future app surface — app.kreav.space (reserved; route once it exists).
+# {$FUTURE_DOMAIN} {
+# 	encode gzip zstd
+# 	reverse_proxy frontend:3000
+# }

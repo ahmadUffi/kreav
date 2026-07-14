@@ -4,8 +4,8 @@ Settlement orchestration layer for digital product creators, powered by Stellar.
 **NestJS + Prisma + PostgreSQL.** Non-custodial: the backend stores only public
 wallet addresses — never private keys or seed phrases.
 
-> **Source of truth:** [`../../Kreav Backend PRD.md`](../../Kreav%20Backend%20PRD.md) v3 (Final).
-> **Working agreement:** [`AGENTS.md`](./AGENTS.md).
+> **Source of truth:** [`../docs/backend/Backend-PRD.md`](../docs/backend/Backend-PRD.md) v3 (Final).
+> **Working agreement:** [`./AGENTS.md`](./AGENTS.md).
 
 ## Status
 
@@ -28,15 +28,15 @@ pnpm start:dev              # http://localhost:3000
 
 ## Scripts
 
-| Script | Purpose |
-| --- | --- |
-| `pnpm start:dev` | Run in watch mode |
-| `pnpm build` | Compile to `dist/` |
-| `pnpm lint` | ESLint (with auto-fix) |
+| Script            | Purpose                  |
+| ----------------- | ------------------------ |
+| `pnpm start:dev`  | Run in watch mode        |
+| `pnpm build`      | Compile to `dist/`       |
+| `pnpm lint`       | ESLint (with auto-fix)   |
 | `pnpm lint:check` | ESLint (CI mode, no fix) |
-| `pnpm test` | Unit tests |
-| `pnpm test:e2e` | End-to-end tests |
-| `pnpm format` | Prettier write |
+| `pnpm test`       | Unit tests               |
+| `pnpm test:e2e`   | End-to-end tests         |
+| `pnpm format`     | Prettier write           |
 
 ## Project structure (PRD Section 7)
 

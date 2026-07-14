@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Anton, JetBrains_Mono, Press_Start_2P } from "next/font/google";
+import { ThemeProvider } from "@/context/theme";
 import "./globals.css";
 
 const anton = Anton({
@@ -21,6 +22,9 @@ const pressStart2P = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
+  // Absolute base for OG/Twitter URLs (share previews). Set NEXT_PUBLIC_SITE_URL
+  // to the deployed origin in prod; localhost fallback for dev.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "Kreav — Sell Your Digital Work Everywhere",
   description:
     "Sell your ebooks, presets, and templates to buyers across Asia. Get paid instantly, in your own currency.",
@@ -36,7 +40,9 @@ export default function RootLayout({
       lang="en"
       className={`${anton.variable} ${jetbrainsMono.variable} ${pressStart2P.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

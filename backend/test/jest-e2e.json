@@ -5,5 +5,8 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "<rootDir>/../tsconfig.spec.json" }]
-  }
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(.pnpm/)?(?:(@stellar|@noble|stellar-base|js-xdr|uint8array-extras)))"
+  ]
 }
