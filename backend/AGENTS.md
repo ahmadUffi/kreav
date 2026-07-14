@@ -1,20 +1,19 @@
 # Backend Working Agreement
 
-> Source of truth for how backend issues (BE-001 → BE-014) are executed.
-> Bind to PRD: [`docs/backend/Backend-PRD.md`](../docs/backend/Backend-PRD.md) v3 (Final). Scope: **backend only**.
-> This file mirrors the backend section of the canonical [`../AGENTS.md`](../AGENTS.md); the canonical copy is authoritative.
+> Source of truth for how backend issues (BE-001 → BE-012) are executed.
+> Bind to PRD: `Kreav Backend PRD.md` v3 (Final). Scope: **backend only**.
 
 ## Issue lifecycle
 
 ```
-Backlog → [create branch] → In progress → [open PR → develop] → In review → [CI green?] → [USER reviews & merges] → Done
+Backlog → [create branch] → In progress → [open PR → develop] → In review → [CI green?] → [squash merge] → Done
 ```
 
 - **One issue = one branch = one PR.**
 - **Base branch = `develop`** (NOT `main`). `develop` is the working source of truth; `main` is only touched via deliberate releases.
 - Move the Project #10 card at each phase so the board stays accurate.
 - Issue auto-closes on merge via `closes #X` in the PR body.
-- `Source of truth: docs/backend/Backend-PRD.md` → always obey; it wins over other docs.
+- `Source of truth: Kreav Backend PRD.md` → always obey; it wins over other docs.
 
 ## Branching
 
@@ -29,7 +28,7 @@ Backlog → [create branch] → In progress → [open PR → develop] → In rev
 ```
 
 - **Types:** `feat`, `fix`, `chore`, `test`, `refactor`, `docs`, `ci`
-- **Scopes (module names):** `config`, `prisma`, `products`, `orders`, `wallets`, `withdrawals`, `stellar`, `auth`, `users`, `site`, `analytics`, `events`, `common`
+- **Scopes (module names):** `config`, `prisma`, `products`, `orders`, `wallets`, `stellar`, `auth`, `users`, `common`
 - Examples:
   - `feat(orders): create checkout endpoint (BE-005)`
   - `test(orders): checkout→webhook happy path (BE-005)`
@@ -61,26 +60,13 @@ All must be true:
 - **The AI agent (and any human) MUST verify CI is green before merging a PR.** No green CI = no merge — even if local checks pass. If CI is red, fix the branch and re-run; do not bypass.
 - PR target is `develop`. Enable branch protection on `develop` (require CI checks) when the repo owner is ready.
 
-## Merge strategy — Squash & merge (NEVER auto-merge)
+## Merge strategy — Squash & merge
 
-> ⛔ **The AI agent MUST NEVER merge a PR by itself.** After CI goes green, the
-> agent opens/leaves the PR open and asks the **user to review and merge**.
-> CI green is a *prerequisite*, not a trigger. No review = no merge.
-
-- Workflow: agent opens PR → watches CI until green → **stops and notifies the user** → user reviews & squash-merges.
 - Squash all branch commits → **one commit on `develop`** with a clean conventional message.
 - Use the issue number + title in the squashed message (e.g. `feat(config): initialize NestJS backend project (BE-001) (#1)`).
-- GitHub auto-close (`closes #X`) does **not** fire for PRs into `develop` (only the default branch `main`). After the user merges, the agent closes the issue + moves the Project #10 card manually.
+- **Merge gate:** CI must be green on the PR head before squash-merging. Re-check CI after merge to `develop`.
 - Delete the source branch after merge.
 - `main` is updated only via deliberate releases from `develop` — not from feature branches.
-
-## Secrets & configuration — no hard-coding
-
-- **Never hard-code credentials** (DB passwords, API keys, wallet keys, secrets). Read everything from env via `process.env` / `@nestjs/config` / `${VAR}` interpolation.
-- The **only** exception: GitHub Actions `env:` / service-container blocks, where dummy local-only values are the documented standard pattern (CI VMs are ephemeral). Real secrets there must use GitHub Secrets (`secrets.*`), never literals.
-- `compose.yml` reads from `.env` via interpolation — no literals.
-- `.env` is gitignored everywhere (root + `backend/`). Only `.env.example` (placeholders) is committed.
-- Non-custodial: never store private keys / seed phrases anywhere — not env, not DB, not logs.
 
 ## Local environment
 

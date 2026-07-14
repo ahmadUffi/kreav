@@ -21,9 +21,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio",
-    "smoke": "ts-node scripts/smoke.ts",
-    "acceptance": "ts-node scripts/acceptance-backend.ts"
+    "prisma:studio": "prisma studio"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -32,17 +30,10 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
-    "@nestjs/event-emitter": "^3.1.0",
-    "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
-    "@nestjs/swagger": "^11.4.4",
-    "@nestjs/throttler": "^6.5.0",
-    "@noble/hashes": "1.8.0",
     "@prisma/client": "^6.19.3",
-    "@stellar/stellar-sdk": "^16.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
-    "helmet": "^8.2.0",
     "joi": "^17.13.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
@@ -92,9 +83,6 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node",
-    "transformIgnorePatterns": [
-      "node_modules/(?!(.pnpm/)?(?:(@stellar|@noble|stellar-base|js-xdr|uint8array-extras)))"
-    ]
+    "testEnvironment": "node"
   }
 }

@@ -97,8 +97,7 @@ export default function Features() {
   return (
     <section
       ref={sectionRef}
-      className="mx-auto px-6 pb-20 pt-5 md:px-10 md:pb-[100px]"
-      style={{ maxWidth: 1280 }}
+      style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 40px 100px" }}
     >
       <div
         style={{
@@ -119,16 +118,12 @@ export default function Features() {
         [ Built Different ]
       </div>
 
-      <div
-        className="kv-spot -mx-6 flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0"
-        style={{ gap: 26 }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 26 }}>
         {FEATURES.map((f) => (
           <div
             key={f.letter}
             data-feature
             data-from={f.from}
-            className="w-[280px] shrink-0 snap-start md:w-auto md:shrink"
             style={{
               position: "relative",
               background: f.bg,

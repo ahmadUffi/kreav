@@ -1,7 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 
@@ -20,7 +19,6 @@ const BADGES = [
 ];
 
 export default function Hero() {
-  const router = useRouter();
   const sectionRef = useRef<HTMLElement>(null);
   const typedRef = useRef<HTMLSpanElement>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -215,7 +213,6 @@ export default function Hero() {
           <button
             data-r="cta-1"
             data-hero
-            onClick={() => router.push("/store")}
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 14,
@@ -245,7 +242,6 @@ export default function Hero() {
           <button
             data-r="cta-2"
             data-hero
-            onClick={() => router.push("/store")}
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 14,
@@ -270,7 +266,7 @@ export default function Hero() {
               (e.currentTarget as HTMLElement).style.boxShadow = "6px 6px 0 #0A0A0A";
             }}
           >
-            See Products
+            See How It Works
           </button>
         </div>
 

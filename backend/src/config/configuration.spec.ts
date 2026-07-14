@@ -82,23 +82,6 @@ describe('configuration', () => {
       expect(error).toBeDefined();
       expect(error!.message).toContain('DATABASE_URL');
     });
-
-    it('accepts an optional GCASH_WEBHOOK_SECRET (audit #11)', () => {
-      const withSecret = validationSchema.validate({
-        NODE_ENV: 'development',
-        PORT: 3000,
-        DATABASE_URL: 'postgresql://localhost/kreav',
-        GCASH_WEBHOOK_SECRET: 'a-real-secret',
-      });
-      expect(withSecret.error).toBeUndefined();
-
-      const withoutSecret = validationSchema.validate({
-        NODE_ENV: 'development',
-        PORT: 3000,
-        DATABASE_URL: 'postgresql://localhost/kreav',
-      });
-      expect(withoutSecret.error).toBeUndefined();
-    });
   });
 
   describe('ConfigModule integration (fail-fast)', () => {

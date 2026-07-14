@@ -1,20 +1,7 @@
-import { Module } from '@nestjs/common';
-import { OrdersController } from './orders.controller';
-import { OrdersService } from './orders.service';
-import { PrismaModule } from '../prisma/prisma.module';
-import { StellarModule } from '../stellar/stellar.module';
-
 /**
- * Orders Module — BE-005.
- * Endpoints: POST /checkout, POST /webhooks/gcash.
+ * Order Module — PRD Sections 6, 9.
+ * Endpoints: POST /checkout, POST /webhooks/payment.
  *
- * EventEmitter2 is provided globally by EventEmitterModule.forRoot() in
- * AppModule, so OrdersService can inject it without a local import here.
+ * Stub only in BE-001; implemented in BE-005.
  */
-@Module({
-  imports: [PrismaModule, StellarModule],
-  controllers: [OrdersController],
-  providers: [OrdersService],
-  exports: [OrdersService],
-})
 export class OrdersModule {}
