@@ -6,7 +6,7 @@
  * a new wallet is taken into creator onboarding, both from the "Connect wallet"
  * button. (The `need` prop is kept for call-site compatibility.)
  */
-export function SessionNotice({ need: _need = "account" }: { need?: "account" | "wallet" }) {
+export function SessionNotice(_props: { need?: "account" | "wallet" }) {
   return (
     <div
       className="flex flex-col items-center text-center"

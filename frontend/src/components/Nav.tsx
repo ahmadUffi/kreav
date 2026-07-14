@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/context/theme";
-import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 
 export default function Nav() {
@@ -12,7 +11,6 @@ export default function Nav() {
   const [progress, setProgress] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
   const logoRRef = useRef<HTMLSpanElement>(null);
   const logoCRef = useRef<HTMLSpanElement>(null);

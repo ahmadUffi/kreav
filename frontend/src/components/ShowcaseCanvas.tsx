@@ -283,11 +283,7 @@ interface ShowcaseObj {
   landed: boolean;
 }
 
-export default function ShowcaseCanvas({
-  onEnter,
-}: {
-  onEnter?: (trigger: (started: boolean) => void) => void;
-}) {
+export default function ShowcaseCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const labelsRef = useRef<HTMLDivElement[]>([]);
