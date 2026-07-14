@@ -38,6 +38,7 @@ describe('WalletsService', () => {
     horizon = { getUsdcBalance: jest.fn() };
     prisma = {
       settlementRecipient: { findMany: jest.fn(), count: jest.fn() },
+      wallet: { findFirst: jest.fn() },
     };
 
     const moduleRef = await Test.createTestingModule({

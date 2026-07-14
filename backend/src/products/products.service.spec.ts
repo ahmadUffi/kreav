@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { HorizonService } from '../stellar/horizon.service';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 
@@ -37,7 +38,14 @@ describe('ProductsService', () => {
     };
 
     const moduleRef = await Test.createTestingModule({
-      providers: [ProductsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        ProductsService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: HorizonService,
+          useValue: { getUsdcBalance: jest.fn().mockResolvedValue({ balanceUsd: '0', hasUsdcTrustline: false, accountExists: false }) },
+        },
+      ],
     }).compile();
 
     service = moduleRef.get(ProductsService);

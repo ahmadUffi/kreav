@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ExplorerService } from '../stellar/explorer.service';
 import { OrdersService } from './orders.service';
 import { AppEvents } from '../events/event-names';
 
@@ -41,6 +42,10 @@ describe('OrdersService', () => {
         OrdersService,
         { provide: PrismaService, useValue: prisma },
         { provide: EventEmitter2, useValue: emitter },
+        {
+          provide: ExplorerService,
+          useValue: { txUrl: (hash: string) => `https://stellar.expert/explorer/testnet/tx/${hash}` },
+        },
       ],
     }).compile();
 
