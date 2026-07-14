@@ -95,11 +95,10 @@ export default function HowItWorks() {
     <section
       id="how"
       ref={sectionRef}
+      className="mx-auto overflow-hidden px-6 py-16 md:px-10 md:py-[110px]"
       style={{
         position: "relative",
         maxWidth: 1280,
-        margin: "0 auto",
-        padding: "110px 40px",
       }}
     >
       {/* Ghost number */}
@@ -139,7 +138,10 @@ export default function HowItWorks() {
         [ How It Works ]
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 26, position: "relative", zIndex: 2 }}>
+      <div
+        className="grid grid-cols-1 md:grid-cols-3"
+        style={{ gap: 26, position: "relative", zIndex: 2 }}
+      >
         {STEPS.map((step, i) => (
           <div
             key={step.num}

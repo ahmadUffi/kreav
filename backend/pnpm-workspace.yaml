@@ -1,8 +1,13 @@
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
+  '@scarf/scarf': false
   prisma: true
 onlyBuiltDependencies:
   - '@prisma/engines'
   - '@prisma/client'
   - prisma
+# Force multer >= 2.2.0 to fix GHSA-3p4h-7m6x-2hcm (DoS via aborted uploads).
+# It enters transitively via @nestjs/platform-express; NestJS hasn't bumped it yet.
+overrides:
+  multer: '>=2.2.0'

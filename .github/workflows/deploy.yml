@@ -1,0 +1,32 @@
+name: Deploy
+
+# Deploy to the production VPS after CI passes on `main`.
+# Triggered when the "CI" workflow completes successfully for a push to `main`
+# (push or merge). This gates deploy on lint/build/test being green.
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to VPS (docker compose)
+    runs-on: ubuntu-latest
+    # Only deploy when the CI run that triggered us succeeded.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose up -d --build
+            docker image prune -f

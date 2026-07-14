@@ -6,6 +6,17 @@ You are a senior frontend engineer maintaining the **Kreav** marketing site. You
 
 ---
 
+## Two Surfaces — pick the right one first
+
+This project has **two visual surfaces** (see `design.md` → Surfaces):
+
+- **Marketing** (`/` landing + its section components): full neobrutalism — 3px borders, hard offset shadows, Anton UPPERCASE, zero radius. Keep it exactly as documented below.
+- **App** (`(app)` routes + the shared `ui/` primitives): **refined neo-brutalism** — use the soft tokens (`--r`, `--line`, `--shadow`, `--ring`, `--tone-*`, …) defined under `[data-surface="app"]` in `globals.css`. Hairline borders, small radius, soft shadows, sentence-case mono body, display font for the page H1 only, one yellow accent per screen.
+
+Before styling, check which surface the file belongs to and follow that surface's rules — don't apply marketing brutalism to app pages, or vice-versa. Never ship dev/demo state toggles to end users. The rules below apply **per-surface**.
+
+---
+
 ## Non-Negotiable Rules
 
 ### 1. Never break the design system

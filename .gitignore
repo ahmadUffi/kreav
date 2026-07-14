@@ -1,0 +1,17 @@
+# Kreav repo — root .gitignore
+# Sub-projects (backend/, frontend/) have their own .gitignore too.
+
+# ---- secrets / env ----
+.env
+.env.*
+!.env.example
+
+# ---- OS / editor ----
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ---- logs ----
+*.log
+*.claude

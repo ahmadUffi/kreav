@@ -1,0 +1,77 @@
+# Kreav — production deployment stack (docker compose).
+#
+# Postgres lives on Neon (managed) — not here. The backend reads its own
+# `backend/.env` (DATABASE_URL, Stellar keys, etc). Deployment values (domains,
+# public API URL) come from the root `.env` via interpolation — nothing is
+# hard-coded here. See `.env.example` for the variables.
+#
+# Deploy / update:  docker compose up -d --build
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: kreav-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    # Pin the in-container port to 3000 regardless of PORT in backend/.env.
+    # Caddy, `expose`, and the healthcheck all target 3000; a mismatched PORT
+    # (e.g. 3001) makes the app unreachable → 502. `environment` overrides env_file.
+    environment:
+      PORT: 3000
+    # Explicit resolvers: the host's systemd-resolved stub (127.0.0.53) is not
+    # reachable from inside containers, which breaks DNS (Neon, Stellar, ...).
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    expose:
+      - '3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost:3000/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the Next.js client bundle at build time.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: kreav-frontend
+    restart: unless-stopped
+    expose:
+      - '3000'
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: kreav-caddy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    # Explicit resolvers so ACME (Let's Encrypt) hostname lookups succeed; the
+    # host stub resolver (127.0.0.53) is unreachable from the container.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      # Consumed by ./Caddyfile via Caddy's native env substitution.
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+      FUTURE_DOMAIN: ${FUTURE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  caddy-data:
+  caddy-config:
