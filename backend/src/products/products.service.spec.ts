@@ -17,6 +17,8 @@ describe('ProductsService', () => {
   // flagged the literal repetition as duplicated code).
   const EXPECTED_INCLUDE = { creator: { select: { id: true, name: true } } };
 
+  const MOCK_WALLET = 'GATESTWALLETADDRESS000000000000000000000000000000000000';
+
   let service: ProductsService;
   let prisma: {
     product: {
@@ -41,7 +43,7 @@ describe('ProductsService', () => {
         count: jest.fn(),
       },
       wallet: {
-        findFirst: jest.fn().mockResolvedValue({ walletAddress: 'GDA2SQ2PHWIER57TDXKLBSOD3IT4GTAHK5RV2H27LJZAXDBWQ6KYJ72B' }),
+        findFirst: jest.fn().mockResolvedValue({ walletAddress: MOCK_WALLET }),
       },
     };
 

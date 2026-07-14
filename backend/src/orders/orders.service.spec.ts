@@ -29,6 +29,8 @@ describe('OrdersService', () => {
   };
   let emitter: { emit: jest.Mock };
 
+  const MOCK_EXPLORER_URL = 'https://stellar.expert/explorer/testnet';
+
   beforeEach(async () => {
     prisma = {
       product: { findUnique: jest.fn() },
@@ -44,7 +46,7 @@ describe('OrdersService', () => {
         { provide: EventEmitter2, useValue: emitter },
         {
           provide: ExplorerService,
-          useValue: { txUrl: (hash: string) => `https://stellar.expert/explorer/testnet/tx/${hash}` },
+          useValue: { txUrl: (hash: string) => `${MOCK_EXPLORER_URL}/tx/${hash}` },
         },
       ],
     }).compile();

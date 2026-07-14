@@ -98,5 +98,5 @@ jobs:
 
       - name: Build
         env:
-          NEXT_PUBLIC_API_URL: https://api.kreav.space
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.kreav.space' }}
         run: npm run build
