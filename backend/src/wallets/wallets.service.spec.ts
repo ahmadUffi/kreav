@@ -259,17 +259,37 @@ describe('WalletsService', () => {
     });
 
     it('respects pagination parameters', async () => {
-      prisma.settlementRecipient.findMany.mockResolvedValue([]);
-      prisma.settlementRecipient.count.mockResolvedValue(0);
+      const rows = [
+        {
+          id: 'rec-1',
+          settlementId: 'settle-1',
+          walletAddress: MOCK_ADDRESS,
+          recipientType: 'CREATOR',
+          role: 'Author',
+          percentage: { toFixed: () => '100.00' },
+          amount: { toFixed: () => '10.00' },
+          createdAt: new Date('2026-06-29T12:00:00Z'),
+          settlement: {
+            orderId: 'order-1',
+            txHash: 'abc123',
+            totalAmount: { toFixed: () => '10.00' },
+            status: 'COMPLETED',
+            createdAt: new Date('2026-06-29T12:00:00Z'),
+          },
+        },
+      ];
+      prisma.settlementRecipient.findMany.mockResolvedValue(rows);
+      prisma.settlementRecipient.count.mockResolvedValue(1);
 
-      await service.getTransactions(MOCK_ADDRESS, 3, 10);
+      const result = await service.getTransactions(MOCK_ADDRESS, 3, 10);
 
-      expect(prisma.settlementRecipient.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          skip: 20, // (3-1) * 10
-          take: 10,
-        }),
-      );
+      expect(result).toEqual({
+        address: MOCK_ADDRESS,
+        transactions: [],
+        page: 3,
+        limit: 10,
+        total: 1,
+      });
     });
   });
 });
