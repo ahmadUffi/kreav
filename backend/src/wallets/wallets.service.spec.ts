@@ -24,6 +24,12 @@ describe('WalletsService', () => {
       findMany: jest.Mock;
       count: jest.Mock;
     };
+    withdrawal: {
+      findMany: jest.Mock;
+    };
+    wallet: {
+      findFirst: jest.Mock;
+    };
   };
 
   const MOCK_ADDRESS = 'GDA2SQ2PHWIER57TDXKLBSOD3IT4GTAHK5RV2H27LJZAXDBWQ6KYJ72B';
