@@ -1,0 +1,25 @@
+backend/src/wallets/wallets.service.spec.ts
+  s_2bafa2ba7782f3::t_5b57a744b8245e 41
+backend/src/products/products.service.spec.ts
+  s_2bafa2ba7782f3::t_b240ce92c278db 4
+  s_2bafa2ba7782f3::t_6a2c8f97da2adb 41-48
+backend/src/orders/orders.service.spec.ts
+  s_2bafa2ba7782f3::t_e62a03ad41f8e1 45-48
+  s_2bafa2ba7782f3::t_016559c119b895 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "e20b6f5dd87badbd34a8b8be5fb4a445cd18a7ad",
+  "prompts": {},
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
