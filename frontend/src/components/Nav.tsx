@@ -1,16 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTheme } from "@/context/theme";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 
 export default function Nav() {
-  const router = useRouter();
   const { dark, toggle } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -48,12 +45,6 @@ export default function Nav() {
   const navBorder = scrolled ? "2px solid #FFE600" : "2px solid transparent";
   const linkColor = scrolled ? "#ffffff" : "var(--text)";
 
-  const LINKS = [
-    { label: "How It Works", href: "#how" },
-    { label: "For Creators", href: "#creators" },
-    { label: "Pricing", href: "#pricing" },
-  ];
-
   return (
     <>
       {/* Progress bar */}
@@ -72,7 +63,6 @@ export default function Nav() {
 
       <nav
         ref={navRef}
-        className="px-5 py-3.5 md:px-10 md:py-4"
         style={{
           position: "fixed",
           top: 0,
@@ -82,6 +72,7 @@ export default function Nav() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          padding: "16px 40px",
           background: navBg,
           borderBottom: navBorder,
           transition: "background 0.15s, border-color 0.15s",
@@ -124,34 +115,37 @@ export default function Nav() {
                 KREAV
               </span>
             </div>
-            <span className="hidden sm:block" style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#888", marginTop: 2 }}>
+            <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#888", marginTop: 2 }}>
               Sell digital products across Asia.
             </span>
           </div>
         </div>
 
-        {/* Desktop nav links + buttons */}
-        <div className="hidden md:flex" style={{ alignItems: "center", gap: 30 }}>
+        {/* Nav links + buttons */}
+        <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24, fontSize: 12, textTransform: "uppercase", letterSpacing: "1.5px" }}>
-            {LINKS.map(({ label, href }) => (
-              <a
-                key={href}
-                href={href}
-                style={{ position: "relative", textDecoration: "none", color: linkColor, paddingBottom: 3 }}
-                className="group"
-              >
-                {label}
-                <span
-                  style={{
-                    position: "absolute", left: 0, bottom: 0,
-                    height: 2, width: "100%", background: "#FFE600",
-                    transform: "scaleX(0)", transformOrigin: "left",
-                    display: "block", transition: "transform 0.25s",
-                  }}
-                  className="group-hover:scale-x-100"
-                />
-              </a>
-            ))}
+            {["How It Works|#how", "For Creators|#creators", "Pricing|#pricing"].map((item) => {
+              const [label, href] = item.split("|");
+              return (
+                <a
+                  key={href}
+                  href={href}
+                  style={{ position: "relative", textDecoration: "none", color: linkColor, paddingBottom: 3 }}
+                  className="group"
+                >
+                  {label}
+                  <span
+                    style={{
+                      position: "absolute", left: 0, bottom: 0,
+                      height: 2, width: "100%", background: "#FFE600",
+                      transform: "scaleX(0)", transformOrigin: "left",
+                      display: "block", transition: "transform 0.25s",
+                    }}
+                    className="group-hover:scale-x-100"
+                  />
+                </a>
+              );
+            })}
           </div>
 
           <button
@@ -167,7 +161,6 @@ export default function Nav() {
           </button>
 
           <button
-            onClick={() => router.push("/store")}
             style={{
               fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 800,
               letterSpacing: 1, textTransform: "uppercase",
@@ -179,87 +172,6 @@ export default function Nav() {
             Start Selling
           </button>
         </div>
-
-        {/* Mobile hamburger */}
-        <button
-          className="flex md:hidden"
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Toggle menu"
-          aria-expanded={menuOpen}
-          style={{
-            alignItems: "center", justifyContent: "center",
-            background: "transparent", color: linkColor,
-            border: `2px solid ${linkColor}`, padding: 8, cursor: "pointer",
-          }}
-        >
-          {menuOpen ? (
-            <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
-              <line x1="3" y1="3" x2="17" y2="17" />
-              <line x1="17" y1="3" x2="3" y2="17" />
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 20 20" shapeRendering="crispEdges">
-              <rect x="2" y="4" width="16" height="2.5" fill="currentColor" />
-              <rect x="2" y="9" width="16" height="2.5" fill="currentColor" />
-              <rect x="2" y="14" width="16" height="2.5" fill="currentColor" />
-            </svg>
-          )}
-        </button>
-
-        {/* Mobile menu panel */}
-        {menuOpen && (
-          <div
-            className="md:hidden"
-            style={{
-              position: "absolute", top: "100%", left: 0, right: 0,
-              background: "#0A0A0A", borderTop: "2px solid #FFE600",
-              borderBottom: "2px solid #FFE600", padding: "18px 20px 24px",
-              display: "flex", flexDirection: "column",
-            }}
-          >
-            {LINKS.map(({ label, href }) => (
-              <a
-                key={href}
-                href={href}
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  color: "#ffffff", textDecoration: "none",
-                  fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700,
-                  letterSpacing: 1.5, textTransform: "uppercase",
-                  padding: "13px 0", borderBottom: "1px solid rgba(255,255,255,0.12)",
-                }}
-              >
-                {label}
-              </a>
-            ))}
-
-            <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
-              <button
-                onClick={toggle}
-                style={{
-                  fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700,
-                  letterSpacing: 1, background: "transparent", color: "#ffffff",
-                  border: "2px solid #ffffff", padding: "11px 14px",
-                  cursor: "pointer", textTransform: "uppercase",
-                }}
-              >
-                {dark ? "LIGHT" : "DARK"}
-              </button>
-              <button
-                onClick={() => { setMenuOpen(false); router.push("/store"); }}
-                style={{
-                  flex: 1, fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 800,
-                  letterSpacing: 1, textTransform: "uppercase",
-                  background: "#FFE600", color: "#0A0A0A",
-                  border: "3px solid #FFE600", padding: "11px 18px",
-                  cursor: "pointer", boxShadow: "4px 4px 0 rgba(255,230,0,0.35)",
-                }}
-              >
-                Start Selling
-              </button>
-            </div>
-          </div>
-        )}
       </nav>
     </>
   );

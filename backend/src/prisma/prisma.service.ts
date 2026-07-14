@@ -16,13 +16,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor() {
     super({
-      // emit: 'stdout' routes Prisma logs straight to the console.
-      // NOTE: do NOT use emit: 'event' here — it activates Prisma's event
-      // emitter, and without an attached $on listener this leaks events and
-      // triggers a Prisma 6 deprecation warning.
       log: [
-        { level: 'warn', emit: 'stdout' },
-        { level: 'error', emit: 'stdout' },
+        { level: 'warn', emit: 'event' },
+        { level: 'error', emit: 'event' },
       ],
     });
   }
