@@ -177,6 +177,7 @@ describe('WalletsService', () => {
         transactions: [
           {
             id: 'rec-1',
+            kind: 'SETTLEMENT',
             orderId: 'order-1',
             txHash: 'abc123',
             explorerLink: `${MOCK_EXPLORER_URL}/tx/abc123`,
@@ -185,11 +186,14 @@ describe('WalletsService', () => {
             recipientType: 'CREATOR',
             role: 'Author',
             percentage: '95.00',
+            direction: 'credit',
+            destination: '',
             status: 'COMPLETED',
             createdAt: '2026-06-29T12:00:00.000Z',
           },
           {
             id: 'rec-2',
+            kind: 'SETTLEMENT',
             orderId: 'order-2',
             txHash: 'def456',
             explorerLink: `${MOCK_EXPLORER_URL}/tx/def456`,
@@ -198,6 +202,8 @@ describe('WalletsService', () => {
             recipientType: 'PLATFORM',
             role: 'Platform Fee',
             percentage: '5.00',
+            direction: 'debit',
+            destination: '',
             status: 'COMPLETED',
             createdAt: '2026-06-29T11:00:00.000Z',
           },
