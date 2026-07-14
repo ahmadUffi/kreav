@@ -25,43 +25,6 @@ export default function Hero() {
   const typedRef = useRef<HTMLSpanElement>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // Entrance animations
-  useGSAP(
-    () => {
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const els = (sel: string) => sectionRef.current?.querySelectorAll(sel);
-
-      if (reduced) {
-        sectionRef.current?.querySelectorAll("[data-hero]").forEach((e) => {
-          (e as HTMLElement).style.opacity = "1";
-          (e as HTMLElement).style.transform = "none";
-        });
-        startTypewriter();
-        return;
-      }
-
-      const k = 1;
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" }, onComplete: startTypewriter });
-
-      tl.fromTo("[data-r=nav]", { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, 0)
-        .fromTo("[data-r=eyebrow]", { clipPath: "inset(0 100% 0 0)", opacity: 0 }, { clipPath: "inset(0 0% 0 0)", opacity: 1, duration: 0.5 }, 0.2)
-        .fromTo("[data-r=h1-1]", { x: -80 * k, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "back.out(1.2)" }, 0.4)
-        .fromTo("[data-r=h1-2]", { x: 80 * k, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "back.out(1.2)" }, 0.6)
-        .fromTo("[data-r=h1-3]", { x: -80 * k, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "back.out(1.2)" }, 0.8)
-        .fromTo("[data-r=sub]", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, 1.0)
-        .fromTo("[data-r=cta-1],[data-r=cta-2]", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: "elastic.out(1,0.5)", stagger: 0.08 }, 1.2)
-        .fromTo("[data-r=badge]", { x: -16, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, stagger: 0.02 }, 1.4)
-        .fromTo("[data-r=map-wrap]", { scale: 0.95, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.9 }, 1.6)
-        .fromTo("[data-r=float-card]", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.15 }, 2.0);
-
-      // Float cards loop
-      document.querySelectorAll("[data-r=float-card]").forEach((c, i) => {
-        gsap.to(c, { y: "+=12", duration: 2.4 + i * 0.4, ease: "sine.inOut", repeat: -1, yoyo: true, delay: 2.6 + i * 0.2 });
-      });
-    },
-    { scope: sectionRef }
-  );
-
   function startTypewriter() {
     const span = typedRef.current;
     if (!span) return;
@@ -97,8 +60,45 @@ export default function Hero() {
     type();
   }
 
+  // Entrance animations
+  useGSAP(
+    () => {
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (reduced) {
+        sectionRef.current?.querySelectorAll("[data-hero]").forEach((e) => {
+          (e as HTMLElement).style.opacity = "1";
+          (e as HTMLElement).style.transform = "none";
+        });
+        startTypewriter();
+        return;
+      }
+
+      const k = 1;
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" }, onComplete: startTypewriter });
+
+      tl.fromTo("[data-r=nav]", { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, 0)
+        .fromTo("[data-r=eyebrow]", { clipPath: "inset(0 100% 0 0)", opacity: 0 }, { clipPath: "inset(0 0% 0 0)", opacity: 1, duration: 0.5 }, 0.2)
+        .fromTo("[data-r=h1-1]", { x: -80 * k, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "back.out(1.2)" }, 0.4)
+        .fromTo("[data-r=h1-2]", { x: 80 * k, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "back.out(1.2)" }, 0.6)
+        .fromTo("[data-r=h1-3]", { x: -80 * k, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "back.out(1.2)" }, 0.8)
+        .fromTo("[data-r=sub]", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, 1.0)
+        .fromTo("[data-r=cta-1],[data-r=cta-2]", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: "elastic.out(1,0.5)", stagger: 0.08 }, 1.2)
+        .fromTo("[data-r=badge]", { x: -16, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, stagger: 0.02 }, 1.4)
+        .fromTo("[data-r=map-wrap]", { scale: 0.95, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.9 }, 1.6)
+        .fromTo("[data-r=float-card]", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.15 }, 2.0);
+
+      // Float cards loop
+      document.querySelectorAll("[data-r=float-card]").forEach((c, i) => {
+        gsap.to(c, { y: "+=12", duration: 2.4 + i * 0.4, ease: "sine.inOut", repeat: -1, yoyo: true, delay: 2.6 + i * 0.2 });
+      });
+    },
+    { scope: sectionRef }
+  );
+
   useEffect(() => {
-    return () => { timersRef.current.forEach(clearTimeout); };
+    const timers = timersRef.current;
+    return () => { timers.forEach(clearTimeout); };
   }, []);
 
   return (
