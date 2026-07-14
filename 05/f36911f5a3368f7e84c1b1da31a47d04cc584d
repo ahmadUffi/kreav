@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_2bafa2ba7782f3::t_daa7befddb5e32 14-17,49-50,68-97,99-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "05f36911f5a3368f7e84c1b1da31a47d04cc584d",
+  "prompts": {},
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
