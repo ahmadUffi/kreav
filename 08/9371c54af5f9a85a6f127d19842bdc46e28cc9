@@ -1,0 +1,19 @@
+backend/src/wallets/wallets.service.spec.ts
+  s_2bafa2ba7782f3::t_06e9801ee5ad0c 262-282,284,286-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "089371c54af5f9a85a6f127d19842bdc46e28cc9",
+  "prompts": {},
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
