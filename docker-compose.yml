@@ -39,6 +39,7 @@ services:
       args:
         # Baked into the Next.js client bundle at build time.
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_ANCHOR_ENABLED: ${NEXT_PUBLIC_ANCHOR_ENABLED}
     container_name: kreav-frontend
     restart: unless-stopped
     expose:

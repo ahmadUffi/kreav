@@ -9,6 +9,10 @@ WORKDIR /app
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
+# Fase 2A anchor off-ramp flag — also baked into the client bundle at build time.
+ARG NEXT_PUBLIC_ANCHOR_ENABLED
+ENV NEXT_PUBLIC_ANCHOR_ENABLED=${NEXT_PUBLIC_ANCHOR_ENABLED}
+
 COPY package.json package-lock.json ./
 RUN npm ci
 

@@ -40,10 +40,7 @@ export default function AppNav() {
 
   // Load the avatar/profile fields once signed in.
   useEffect(() => {
-    if (!signedIn) {
-      setProfile(null);
-      return;
-    }
+    if (!signedIn) return;
     let cancelled = false;
     getMe()
       .then((u) => {
@@ -56,6 +53,10 @@ export default function AppNav() {
       cancelled = true;
     };
   }, [signedIn]);
+
+  // Signing out leaves stale `profile` state; mask it here rather than syncing
+  // to null inside an effect (which would be a cascading setState-in-effect).
+  const activeProfile = signedIn ? profile : null;
 
   const connect = async () => {
     setConnectErr(null);
@@ -110,9 +111,9 @@ export default function AppNav() {
       ]
     : [{ label: "Store", href: "/store" }];
 
-  const avatar = avatarFor(walletAddress ?? "", profile?.avatarEmoji, profile?.accent);
+  const avatar = avatarFor(walletAddress ?? "", activeProfile?.avatarEmoji, activeProfile?.accent);
   const displayName =
-    profile?.username || profile?.name || username || (walletAddress ? truncateAddress(walletAddress) : "Creator");
+    activeProfile?.username || activeProfile?.name || username || (walletAddress ? truncateAddress(walletAddress) : "Creator");
 
   return (
     <nav
