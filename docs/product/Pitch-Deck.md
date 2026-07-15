@@ -6,85 +6,85 @@
 
 ## Slide 1 — The Problem
 
-**Content creator di Asia tidak bisa dibayar oleh fans mereka sendiri.**
+**Content creators in Asia cannot get paid by their own regional fans.**
 
-Seorang kreator Indonesia punya 100.000 subscribers. 30% dari mereka ada di Filipina dan Vietnam. Tapi tidak ada satu pun cara mudah bagi fans itu untuk support kreator tersebut secara langsung.
+An Indonesian creator has 100,000 subscribers. 30% of them are in the Philippines and Vietnam. Yet there is no simple way for those fans to support the creator directly.
 
-- Saweria & Trakteer? Hanya untuk fans Indonesia
-- PayPal? Tidak tersedia di Indonesia, butuh kartu kredit
-- Wise? Minimum transfer terlalu tinggi untuk micro-payment
-- Stripe? Tidak support Indonesia sebagai merchant
+- Saweria & Trakteer? Limited to Indonesian fans only
+- PayPal? Not widely usable in Indonesia, requires credit cards
+- Wise? Minimum transfer thresholds are too high for micro-payments
+- Stripe? Does not support Indonesia for creator onboarding
 
-> **Fans ada. Konten ada. Tapi jalur uang dari fans ke kreator lintas negara — putus.**
+> **The fans are there. The content is there. But the financial corridor connecting cross-border fans to creators is broken.**
 
 ---
 
 ## Slide 2 — Market Size
 
-| | Data |
+| Metric | Data |
 |---|---|
-| Content creator aktif di Asia | 50 juta+ |
-| Creator economy Asia value 2025 | $104 miliar USD |
-| Average tip yang hilang karena tidak ada jalur | Rp5.000 – Rp200.000 per transaksi |
-| Cross-border micro-payment yang feasible saat ini | Hampir nol |
+| Active content creators in Asia | 50 million+ |
+| Asian creator economy value 2025 | $104 billion USD |
+| Average lost tips due to missing payment rails | Rp5,000 – Rp200,000 (~$0.30–$13 USD) per transaction |
+| Feasible cross-border micro-payment solutions today | Near zero |
 
-**Tidak ada platform yang solve cross-border creator payment di Asia dengan local payment method.**
+**No platform currently solves cross-border creator payments in Asia using local payment methods.**
 
 ---
 
 ## Slide 3 — Introducing Kreav
 
-**Kreav adalah platform creator economy Asia yang memungkinkan fans dari mana saja membayar creator menggunakan metode pembayaran lokal mereka — diselesaikan via Stellar blockchain dalam detik.**
+**Kreav is an Asian creator economy platform enabling fans anywhere to pay creators using their local payment methods — settled via the Stellar blockchain in seconds.**
 
 ```
-kreav.com/namakreator
+kreav.com/creatorname
 ```
 
-Creator punya halaman profil sendiri untuk:
-- Menjual produk digital (ebook, preset, template, kelas)
-- Menerima tip dari fans global
-- Menerima pembayaran one-time atau berulang
+Creators receive a dedicated profile page to:
+- Sell digital products (e-books, presets, templates, courses)
+- Receive tips from global fans
+- Accept one-time or recurring payments
 
-**Seperti Lynk.id + Gumroad — tapi bekerja lintas negara.**
+**Like Lynk.id + Gumroad — but operating seamlessly across borders.**
 
 ---
 
 ## Slide 4 — How It Works
 
-### Untuk Creator
+### For Creators
 ```
-1. Daftar di Kreav
-2. Connect Stellar wallet (Freighter / Lobstr)
-3. Upload produk digital & set harga
-4. Share link: kreav.com/nama
-5. Dana langsung masuk ke wallet — tidak perlu WD
+1. Register on Kreav
+2. Connect a Stellar wallet (Freighter / Lobstr)
+3. Upload digital products & set prices
+4. Share your link: kreav.com/name
+5. Funds settle directly into your wallet — no manual withdrawal needed
 ```
 
-### Untuk Fan / Buyer
+### For Fans / Buyers
 ```
-1. Buka link creator
-2. Pilih produk atau nominal tip
-3. Bayar via metode lokal:
-   🇮🇩 QRIS  |  🇵🇭 GCash  |  🇻🇳 VietQR  |  🌏 dan lainnya
-4. Konfirmasi — dapat akses produk digital langsung
-5. Selesai. Tidak perlu daftar, tidak perlu crypto wallet
+1. Open the creator's link
+2. Choose a product or tip amount
+3. Pay via local payment methods:
+   🇮🇩 QRIS  |  🇵🇭 GCash  |  🇻🇳 VietQR  |  🌏 and others
+4. Confirm — get instant access to the digital product
+5. Done. No registration, no crypto wallet required
 ```
 
 ---
 
 ## Slide 5 — Why Stellar
 
-Kreav bukan "crypto app". Stellar adalah **rel di balik layar** — fan dan creator tidak pernah menyentuh crypto.
+Kreav is not a "crypto app." Stellar acts as the **behind-the-scenes infrastructure** — fans and creators never interact with crypto complexity.
 
-| | PayPal | Wise | **Kreav (Stellar)** |
+| Metric | PayPal | Wise | **Kreav (Stellar)** |
 |---|---|---|---|
 | Fee | 4–5% | 0.5–2% | **~0.000005 USD/tx** |
-| Settlement | 1–3 hari | Menit–jam | **3–5 detik** |
-| Micro-tip Rp5.000 | ❌ Tidak ekonomis | ❌ Tidak ekonomis | **✅ Ekonomis** |
-| Fan butuh kartu kredit | ✅ Ya | ✅ Ya | **❌ Tidak** |
-| Cross-border | ⚠️ Terbatas | ⚠️ Terbatas | **✅ Global** |
+| Settlement | 1–3 days | Minutes–hours | **3–5 seconds** |
+| Micro-tip (e.g. $0.30) | ❌ Uneconomical | ❌ Uneconomical | **✅ Economical** |
+| Fan requires credit card | ✅ Yes | ✅ Yes | **❌ No** |
+| Cross-border scope | ⚠️ Limited | ⚠️ Limited | **✅ Global** |
 
-> *"Dana tidak pernah menyentuh server Kreav. Langsung dari fan ke wallet creator via Stellar."*
+> *"Funds never touch Kreav servers. They move directly from fan to creator wallet via Stellar."*
 
 ---
 
@@ -94,192 +94,192 @@ Kreav bukan "crypto app". Stellar adalah **rel di balik layar** — fan dan crea
 FAN                          STELLAR                    CREATOR
 ────                         ───────                    ───────
 
-Bayar QRIS/GCash/VietQR
+Pay QRIS/GCash/VietQR
         │
         ▼
-   Anchor Lokal          ──► USDC Settlement ──►    Anchor Creator
-   (konfirmasi ke                                    (cairkan ke
-    Kreav webhook)                                    bank lokal)
+   Local Anchor          ──► USDC Settlement ──►     Creator Anchor
+   (confirms to                                      (withdraws to
+    Kreav webhook)                                    local bank)
         │                                                  │
         ▼                                                  ▼
-  Kreav verifikasi                               Dana masuk wallet
-  di Stellar ledger                              creator (Freighter)
+   Kreav verifies on                              Funds settle to
+   Stellar ledger                                 creator wallet (Freighter)
         │
         ▼
-  Link produk digital
-  dikirim ke fan
+   Digital product link
+   delivered to fan
 ```
 
-**Fee split on-chain:** Setiap transaksi otomatis split — 95% ke wallet creator, 5% ke Kreav — dalam satu atomic Stellar transaction. Transparan, tidak bisa dimanipulasi.
+**On-chain fee split:** Every transaction splits automatically — 95% to creator wallet, 5% to Kreav — in a single atomic Stellar transaction. Transparent and tamper-proof.
 
-**Stellar DEX:** Jika tidak ada direct path (misal PHP → IDR), Stellar DEX auto-swap via USDC sebagai intermediary. Built-in, tidak perlu bangun sendiri.
+**Stellar DEX:** When no direct asset path exists (e.g., PHP → IDR), the Stellar DEX auto-swaps via USDC as an intermediary. Built-in, no custom AMM needed.
 
 ---
 
 ## Slide 7 — What's On-Chain vs Off-Chain
 
-**On-chain (Stellar) — bukti permanen:**
-- Settlement payment fan → creator
-- Fee split 95/5 dalam satu atomic transaction
-- Memo sebagai payment ID unik per transaksi
-- Riwayat transaksi verifiable di Stellar Explorer
+**On-chain (Stellar) — permanent verification:**
+- Settlement payment from fan → creator
+- 95/5 fee split inside one atomic transaction
+- Unique memo as the payment ID per transaction
+- Verifiable transaction history on Stellar Explorer
 
-**Off-chain (database Kreav) — konteks aplikasi:**
-- Profil & halaman creator
-- Data produk digital
-- Notifikasi & dashboard
-- Riwayat untuk UI
+**Off-chain (Kreav database) — application context:**
+- Creator profiles & pages
+- Digital product catalog data
+- Notifications & dashboard metrics
+- UI history & analytics
 
-> *90% Kreav adalah web app biasa. Stellar hanya masuk di satu titik — saat payment dieksekusi.*
+> *90% of Kreav is a standard web app. Stellar is invoked at exactly one point — when the payment settles.*
 
 ---
 
 ## Slide 8 — Composability
 
-Kreav tidak reinvent the wheel. Kreav **build di atas** ekosistem Stellar yang sudah ada:
+Kreav does not reinvent the wheel. Kreav **builds upon** the existing Stellar ecosystem:
 
-| Building Block | Yang Sudah Ada | Kreav Pakai |
+| Building Block | Existing Infrastructure | Kreav Usage |
 |---|---|---|
-| Wallet | Freighter, Lobstr | Creator connect wallet existing |
-| Settlement currency | USDC on Stellar | Tidak bikin token baru |
-| On/off-ramp | Anchor per negara | Gateway fiat ↔ Stellar |
-| Liquidity & swap | Stellar DEX built-in | Auto-swap currency |
-| Protokol | SEP-6 / SEP-24 | Standar anchor interaction |
+| Wallet | Freighter, Lobstr | Creators connect existing wallets |
+| Settlement currency | USDC on Stellar | No new token creation |
+| On/off-ramp | Anchors per country | Fiat ↔ Stellar gateways |
+| Liquidity & swap | Built-in Stellar DEX | Automated currency swapping |
+| Protocol | SEP-6 / SEP-24 | Standard anchor interactions |
 
-**Post-hackathon roadmap:** Kreav payment widget bisa di-embed ke platform lain (Lynk.id, Trakteer, dll) sebagai payment layer mereka.
+**Post-hackathon roadmap:** Kreav's payment widget can be embedded into other platforms (Lynk.id, Trakteer, etc.) as their settlement layer.
 
 ---
 
 ## Slide 9 — Business Model
 
-**Revenue: Platform fee 5% per transaksi sukses**
+**Revenue: 5% platform fee per successful transaction**
 
-- Fee diambil on-chain — atomic, transparan, tidak bisa dimanipulasi
-- Tidak ada subscription, tidak ada hidden fee
-- Creator dan fan tahu persis berapa yang dipotong
+- Fee deducted on-chain — atomic, transparent, tamper-proof
+- No subscriptions, no hidden fees
+- Creators and fans know exactly what is deducted
 
-| Metric | Angka |
+| Metric | Value |
 |---|---|
-| Fee rate | 5% per transaksi |
-| Stellar tx cost | ~$0.000005 (margin sangat besar) |
-| Break-even | ~4.000 transaksi/bulan (avg Rp50.000/tip) |
-| TAM creator Asia | 50 juta+ creator |
+| Fee rate | 5% per transaction |
+| Stellar tx cost | ~$0.000005 (massive profit margin) |
+| Break-even volume | ~4,000 transactions/month (avg $3 USD/tip) |
+| TAM Asian creators | 50 million+ creators |
 
-**Kenapa 5% kompetitif:**
+**Why 5% is competitive:**
 - Trakteer/Saweria: 5–10%
-- PayPal: 4–5% + fixed fee + FX spread
-- Kreav: 5% flat, tidak ada FX spread, tidak ada fee tersembunyi
+- PayPal: 4–5% + fixed fee + FX spreads
+- Kreav: 5% flat, zero FX spreads, zero hidden fees
 
 ---
 
 ## Slide 10 — Product Integrity
 
-**Bagaimana Kreav mencegah creator curang dengan link bohong?**
+**How does Kreav prevent creator fraud with invalid links?**
 
-**Fase MVP (Hackathon):**
-- Creator terverifikasi via email + nomor HP
-- Sistem rating & review dari buyer
-- Dispute mechanism — creator yang fraud di-ban, dana di-hold
-- Transaction hash on-chain sebagai bukti permanen untuk buyer
+**MVP Phase (Hackathon):**
+- Creator verification via email + phone number
+- Buyer rating & review system
+- Dispute mechanism — fraudulent creators banned, funds frozen
+- On-chain transaction hash serves as permanent receipt for buyers
 
 **Roadmap:**
-- Hosted file upload — creator upload langsung ke Kreav storage, bukan link eksternal
-- Buyer dapat akses file langsung dari server Kreav setelah payment confirmed
+- Hosted file uploads — creators upload directly to Kreav storage instead of external links
+- Buyers download files directly from Kreav servers immediately after payment confirmation
 
 ---
 
 ## Slide 11 — Alignment with Hackathon
 
-| Kriteria Hackathon | Kreav | Status |
+| Hackathon Criteria | Kreav Implementation | Status |
 |---|---|---|
-| User-facing financial app | Halaman creator + dashboard | ✅ |
-| Payment app people can use | Fan bayar tanpa login, tanpa crypto wallet | ✅ |
-| Connect to local economy | QRIS, GCash, VietQR, dan lainnya | ✅ |
-| Integrate with local anchors | Anchor per negara = inti arsitektur | ✅ |
-| Use local assets | USDC Stellar + fiat lokal | ✅ |
+| User-facing financial app | Creator profile pages + dashboard | ✅ |
+| Payment app people can use | Fans pay without login or crypto wallet | ✅ |
+| Connect to local economy | QRIS, GCash, VietQR, and others | ✅ |
+| Integrate with local anchors | Country anchors form core architecture | ✅ |
+| Use local assets | USDC on Stellar + local fiat | ✅ |
 | On/off-ramps | Fan on-ramp, creator off-ramp | ✅ |
 | Plug into existing wallets | Freighter / Lobstr | ✅ |
-| DeFi & liquidity | Stellar DEX untuk auto-swap | ✅ |
-| Composability | Payment layer yang bisa di-embed | ✅ |
+| DeFi & liquidity | Stellar DEX for automated swaps | ✅ |
+| Composability | Embeddable payment layer | ✅ |
 
 ---
 
 ## Slide 12 — Tech Stack
 
-| Layer | Teknologi |
+| Layer | Technology |
 |---|---|
 | Frontend | React / Next.js |
-| Backend | Laravel / Node.js |
+| Backend | NestJS / Node.js |
 | Database | PostgreSQL |
 | Blockchain | Stellar Horizon SDK |
 | Settlement | USDC on Stellar |
 | Anchor | SEP-6 / SEP-24 compatible anchors |
 | Wallet | Freighter (desktop), Lobstr (mobile) |
-| DEX | Stellar DEX built-in |
-| Payment Lokal | Midtrans (ID), GCash API (PH), VietQR (VN) |
+| DEX | Built-in Stellar DEX |
+| Local Payments | Midtrans (ID), GCash API (PH), VietQR (VN) |
 
 ---
 
 ## Slide 13 — Demo Target
 
-**Minimum yang akan didemonstrasikan:**
+**Minimum verifiable demo flow:**
 
-- [ ] Creator daftar, connect Freighter wallet, upload 1 produk digital
-- [ ] Fan dari "Filipina" buka halaman kreator, bayar via GCash simulation
-- [ ] Anchor konfirmasi → Kreav verify di Stellar ledger
-- [ ] Fee split 95/5 terjadi on-chain dalam satu atomic transaction
-- [ ] Fan terima akses produk digital
-- [ ] Transaction hash verifiable di **Stellar Testnet Explorer**
-- [ ] Creator lihat transaksi masuk di dashboard
+- [ ] Creator registers, connects Freighter wallet, and uploads 1 digital product
+- [ ] Fan from "the Philippines" opens creator page, pays via simulated GCash
+- [ ] Anchor confirms → Kreav verifies on Stellar ledger
+- [ ] 95/5 fee split executes on-chain within one atomic transaction
+- [ ] Fan receives instant access to the digital product
+- [ ] Transaction hash is verifiable on the **Stellar Testnet Explorer**
+- [ ] Creator views incoming settlement in dashboard
 
-**Semua transaksi demo di Stellar Testnet — verifiable publik.**
+**All demo transactions run on Stellar Testnet — publicly verifiable.**
 
 ---
 
 ## Slide 14 — Roadmap
 
 ```
-SEKARANG (Hackathon MVP)
-├── Creator halaman profil
-├── Produk digital + tip
+NOW (Hackathon MVP)
+├── Creator profile page
+├── Digital product + tips
 ├── QRIS, GCash, VietQR
-├── Stellar settlement + fee split on-chain
+├── Stellar settlement + on-chain fee split
 └── Stellar DEX auto-swap
 
-POST-HACKATHON (Jika dapat grant)
+POST-HACKATHON (Grant Phase)
 ├── Mainnet deployment
 ├── Hosted file storage (anti-fraud)
-├── Mobile app (iOS + Android)
-├── Expand anchor ke lebih banyak negara Asia
-└── Kreav sebagai payment SDK/widget untuk platform lain
+├── Mobile apps (iOS + Android)
+├── Anchor expansion across Asian countries
+└── Kreav as payment SDK/widget for third-party platforms
 
-JANGKA PANJANG
-├── Subscription/membership creator
-├── Live streaming + virtual gift
-├── Creator analytics dashboard
-└── B2B: white-label payment infrastructure Asia
+LONG-TERM
+├── Creator memberships/subscriptions
+├── Live streaming + virtual gifts
+├── Advanced creator analytics dashboard
+└── B2B: White-label payment infrastructure for Asia
 ```
 
 ---
 
 ## Slide 15 — Why Us, Why Now
 
-**Kenapa Kreav:**
-- Tim yang memahami pain point kreator SEA secara langsung
-- Build di atas infrastruktur Stellar yang sudah proven
-- Non-custodial — tidak ada custody risk, tidak ada regulatory blocker
-- UX yang menyembunyikan kompleksitas blockchain dari user
+**Why Kreav:**
+- Team directly understands Southeast Asian creator pain points
+- Built upon proven, robust Stellar infrastructure
+- Non-custodial — zero custody risk, zero regulatory blockers
+- UX hides all blockchain complexity from end users
 
-**Kenapa sekarang:**
-- Creator economy Asia tumbuh 3x dalam 3 tahun terakhir
-- QRIS Cross-Border sudah expand — validasi bahwa pasar butuh cross-border payment
-- Stellar ekosistem makin mature — anchor, USDC, DEX sudah siap
+**Why Now:**
+- Asian creator economy has grown 3x in the last 3 years
+- Cross-border QRIS expansion validates regional demand for seamless cross-border payments
+- Stellar ecosystem maturity — anchors, USDC, and DEX are ready for production use
 
 ---
 
 ## One-Liner
 
-> **Kreav — Jual kontenmu. Terima bayaran dari siapa saja, dari mana saja.**
+> **Kreav — Sell your content. Get paid by anyone, from anywhere.**
 
 ---
 
