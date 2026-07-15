@@ -110,7 +110,7 @@ export default function Footer() {
               fontFamily: "var(--font-mono)",
             }}
           >
-            Sell your ebooks, presets, and templates to buyers across Asia. Get paid instantly, in your own currency.
+            Sell your ebooks, presets, and templates worldwide. Get paid instantly, in your own currency.
           </p>
         </div>
 
@@ -167,7 +167,7 @@ export default function Footer() {
           fontFamily: "var(--font-mono)",
         }}
       >
-        <div>kreav.com — Sell your digital work across Asia</div>
+        <div>kreav.space — Sell your digital work worldwide</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           Settlement powered by Stellar
           <svg width="14" height="14" viewBox="0 0 12 12">

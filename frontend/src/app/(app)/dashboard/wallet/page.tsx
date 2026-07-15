@@ -23,6 +23,11 @@ const DESTINATIONS: WithdrawalDestination[] = ["GCASH", "GOPAY", "PAYNOW", "BANK
 /** Fase 2A: when enabled, the Withdraw button opens the real SEP-24 anchor flow. */
 const ANCHOR_ENABLED = process.env.NEXT_PUBLIC_ANCHOR_ENABLED === "true";
 
+// SDF test anchor SEP-24 per-withdrawal limits (from /sep24/info). Testnet only —
+// when pointing at a production anchor, fetch these from the anchor's /info instead.
+const ANCHOR_MIN_USDC = 1;
+const ANCHOR_MAX_USDC = 10;
+
 export default function DashboardWalletPage() {
   const { ready, walletAddress } = useSession();
   const { data: wallet, loading, error, refetch } = useApiQuery(
@@ -401,8 +406,10 @@ function AnchorWithdrawFlow({
   const start = async () => {
     setErr(null);
     const amt = parseFloat(amount);
-    if (!Number.isFinite(amt) || amt < 0.01) return setErr("Enter an amount of at least 0.01.");
-    if (amt > maxAmount) return setErr(`You can withdraw at most $${maxAmount.toLocaleString("en-US")}.`);
+    if (!Number.isFinite(amt)) return setErr("Enter a valid amount.");
+    if (amt < ANCHOR_MIN_USDC) return setErr(`Minimum is ${ANCHOR_MIN_USDC} USDC per withdrawal (test anchor limit).`);
+    if (amt > ANCHOR_MAX_USDC) return setErr(`Maximum is ${ANCHOR_MAX_USDC} USDC per withdrawal on the testnet anchor. Cash out in smaller amounts.`);
+    if (amt > maxAmount) return setErr(`You only have $${maxAmount.toLocaleString("en-US")} available.`);
     // Open the popup NOW — synchronously inside the click gesture — so the
     // browser makes it a real popup WINDOW, not a tab. (Opening it after the
     // awaits below loses the user-gesture context and Chrome falls back to a
@@ -480,8 +487,8 @@ function AnchorWithdrawFlow({
             <>
               <Input
                 id="anchor-amount"
-                label={`Amount (USDC) — available $${maxAmount.toLocaleString("en-US")}`}
-                placeholder="11.40"
+                label={`Amount (USDC) — ${ANCHOR_MIN_USDC}–${ANCHOR_MAX_USDC} on testnet · balance $${maxAmount.toLocaleString("en-US")}`}
+                placeholder="5"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />

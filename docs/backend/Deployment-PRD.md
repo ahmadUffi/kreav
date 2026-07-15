@@ -1,7 +1,7 @@
 # Kreav Deployment PRD
 
 > **Status:** Canonical deployment design for Kreav. Production-grade but **MVP-aligned** — no premature Kubernetes.
-> **Targets:** Frontend → Vercel · Backend + DB → Railway · Chain → Stellar Testnet (Backend PRD §15).
+> **Targets:** self-hosted **VPS** running **Docker Compose** (backend + frontend + **Caddy**) · DB on **Neon** (managed Postgres) · Chain → Stellar Testnet.
 > **Authority on conflict:** Architecture Consistency Check → Kreav Backend PRD v3.1 → this document.
 
 ---
@@ -9,135 +9,130 @@
 ## 1. Repository Structure
 
 ```
-Kreav/                              ← working dir (planning docs, NOT a git repo)
-├── *.md                            ← PRDs / Bibles (this file included)
-└── KREAV-app/                      ← THE git repo: github.com/ahmadUffi/kreav
-    ├── frontend/                   ← Next.js + Tailwind  → Vercel
-    ├── backend/                    ← NestJS + Prisma     → Railway
-    │   ├── prisma/
-    │   │   ├── schema.prisma
-    │   │   └── migrations/
-    │   ├── src/
-    │   ├── test/
-    │   ├── Dockerfile
-    │   ├── compose.yml             ← local DB
-    │   ├── .env.example
-    │   └── sonar-project.properties
-    └── smartcontract/             ← Soroban contracts (Rust) — deployed to Testnet
+github.com/ahmadUffi/kreav          ← THE git repo (deployed by pulling on the VPS)
+├── frontend/                        ← Next.js (standalone) → Docker image
+├── backend/                         ← NestJS + Prisma      → Docker image
+│   ├── prisma/{schema.prisma,migrations/}
+│   ├── src/  test/  Dockerfile  .env(.example)
+├── smartcontract/                   ← Soroban contracts (Rust) — deployed to Testnet
+├── integration/                     ← contract integration tests (npm/tsx)
+├── docs/                            ← PRDs / Bibles (this file included)
+├── docker-compose.yml               ← production stack (backend + frontend + caddy)
+├── Caddyfile                        ← reverse proxy + automatic HTTPS
+└── .github/workflows/{ci,deploy}.yml
 ```
 
-**Why this layout:** the git repo is the deployable unit; planning docs live one level up so they don't pollute the build context.
+**Why this layout:** the repo is the deployable unit; the VPS checks it out and runs `docker compose up -d --build`. Docs live in-repo under `docs/`.
 
-**Branch model:** `main` (default, stable), `develop` (integration). Feature branches `be/<slug>` / `fe/<slug>` / `bc/<slug>` off `develop`, PRs into `develop`, periodic `develop → main` promotions. Squash-merge.
+**Branch model:** `main` (default, stable — deploys), `develop` (integration). Feature branches `be/<slug>` / `fe/<slug>` / `bc/<slug>` off `develop`, PRs into `develop`, periodic `develop → main` promotions. Squash-merge.
 
 ---
 
-## 2. Docker (Backend)
+## 2. Docker (Backend & Frontend)
 
-The backend ships a `Dockerfile` for Railway (Railway can build from a Dockerfile or a Nixpacks auto-detect; an explicit Dockerfile is more deterministic).
+Both apps ship a `Dockerfile` (`node:24-alpine`, multi-stage) and run as containers on the VPS.
 
-**Design choices:**
-- **Multi-stage build** — build with the full Node image, run in a slim image (smaller attack surface, faster cold start).
-- **Non-root user** — the runtime container does not run as root.
-- **pnpm** — single lockfile (`pnpm-lock.yaml`); deterministic installs.
+**Backend design choices:**
+- **Multi-stage build** — build with the full toolchain, run in a slim image (smaller attack surface, faster cold start).
+- **pnpm** — single lockfile (`pnpm-lock.yaml`); `corepack enable` + `pnpm install --frozen-lockfile` for deterministic installs.
 - **Build deps:** `prisma generate` runs in the build stage so the client is baked into the image.
-- **No source maps leak** — production build strips debug info where possible.
+- **Startup:** the container runs `pnpm prisma migrate deploy && node dist/main` — migrations apply against Neon before the server binds.
 
-**Why not a single-stage image:** a fat image ships the toolchain (tsc, prisma CLI) into prod, widening the attack surface and slowing deploys. Multi-stage keeps the runtime minimal.
+**Frontend design choices:**
+- **npm** — single lockfile (`package-lock.json`); `npm ci` + `npm run build`.
+- **Next standalone output** — the runtime stage copies `.next/standalone` and runs `node server.js` (no toolchain, no `node_modules` bloat).
+- **`NEXT_PUBLIC_*` are build args** — `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_ANCHOR_ENABLED` are baked into the client bundle at build time (see `docker-compose.yml → frontend.build.args`). Changing them requires a rebuild.
+
+**Why multi-stage:** a fat image ships the toolchain (tsc, prisma CLI) into prod, widening the attack surface and slowing deploys. Multi-stage keeps the runtime minimal.
 
 ---
 
-## 3. Docker Compose (Local Dev)
+## 3. Docker Compose (Production Stack)
 
-`compose.yml` runs **PostgreSQL only** (`postgres:16-alpine`). It reads `POSTGRES_*` from `.env` via interpolation — **no hardcoded credentials** (audit fix). The backend itself runs via `pnpm start:dev` (hot reload), not in a container.
+`docker-compose.yml` is the **production** stack — there is **no Postgres service** (the DB is Neon, external). Deploy/update: `docker compose up -d --build`.
 
-**Why Postgres-in-compose, app-on-host:** hot reload + debugger attach work natively; only the stateful dependency (DB) needs containerization. Spinning the app in Docker locally slows the dev loop.
+**Services:**
+- **backend** — built from `./backend`; loads `backend/.env` via `env_file`; `PORT` overridden to `3000` (Caddy + healthcheck target 3000); healthcheck `GET /health`; explicit DNS (`8.8.8.8`, `1.1.1.1`) so container lookups to Neon/Stellar succeed.
+- **frontend** — built from `./frontend` with build args `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ANCHOR_ENABLED` (from the root `.env`); exposes `3000`; `depends_on: backend`.
+- **caddy** — `caddy:2-alpine`; publishes `80`/`443`; reads `APP_DOMAIN`/`API_DOMAIN`/`FUTURE_DOMAIN`/`ACME_EMAIL`; mounts `./Caddyfile`; persists certs in the `caddy-data` volume.
 
-```yaml
-# shape (values via .env interpolation, not hardcoded)
-services:
-  kreav-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports: ["5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
-volumes:
-  pgdata:
-```
+**Local dev** does not use this stack: run the backend with `pnpm start:dev` (hot reload) and the frontend with `npm run dev`, both pointing at the Neon dev database (or a local Postgres if you prefer). Only the deployed VPS runs compose.
 
 ---
 
 ## 4. Environment Variables
 
-Authoritative list (Backend PRD §15 + the v3.1/Stellar revisions). See Runtime Flow Bible §9 for validation rules.
+Two files feed the stack — **`backend/.env`** (`env_file` for the backend container) and the **root `.env`** (interpolated by docker-compose for build args + Caddy). Both are gitignored; `.env.example` templates live in git. See Runtime Flow Bible §9 for backend validation rules.
+
+**Backend (`backend/.env`):**
 
 | Variable | Required | Purpose | Owner |
 |----------|----------|---------|-------|
-| `DATABASE_URL` | ✅ | Postgres connection (postgresql:// URI) | Railway DB |
+| `DATABASE_URL` | ✅ | Postgres connection (postgresql:// URI) | **Neon** (managed) |
+| `JWT_SECRET` | ✅ prod | Signs session JWTs (register + SEP-10 login) | secret (`backend/.env`) |
 | `HORIZON_URL` | ✅ | Stellar Horizon endpoint (balance/explorer reads) | const (Testnet) |
 | `SOROBAN_RPC_URL` | ✅ | Stellar RPC endpoint (contract invoke/verify) | const (Testnet) |
 | `PLATFORM_WALLET_ADDRESS` | ✅ | Platform `G...` account (receives 5%, signs settlements; holds the pre-funded USDC float) | team-provisioned |
-| `PLATFORM_WALLET_SECRET` | ✅ | Secret key `S...` for the platform account — **sole server-side secret**; signs settlement txs (ADR H1, Stellar Standards ED-10) | secret (Railway) |
-| `USDC_ASSET_CODE` | ✅ | `USDC` | const |
-| `USDC_ISSUER` | ✅ | Circle Testnet USDC issuer `G...` | const |
+| `PLATFORM_WALLET_SECRET` | ✅ | Secret key `S...` — **sole server-side secret**; signs settlement txs (ADR H1, Stellar Standards ED-10) | secret (`backend/.env`) |
+| `USDC_ASSET_CODE` / `USDC_ISSUER` | ✅ | `USDC` + Testnet issuer `G...` | const |
 | `SPLIT_CONTRACT_ID` | ✅ | Deployed Revenue Split contract `C...` | BC team |
+| `ANCHOR_ENABLED` (+ `ANCHOR_*` URLs) | — | SEP-24 off-ramp flag (Fase 2A); defaults to the SDF test anchor | ops |
+| `RESEND_API_KEY` / `RESEND_FROM` | ⚠️ prod | Transactional email; `from` must be a verified-domain address | secret |
 | `GCASH_WEBHOOK_SECRET` | ⚠️ prod | HMAC secret for `/webhooks/gcash` (optional in dev) | secret |
 | `NODE_ENV` | ✅ prod | `production` | const |
-| `PORT` | — | defaults 3000 | platform |
+| `PORT` | — | app default 3000 (compose pins 3000) | platform |
 
-**Per environment:** `development` (local `.env`, GCASH secret optional; platform secret local-only), `test` (CI, ephemeral Postgres, secrets unset → escape hatch / mocked signing), `production` (Railway, all secrets set: GCASH + `PLATFORM_WALLET_SECRET`).
+**Root `.env`** (docker-compose interpolation): `APP_DOMAIN`, `API_DOMAIN`, `FUTURE_DOMAIN`, `ACME_EMAIL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ANCHOR_ENABLED`, `EXPLORER_URL`.
 
-**Platform USDC float (ADR C1):** the platform account is **pre-funded with testnet USDC** out-of-band (Implementation Backlog BC-011) because the buyer's GCash payment is mocked. Each settlement draws the float down ~−10 USDC. Before the demo, confirm the float covers the expected volume; top up via the faucet if low (see Observability PRD for the low-float signal).
+**Per environment:** `development` (local `.env`, GCASH secret optional; platform secret local-only), `test` (CI, ephemeral Postgres service, secrets unset → escape hatch / mocked signing), `production` (VPS `.env` files, all secrets set).
+
+**Platform USDC float (ADR C1):** the platform account is **pre-funded with testnet USDC** out-of-band (Implementation Backlog BC-011) because the buyer's GCash payment is mocked. Each settlement draws the float down ~−10 USDC. Before the demo, confirm the float covers expected volume; top up via the faucet if low (see Observability PRD for the low-float signal).
 
 ---
 
 ## 5. CI/CD
 
-**Platform:** GitHub Actions (`.github/workflows/ci.yml`). SonarCloud analysis runs via its GitHub App.
+**Platform:** GitHub Actions. Two workflows:
+- **`ci.yml`** (push/PR to `develop`/`main`) — runs against a `postgres:16` service container with **pnpm**:
+  1. Setup pnpm 11 + Node 24
+  2. `pnpm install --frozen-lockfile`
+  3. `pnpm prisma:generate`
+  4. `pnpm prisma migrate deploy` (CI Postgres)
+  5. `pnpm lint:check`
+  6. `pnpm build`
+  7. (unit + e2e tests — currently gated/commented)
+- **`deploy.yml`** (on `ci.yml` success for `main`) — SSHes to the VPS (`appleboy/ssh-action`) and runs: `git fetch origin main && git reset --hard origin/main && docker compose up -d --build && docker image prune -f`.
 
-**Pipeline stages (per push/PR):**
-1. **Install** (`pnpm install --frozen-lockfile`)
-2. **Lint** (`pnpm lint:check`)
-3. **Build** (`pnpm build`)
-4. **Migrate** (`prisma migrate deploy` against the CI Postgres service container)
-5. **Test** (`pnpm test --ci` unit + `pnpm test:e2e` against the migrated CI DB)
+**Why this order:** lint/build fail fast and cheaply; migrate precedes tests so the e2e suite has a schema; e2e runs against a *real* Postgres service container so DB-layer bugs surface in CI. Deploy is gated on green CI.
 
-**Why this order:** lint/build fail fast and cheaply; migrate must precede test so the e2e suite has a schema; e2e runs against a *real* Postgres service container (not mocked) so DB-layer bugs surface in CI.
-
-**Security gates:**
-- **SonarCloud** — quality gate on every PR (primary scanner). ⚠️ Known config issue: the project key is the stale `ahmadUffi_tipschain`; PR-scoped analysis mis-rates until the owner renames it (Architecture Consistency Check).
-- **CodeQL** — scan runs, but *uploading* results needs a repo feature toggle requiring admin (owner = ahmadUffi). Skipped for now (audit/AGENTS.md).
-- **Dependabot/Renovate** — not yet enforced; audit #16 recommends a major-version bump check.
-
-**Deploy trigger:** `develop` → Railway (auto-deploy on push). `main` → production promo (manual gate).
+**Security gates:** SonarCloud quality gate (⚠️ project key still stale `ahmadUffi_tipschain`); CodeQL upload needs an admin toggle (skipped); Dependabot/Renovate not yet enforced (audit #16).
 
 ---
 
-## 6. Build Pipeline
+## 6. Build & Deploy Pipeline
 
 ```
-push → GitHub Actions:
-  install → lint → build → migrate(deploy) → test(unit) → test(e2e) → SonarCloud
-         ↓ (on develop)
-Railway: build Dockerfile → prisma migrate deploy → release → health-check → live
+push → GitHub Actions ci.yml:
+  install → prisma generate → migrate(deploy, CI PG) → lint:check → build → (test)
+         ↓ (ci.yml success on main)
+deploy.yml → SSH VPS → git reset --hard origin/main → docker compose up -d --build
+         ↓ (backend container start)
+  pnpm prisma migrate deploy (Neon) → node dist/main → Caddy routes traffic
 ```
 
-**Why migrate in both CI and release:** CI migrates to validate the migration applies cleanly against a fresh DB (catches drift). Railway runs `migrate deploy` in the release phase so the schema matches the code version being deployed (no manual migration step).
+**Why migrate in both CI and container start:** CI migrates to validate the migration applies cleanly against a fresh DB (catches drift). The backend container runs `migrate deploy` on start so the Neon schema matches the deployed code (no manual migration step).
 
 ---
 
 ## 7. Migration Strategy
 
-**Tool:** Prisma Migrate. **Strategy:** `prisma migrate deploy` (non-interactive) in CI + Railway release phase. **Never `db push`** in prod.
+**Tool:** Prisma Migrate. **Strategy:** `prisma migrate deploy` (non-interactive) in CI + on backend container start. **Never `db push`** in prod.
 
 **Rules:**
 - Every schema change ships a migration file in `prisma/migrations/` (reviewed in the PR).
 - **No destructive migrations without explicit approval** — drops of populated tables are forbidden in MVP.
 - Migrations are forward-only; rollback = a new forward migration that reverses (not `migrate reset` in prod).
-- The schema's `@map` convention keeps DB columns snake_case while model fields are camelCase — **no migration needed for the casing refactor** (BE-004), since `@map` targets are unchanged.
+- `@map` keeps DB columns snake_case while model fields are camelCase.
 
 **Why forward-only:** prod data can't be reset. Reversals are explicit migrations so they're reviewed and auditable.
 
@@ -148,9 +143,9 @@ Railway: build Dockerfile → prisma migrate deploy → release → health-check
 1. Edit `schema.prisma`.
 2. `pnpm prisma migrate dev --name <change>` → generates + applies a migration locally.
 3. Commit `migrations/<timestamp>_<name>/migration.sql` + updated `schema.prisma`.
-4. CI/Railway run `migrate deploy` → applies pending migrations in order.
+4. CI + the backend container run `migrate deploy` → applies pending migrations in order.
 
-**Why generate locally, apply in CI:** the migration SQL is reviewed in the PR; CI/Railway only *apply* (no generation in deploy, which could drift).
+**Why generate locally, apply in deploy:** the migration SQL is reviewed in the PR; CI and the container only *apply* (no generation in deploy, which could drift).
 
 ---
 
@@ -158,85 +153,85 @@ Railway: build Dockerfile → prisma migrate deploy → release → health-check
 
 | Secret type | Storage | Access |
 |-------------|---------|--------|
-| **DB credentials** | Railway (managed Postgres) | injected as `DATABASE_URL` |
-| **`GCASH_WEBHOOK_SECRET`** | Railway variable (encrypted at rest) | env only; never in repo |
-| **Platform wallet secret key (`PLATFORM_WALLET_SECRET`)** | **Server-side only**, Railway variable (encrypted at rest); **never in git, never logged** — the sole server-side secret (ADR H1, Stellar Standards ED-10) | SettlementService only |
-| **Resend API key** | Railway variable | Notification Module |
+| **DB credentials** | **Neon** dashboard → `DATABASE_URL` in `backend/.env` (gitignored) | backend container via `env_file` |
+| **`JWT_SECRET`** | `backend/.env` on the VPS | AuthModule |
+| **`GCASH_WEBHOOK_SECRET`** | `backend/.env` on the VPS | env only; never in repo |
+| **Platform wallet secret (`PLATFORM_WALLET_SECRET`)** | `backend/.env` on the VPS; **never in git, never logged** — sole server-side secret (ADR H1, Stellar Standards ED-10) | SettlementService only |
+| **Resend API key** | `backend/.env` on the VPS | Notification Module |
+| **SSH deploy creds** | **GitHub Secrets** (`SSH_HOST`/`SSH_USER`/`SSH_KEY`/`DEPLOY_PATH`) | `deploy.yml` only |
 | **Local dev** | `.env` (gitignored); `.env.example` is the template | developer machine |
 
-**Rules:** `.env` is gitignored (root + backend). `.env.example` holds keys with placeholder values. No secret ever appears in a commit, log, or error message. The platform wallet key is the single highest-value secret — see Security PRD §"Platform Wallet Security".
+**Rules:** `.env` files are gitignored (root + backend); `.env.example` holds placeholder keys. No secret in a commit, log, or error message. App secrets live in **files on the VPS** (injected via compose `env_file`/interpolation), not in GitHub — GitHub Secrets only hold SSH creds for deploy. The platform wallet key is the single highest-value secret — see Security PRD §"Platform Wallet Security".
 
 ---
 
-## 10. Production Environment (Railway)
+## 10. Production Environment (VPS · Docker Compose · Caddy)
 
-- **Service:** backend (built from `Dockerfile`).
-- **Database:** Railway managed PostgreSQL 16.
-- **Release phase:** `prisma migrate deploy` → then health check → then traffic.
-- **Health/readiness:** Railway probes `/health`; **deep check (`SELECT 1`) recommended** so Railway doesn't route to a container whose DB isn't ready (audit #15).
-- **Region:** closest to the demo audience; Testnet RPC latency is the real bottleneck.
-- **Scaling:** single instance for MVP (modular monolith; no horizontal-scale need yet). See §21.
+- **Host:** single self-hosted VPS running Docker + Docker Compose.
+- **Services:** `backend`, `frontend`, `caddy` (see §3).
+- **Database:** **Neon** managed PostgreSQL (external; not a compose service).
+- **Container start:** backend runs `prisma migrate deploy` → then serves; Caddy routes once the backend healthcheck passes.
+- **Health/readiness:** docker-compose healthcheck hits `GET /health`; a **deep check (`SELECT 1`)** is recommended so traffic isn't routed to a container whose DB isn't ready (audit #15).
+- **Scaling:** single instance per service for MVP (modular monolith; no horizontal-scale need yet). See §21.
 
 ---
 
 ## 11. Development Environment
 
-- `docker compose up -d kreav-db` → Postgres.
-- `pnpm install` → `pnpm prisma migrate dev` → `pnpm start:dev` (hot reload).
+- Backend: `pnpm install` → `pnpm prisma migrate dev` → `pnpm start:dev` (hot reload), `DATABASE_URL` → Neon dev DB.
+- Frontend: `npm install` → `npm run dev`.
 - `.env` copied from `.env.example`; `GCASH_WEBHOOK_SECRET` may be empty (dev escape hatch).
-- Unit tests: `pnpm test`; e2e (needs DB running): `pnpm test:e2e`.
+- Unit tests: `pnpm test`; e2e (needs DB): `pnpm test:e2e`.
 
 ---
 
 ## 12. Test Environment (CI)
 
-- GitHub Actions runner + `postgres:16` service container.
-- Env: `DATABASE_URL` pointed at the service container; `GCASH_WEBHOOK_SECRET` unset (escape hatch).
-- Migrations applied via `migrate deploy` before e2e.
-- Ephemeral — destroyed after the run; no persistent state.
+- GitHub Actions runner + `postgres:16` service container (ephemeral).
+- `DATABASE_URL` points at the service container; `GCASH_WEBHOOK_SECRET` unset (escape hatch).
+- Migrations applied via `migrate deploy` before e2e; destroyed after the run.
 
 ---
 
 ## 13. Health Check
 
-`GET /health` → `{ status: "ok" }` (MVP shallow). **Recommended deep readiness:** include a `SELECT 1` against Postgres (audit #15) so Railway's readiness probe reflects DB connectivity. A separate liveness (process up) vs readiness (DB up) split avoids killing a healthy process during a transient DB blip.
+`GET /health` → `{ status: "ok" }` (MVP shallow). **Recommended deep readiness:** a `SELECT 1` against Postgres (audit #15) so the compose healthcheck reflects DB connectivity. Splitting liveness (process up) from readiness (DB up) avoids killing a healthy process during a transient DB blip.
 
 ---
 
 ## 14. Monitoring
 
 See **Kreav Observability PRD** for the full design. Deployment-relevant:
-- Railway log drain → structured logs (Runtime Flow Bible emits them).
-- `/health` for uptime.
-- RPC/Horizon/Resend availability surfaced as metrics/alerts (Observability PRD).
+- Container stdout → captured by Docker; inspect with `docker compose logs -f` on the VPS.
+- `/health` for uptime (compose healthcheck).
+- RPC/Horizon/Resend availability + platform USDC float surfaced as metrics/alerts (Observability PRD).
 
 ---
 
 ## 15. Reverse Proxy & SSL
 
-- **Frontend (Vercel):** Vercel terminates TLS + CDN.
-- **Backend (Railway):** Railway provides a TLS-terminating proxy + auto HTTPS. No self-managed nginx in MVP.
-- **CORS:** `app.enableCors()` allows the Vercel frontend origin (audit #4 — without it, the browser blocks cross-origin calls).
+- **Caddy** (`caddy:2-alpine`) is the single edge: terminates TLS with **automatic HTTPS** (Let's Encrypt/ACME, `ACME_EMAIL`), and reverse-proxies `{$APP_DOMAIN}` → `frontend:3000` and `{$API_DOMAIN}` → `backend:3000` (gzip/zstd).
+- **CORS:** `app.enableCors()` allows the frontend origin (`kreav.space` → `api.kreav.space` is cross-origin; without it the browser blocks calls — audit #4).
 
-**Why no custom reverse proxy in MVP:** Railway's managed proxy handles TLS/HTTP; adding nginx is ops overhead with no MVP benefit. Revisit if we need custom routing/WAF.
+**Why Caddy:** automatic HTTPS with zero cert plumbing and a tiny config; one container fronts both apps. Domains are injected from env (`Caddyfile` hardcodes nothing).
 
 ---
 
 ## 16. Backups
 
-- **DB:** Railway managed Postgres includes automated backups + point-in-time recovery. **No custom backup scripts in MVP.**
+- **DB:** **Neon** provides managed backups + point-in-time recovery / branching. **No custom backup scripts in MVP.**
 - **Chain state:** immutable — no backup needed (it's the source of truth).
-- **App config:** env vars are in Railway (versioned) + `.env.example` in git.
+- **App config:** env vars live in `.env` files on the VPS + `.env.example` in git; Caddy certs persist in the `caddy-data` volume.
 
-**Why rely on managed backups:** Railway's PITR is more reliable than cron'd `pg_dump`; building custom backup infra is out of MVP scope.
+**Why rely on managed backups:** Neon's PITR is more reliable than cron'd `pg_dump`; building custom backup infra is out of MVP scope.
 
 ---
 
 ## 17. Rollback
 
-**Strategy:** Railway retains prior deployments; **rollback = redeploy the previous image** (one click). DB rollbacks use forward-migrations (§7) — never `migrate reset`.
+**Strategy:** `git revert`/checkout the last-good commit on `main` and re-run `docker compose up -d --build` (the deploy step). DB rollbacks use forward-migrations (§7) — never `migrate reset`.
 
-**Why image-rollback, not git-revert:** the running artifact is what matters; redeploying the last-good image is instant and doesn't require a rebuild. If a migration accompanied the bad deploy, a forward-reversal migration ships next.
+**Why redeploy from git:** the VPS builds images from the checked-out source, so the running artifact is defined by the `main` commit; reverting `main` and rebuilding restores the last-good state. If a migration accompanied the bad deploy, a forward-reversal migration ships next.
 
 **Limitation:** a migration that *dropped* a column can't be rolled back without data loss — which is why destructive migrations are forbidden (§7).
 
@@ -244,30 +239,30 @@ See **Kreav Observability PRD** for the full design. Deployment-relevant:
 
 ## 18. Deployment Strategy
 
-**MVP: rolling (Railway default).** Railway swaps the new release in after the health check passes; old instance drains (SIGTERM → graceful shutdown, Runtime Flow Bible §16).
+**MVP: rebuild-in-place.** `docker compose up -d --build` recreates changed containers; the old container receives SIGTERM → graceful shutdown (Runtime Flow Bible §16), the new one starts after its build. Brief downtime per service is acceptable for the demo.
 
 **Why not blue/green or canary in MVP:**
-- **Blue/green** doubles cost (two instances) and needs routing config — unjustified for a single-instance demo backend.
-- **Canary** needs traffic-splitting infra — overkill for the demo's traffic volume.
-- Rolling + health-check gate + image-rollback covers the demo's reliability needs. These are documented as future options (§21) for when traffic/reliability demands grow.
+- **Blue/green** doubles instances and needs routing config — unjustified for a single-VPS demo.
+- **Canary** needs traffic-splitting infra — overkill for the demo's volume.
+- Rebuild-in-place + healthcheck gate + git-revert rollback covers the demo's reliability needs. Documented as future options (§19–20).
 
 ---
 
 ## 19. Blue/Green Discussion (Future)
 
-**When to adopt:** zero-downtime SLAs, or when a bad deploy must be instantly reversible without a rebuild window. **Cost:** 2× instances + a router that swaps `blue`/`green`. **For Kreav post-MVP:** justified only if the platform goes multi-tenant with uptime requirements.
+**When to adopt:** zero-downtime SLAs, or when a bad deploy must be instantly reversible without a rebuild window. **Cost:** 2× instances + a router (Caddy can swap upstreams) that flips `blue`/`green`. **For Kreav post-MVP:** justified only if the platform goes multi-tenant with uptime requirements.
 
 ---
 
 ## 20. Canary Discussion (Future)
 
-**When to adopt:** risky changes (new settlement logic) where you want to route 5% traffic, observe, then ramp. **Needs:** traffic-splitting (a router or feature-flag service) + good observability to judge the canary. **For Kreav post-MVP:** a real canary would need the Observability PRD's metrics/alerts in place first.
+**When to adopt:** risky changes (new settlement logic) where you want to route 5% traffic, observe, then ramp. **Needs:** traffic-splitting + good observability to judge the canary. **For Kreav post-MVP:** a real canary would need the Observability PRD's metrics/alerts in place first.
 
 ---
 
 ## 21. Container Lifecycle & Scaling
 
-**MVP: single instance.** The NestJS modular monolith is stateless (DB holds state; in-process caches are non-essential). If scaled horizontally:
+**MVP: single instance per service.** The NestJS modular monolith is stateless (DB holds state; in-process caches are non-essential). If scaled horizontally:
 
 | Concern | Horizontal-scale implication |
 |---------|------------------------------|
@@ -276,7 +271,7 @@ See **Kreav Observability PRD** for the full design. Deployment-relevant:
 | **Cron/scheduled jobs** | Multiple instances → duplicate cron fires. **Needs a distributed lock or single-worker election.** |
 | **Sessions** | Stateless JWT (no server sessions) → safe. |
 
-**Future Kubernetes notes:** K8s is **not** MVP. It becomes attractive when: multi-region, autoscaling beyond a few instances, or complex routing. Migration path: containerize (already Docker), add a Redis dep for bus/throttler/cron-lock, then HPA on CPU/RPS. Until then, Railway's managed single-instance + managed Postgres is the right-size tool.
+**Future Kubernetes notes:** K8s is **not** MVP. It becomes attractive when: multi-region, autoscaling, or complex routing. Migration path: containerize (already Docker), add Redis for bus/throttler/cron-lock, then HPA on CPU/RPS. Until then, a single VPS with Docker Compose + Caddy + managed Neon Postgres is the right-size tool.
 
 ---
 

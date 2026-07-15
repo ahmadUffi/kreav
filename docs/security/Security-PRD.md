@@ -165,7 +165,7 @@ flowchart TB
 
 **Rules:**
 - `.env` is gitignored (root + backend). `.env.example` is the template (placeholders only).
-- Production secrets live in Railway (encrypted at rest), injected as env.
+- Production secrets live in gitignored `.env` files on the VPS (root `.env` + `backend/.env`, restricted file perms), injected into containers via docker-compose.
 - **No secret in code, logs, error messages, or commits.** A pre-commit grep check (Testing PRD §19) guards this.
 - Rotation: the platform key + GCash secret are rotatable (env-driven, no code change).
 
@@ -190,7 +190,7 @@ flowchart TB
 ## 16. Platform Wallet Security
 
 **The single highest-value secret — `PLATFORM_WALLET_SECRET` (ADR H1, Stellar Standards ED-10).** It signs every settlement transaction. Controls:
-- **Server-side only** — held as the `PLATFORM_WALLET_SECRET` env var (Railway, encrypted at rest); never in git, never logged, never in error responses.
+- **Server-side only** — held as the `PLATFORM_WALLET_SECRET` env var (VPS `backend/.env`, gitignored, restricted perms); never in git, never logged, never in error responses.
 - **Least privilege** — accessible only to the SettlementService; not a global.
 - **Rotatable** — env-driven; rotation = update the secret + redeploy (the contract's authorized `source` address must match, so rotation may need a contract admin op).
 - **Audited access** — the SettlementService logs every invocation (with `orderId`/`txHash`), so platform-key use is observable.
@@ -203,8 +203,8 @@ flowchart TB
 
 ## 17. Database Security
 
-- **Connection:** single `DATABASE_URL` (Railway managed Postgres, TLS).
-- **Credentials:** Railway-managed; rotated via Railway.
+- **Connection:** single `DATABASE_URL` (Neon managed Postgres, TLS).
+- **Credentials:** Neon-managed; rotated via Neon.
 - **Money columns:** `Decimal(18,2)` — never float.
 - **Constraints as security:** `Order.paymentRef` UNIQUE (idempotency), FKs RESTRICT/CASCADE (referential integrity), enum types constrain state.
 - **Least-privilege DB user:** (recommended) the app uses a role limited to Kreav tables, not superuser.
@@ -213,8 +213,8 @@ flowchart TB
 
 ## 18. Encryption
 
-- **In transit:** TLS everywhere (Railway proxy, Postgres connection, RPC/Horizon HTTPS).
-- **At rest:** Railway managed DB encryption; secrets encrypted in Railway.
+- **In transit:** TLS everywhere (Caddy auto-HTTPS at the edge, Postgres connection, RPC/Horizon HTTPS).
+- **At rest:** Neon managed DB encryption; secrets in gitignored `.env` files on the VPS.
 - **Application-level:** not needed in MVP (no field-level secrets beyond the platform key, which is env-protected).
 
 ---

@@ -26,7 +26,7 @@ Programmable Logic: Soroban
 
 # 1. Purpose
 
-Kreav Backend adalah settlement orchestration layer yang menghubungkan:
+Kreav Backend is a settlement orchestration layer connecting:
 
 Buyer Payment
 
@@ -46,7 +46,7 @@ Creator Wallet Settlement
 
 Transaction Verification
 
-Backend bertanggung jawab atas:
+The backend is responsible for:
 
 * Products
 * Orders
@@ -54,19 +54,19 @@ Backend bertanggung jawab atas:
 * Settlement Records
 * Stellar Integrations
 
-Backend tidak menyimpan dana.
+The backend does not store funds.
 
-Backend tidak memegang private key.
+The backend does not hold private keys.
 
-Backend tidak mengelola wallet custody.
+The backend does not manage wallet custody.
 
 ---
 
 # 2. Product Context
 
-Kreav membantu creator digital menerima pembayaran lintas negara menggunakan Stellar.
+Kreav enables digital creators to receive cross-border payments using Stellar.
 
-Contoh:
+Example:
 
 Creator:
 Indonesia
@@ -82,7 +82,7 @@ Price:
 
 Flow:
 
-Buyer membeli produk
+Buyer purchases product
 
 ↓
 
@@ -102,11 +102,11 @@ Soroban Revenue Split
 
 ↓
 
-Settlement tercatat on-chain
+Settlement recorded on-chain
 
 ↓
 
-Creator melihat saldo
+Creator views balance
 
 ---
 
@@ -114,61 +114,61 @@ Creator melihat saldo
 
 ## Purchase Flow
 
-Buyer membuka storefront.
+Buyer opens storefront.
 
 ↓
 
-Buyer checkout.
+Buyer initiates checkout.
 
 ↓
 
-Order dibuat.
+Order created.
 
 ↓
 
-Mock payment berhasil.
+Mock payment succeeds.
 
 ↓
 
-Settlement Service dipanggil.
+Settlement Service invoked.
 
 ↓
 
-Soroban Contract dieksekusi.
+Soroban Contract executed.
 
 ↓
 
-Revenue split terjadi.
+Revenue split occurs.
 
 ↓
 
-Transaction hash diterima.
+Transaction hash received.
 
 ↓
 
-Order menjadi SETTLED.
+Order transitions to SETTLED.
 
 ↓
 
-Creator dashboard diperbarui.
+Creator dashboard updated.
 
 ---
 
 ## Withdrawal Flow
 
-Creator menerima USDC.
+Creator receives USDC.
 
 ↓
 
-Creator memilih withdraw.
+Creator initiates withdrawal.
 
 ↓
 
-Redirect ke Anchor Flow (mock).
+Redirect to Anchor Flow (mock).
 
 ↓
 
-Withdrawal status ditampilkan.
+Withdrawal status displayed.
 
 ---
 
@@ -176,9 +176,9 @@ Withdrawal status ditampilkan.
 
 ## Principle 1
 
-PostgreSQL menyimpan application state.
+PostgreSQL stores application state.
 
-Contoh:
+Example:
 
 * User
 * Product
@@ -189,9 +189,9 @@ Contoh:
 
 ## Principle 2
 
-Stellar menyimpan settlement state.
+Stellar stores settlement state.
 
-Contoh:
+Example:
 
 * Wallet Balance
 * Trustline
@@ -204,12 +204,12 @@ Contoh:
 
 Creator owns the wallet.
 
-Backend hanya menyimpan:
+The backend stores only:
 
 * Public Key
 * Wallet Provider
 
-Backend tidak menyimpan:
+The backend does not store:
 
 * Secret Key
 * Seed Phrase
@@ -221,9 +221,9 @@ Backend tidak menyimpan:
 
 ## Principle 4
 
-Blockchain digunakan hanya untuk settlement.
+Blockchain is used strictly for settlement.
 
-Application data tetap berada di PostgreSQL.
+Application data remains in PostgreSQL.
 
 ---
 
@@ -860,19 +860,23 @@ Example
 
 Frontend:
 
-Vercel
+Docker container (Next.js standalone) behind Caddy — self-hosted VPS
 
 Backend:
 
-Railway
+Docker container (NestJS) behind Caddy — self-hosted VPS
 
 Database:
 
-Railway PostgreSQL
+Neon (managed PostgreSQL)
 
 Blockchain:
 
 Stellar Testnet
+
+Orchestration:
+
+docker-compose (backend + frontend + Caddy auto-HTTPS); deployed via GitHub Actions SSH (`docker compose up -d --build`). See the Deployment PRD.
 
 Required Environment Variables:
 

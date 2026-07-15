@@ -44,7 +44,7 @@
 - [ ] Mock SEP-24 anchor responding `processing` → `completed` predictably (no real bank payout; the mock just transitions state).
 
 ### 4. Backend + chain readiness
-- [ ] Backend deployed (Railway) + healthy (`/health`); DB migrated; demo data seeded (BE-011).
+- [ ] Backend deployed (VPS · Docker Compose) + healthy (`/health`); DB migrated; demo data seeded (BE-011).
 - [ ] Soroban split contract deployed on Testnet (`SPLIT_CONTRACT_ID` set in env).
 - [ ] **Testnet reachability check** — RPC + Horizon responding (Security-Audit #20). Run a **dry-run settlement** and confirm it lands + verifies.
 

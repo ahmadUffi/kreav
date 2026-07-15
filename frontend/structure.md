@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kreav is a Next.js 16 marketing landing page for a digital-product marketplace targeting Asian creators. It uses the App Router, TypeScript, Tailwind CSS v4, GSAP for animations, Three.js for 3D canvas scenes, and Zod for form validation.
+Kreav is a Next.js 16 web app — a marketing landing page **plus** the creator app surface (store, product detail, signup/onboarding, wallet connect + cash-out, dashboard, and public mini-site). It is the frontend of a Stellar **settlement layer** for digital-product creators (not a marketplace). It uses the App Router, TypeScript, Tailwind CSS v4, GSAP for animations, Three.js for 3D canvas scenes, and Zod for form validation.
 
 ---
 

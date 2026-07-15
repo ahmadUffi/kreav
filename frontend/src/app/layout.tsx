@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "Kreav — Sell Your Digital Work Everywhere",
   description:
-    "Sell your ebooks, presets, and templates to buyers across Asia. Get paid instantly, in your own currency.",
+    "Sell your ebooks, presets, and templates worldwide. Get paid instantly, in your own currency.",
 };
 
 export default function RootLayout({
