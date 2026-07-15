@@ -48,14 +48,14 @@ export default async function StorePage() {
           className="mt-4 mb-3 max-w-[820px]"
           style={{ fontFamily: "var(--font-anton)", fontSize: "clamp(34px, 5.2vw, 64px)", lineHeight: 1.02 }}
         >
-          Digital products by Asian creators — ready to buy.
+          Digital products by independent creators — ready to buy.
         </h1>
         <p
           className="mb-7 max-w-[560px]"
           style={{ fontFamily: "var(--font-mono)", fontSize: 15, lineHeight: 1.65, color: "var(--muted)" }}
         >
           Presets, templates, ebooks, courses and music — made by independent
-          creators across the region. Pay instantly in your own currency;
+          creators worldwide. Pay instantly in your own currency;
           settlement is powered by Stellar.
         </p>
 

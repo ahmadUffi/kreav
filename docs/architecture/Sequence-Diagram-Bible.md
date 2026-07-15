@@ -605,7 +605,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant 🩺 as Probe (Railway/uptime)
+    participant 🩺 as Probe (Docker healthcheck/uptime)
     participant ⚙️ as Backend
     participant 🗄️ as PostgreSQL
 
@@ -619,7 +619,7 @@ sequenceDiagram
     end
 ```
 
-**Explanation.** MVP `/health` returns ok if the process is up. A **deep** readiness check (`SELECT 1`) is needed for Railway to know when the container can receive traffic (audit #15). Without it, Railway routes traffic to a container whose DB connection isn't ready yet.
+**Explanation.** MVP `/health` returns ok if the process is up. A **deep** readiness check (`SELECT 1`) lets the docker-compose healthcheck know when the container can receive traffic (audit #15). Without it, Caddy routes traffic to a container whose DB connection isn't ready yet.
 
 ---
 

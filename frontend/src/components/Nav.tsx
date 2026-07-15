@@ -123,7 +123,7 @@ export default function Nav() {
               </span>
             </div>
             <span className="hidden sm:block" style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#888", marginTop: 2 }}>
-              Sell digital products across Asia.
+              Sell digital products worldwide.
             </span>
           </div>
         </div>

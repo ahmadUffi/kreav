@@ -1,18 +1,18 @@
 # Kreav Observability PRD
 
 > **Status:** Canonical operational-visibility design. MVP-aligned: structured logs + health + targeted monitoring. Distributed tracing is a documented future step, not an MVP dependency.
-> **Scope:** the NestJS backend in production (Railway). Frontend/chain observability referenced where they interface.
+> **Scope:** the NestJS backend in production (VPS · Docker Compose). Frontend/chain observability referenced where they interface.
 > **Authority on conflict:** Architecture Consistency Check → Kreav Backend PRD v3.1 → this document.
 
 ---
 
 ## 1. Logging
 
-**WHAT:** structured JSON logs to stdout, captured by Railway's log drain. NestJS `Logger` is the app-level logger; Prisma logs at `emit: 'stdout'` (audit #3 — not `'event'`, which leaked). The `EventLogListener` emits a structured line per domain event (`payment.received`, `settlement.completed`, `wallet.connect.required`).
+**WHAT:** structured JSON logs to stdout, captured by Docker (`docker compose logs`). NestJS `Logger` is the app-level logger; Prisma logs at `emit: 'stdout'` (audit #3 — not `'event'`, which leaked). The `EventLogListener` emits a structured line per domain event (`payment.received`, `settlement.completed`, `wallet.connect.required`).
 
 **WHY structured + stdout:**
 - **Structured JSON** → machine-parseable for search/alerts (a free-text log is unqueryable in an incident).
-- **stdout, not files** → Railway manages the log lifecycle (rotation, retention); the container stays stateless. Twelve-factor.
+- **stdout, not files** → Docker's logging driver manages the log lifecycle (rotation, retention); the container stays stateless. Twelve-factor.
 - **Event lines** → during the demo, the console shows "payment.received → order=... amount=10.00" — a visible, reassuring trail (Final Architecture principle 7: every blockchain action visible).
 
 ---
@@ -59,7 +59,7 @@ Settlement logs carry `orderId` (the 1:1 link) + `txHash` (the on-chain proof). 
 
 ## 7. Metrics (MVP)
 
-**WHAT:** MVP surfaces metrics via logs + Railway's built-in dashboards (CPU/RAM/throughput). **No dedicated metrics server (Prometheus) in MVP.**
+**WHAT:** MVP surfaces metrics via logs + `docker stats` / host metrics (CPU/RAM). **No dedicated metrics server (Prometheus) in MVP.**
 
 **Key signals derivable from logs/DB:**
 - Settlement success rate (count `settlement.completed` vs `SETTLEMENT_FAILED`).
@@ -67,7 +67,7 @@ Settlement logs carry `orderId` (the 1:1 link) + `txHash` (the on-chain proof). 
 - Notification retry/dead-letter counts.
 - p95 settlement latency (emit a duration on `settlement.completed`).
 
-**Why no Prometheus in MVP:** the demo has trivial volume; Railway's built-in dashboards + log-derived counts suffice. Prometheus + Grafana is the natural post-MVP addition (§15).
+**Why no Prometheus in MVP:** the demo has trivial volume; `docker stats` / host metrics + log-derived counts suffice. Prometheus + Grafana is the natural post-MVP addition (§15).
 
 ---
 
@@ -75,7 +75,7 @@ Settlement logs carry `orderId` (the 1:1 link) + `txHash` (the on-chain proof). 
 
 **WHAT:** `GET /health`.
 - **MVP (liveness):** `{ status: "ok" }` if the process is up.
-- **Recommended (readiness):** add a `SELECT 1` against Postgres so Railway's readiness probe reflects DB connectivity (audit #15). Split liveness (`/health`) from readiness (`/health/ready`) so a transient DB blip doesn't kill the process.
+- **Recommended (readiness):** add a `SELECT 1` against Postgres so the compose healthcheck reflects DB connectivity (audit #15). Split liveness (`/health`) from readiness (`/health/ready`) so a transient DB blip doesn't kill the process.
 
 **Why split:** liveness = "should this container be killed?" (no — process is fine); readiness = "should traffic route here?" (no — DB down). Conflating them causes unnecessary restarts during a DB hiccup.
 
@@ -88,7 +88,7 @@ Settlement logs carry `orderId` (the 1:1 link) + `txHash` (the on-chain proof). 
 |------------|---------------|----------|
 | **Soroban RPC (Testnet)** | startup probe + per-settle latency log | outage / sustained high latency |
 | **Horizon (Testnet)** | per-balance-read latency + error rate | timeout spike |
-| **PostgreSQL (Railway)** | `/health/ready` SELECT 1 + Railway dashboard | connection failures |
+| **PostgreSQL (Neon)** | `/health/ready` SELECT 1 + Neon dashboard | connection failures |
 | **Resend** | send success/failure in NotificationLog | failure spike |
 | **Platform USDC float (ADR C1)** | periodic Horizon `loadAccount(PLATFORM_WALLET_ADDRESS)` USDC balance read | balance < N settlements' worth (e.g. < 50 USDC) → top-up alert |
 
@@ -98,7 +98,7 @@ Settlement logs carry `orderId` (the 1:1 link) + `txHash` (the on-chain proof). 
 
 ## 10. Alerts
 
-**MVP: lightweight.** Railway deploy-failure notifications + a periodic check of `SETTLEMENT_FAILED`/`WAITING_WALLET` counts (a spike = stuck money or onboarding breakage) + a **low platform-USDC-float alert** (ADR C1 — if the float drops below ~N settlements' worth, top up before a `settle` reverts on insufficient balance).
+**MVP: lightweight.** GitHub Actions deploy-failure notifications + a periodic check of `SETTLEMENT_FAILED`/`WAITING_WALLET` counts (a spike = stuck money or onboarding breakage) + a **low platform-USDC-float alert** (ADR C1 — if the float drops below ~N settlements' worth, top up before a `settle` reverts on insufficient balance).
 
 **Post-MVP:** alerts on settlement-success-rate drop, RPC/Horizon error-rate, dead-letter queue growth.
 
@@ -157,7 +157,7 @@ Each is a log line with the relevant IDs; a dashboard (post-MVP) aggregates them
 
 ## 16. Dashboard Recommendations
 
-**MVP (Railway built-ins):** CPU/RAM/throughput + deploy history + log search.
+**MVP (Docker/host tooling):** `docker stats` CPU/RAM + `docker compose logs` search + GitHub Actions deploy history.
 
 **Post-MVP dashboard panels:**
 1. Settlement success rate + p95 latency.

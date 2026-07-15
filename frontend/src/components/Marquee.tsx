@@ -8,7 +8,7 @@ const ITEMS = [
   "Sell Templates",
   "Get Paid In Your Currency",
   "Instant Delivery",
-  "5+ Countries",
+  "Worldwide",
   "Zero Monthly Fees",
 ];
 
