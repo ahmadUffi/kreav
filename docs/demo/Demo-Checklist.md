@@ -19,7 +19,7 @@
 - [ ] **KYC / compliance** — none on stage.
 
 ## Infrastructure readiness
-- [ ] **Backend** deployed (Railway) + `/health` green; DB migrated.
+- [ ] **Backend** deployed (VPS · Docker Compose) + `/health` green; DB migrated.
 - [ ] **Demo data** seeded (BE-011): Indonesian creator + "AI Interview Playbook" $10 + wallet connected.
 - [ ] **`PLATFORM_WALLET_SECRET`** set in env.
 - [ ] **`GCASH_WEBHOOK_SECRET`** set in env (REQUIRED on stage — no dev escape hatch).

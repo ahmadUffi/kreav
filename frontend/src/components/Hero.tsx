@@ -8,15 +8,15 @@ import gsap from "gsap";
 const MapCanvas = dynamic(() => import("./MapCanvas"), { ssr: false });
 
 const TYPEWRITER_LINES = [
-  "Sell your ebook to fans in the Philippines.",
-  "Sell your preset to buyers in Vietnam.",
-  "Sell your template to creators in Thailand.",
+  "Sell your ebook to fans in Brazil.",
+  "Sell your preset to buyers in Germany.",
+  "Sell your template to creators in the Philippines.",
 ];
 
 const BADGES = [
   { label: "Instant Delivery", color: "#FF4D00" },
   { label: "Any Currency", color: "#00F5FF" },
-  { label: "5+ Countries", color: "#FF3BFF" },
+  { label: "Worldwide", color: "#FF3BFF" },
 ];
 
 export default function Hero() {
@@ -137,7 +137,7 @@ export default function Hero() {
             fontFamily: "var(--font-mono)",
           }}
         >
-          [ Digital Marketplace for Asia ]
+          [ Digital Marketplace ]
         </div>
 
         <h1
@@ -435,7 +435,7 @@ export default function Hero() {
           </svg>
           <div>
             <div style={{ fontSize: 12, fontWeight: 800, color: "#0A0A0A", fontFamily: "var(--font-mono)" }}>
-              Sold to Manila!
+              Sold to São Paulo!
             </div>
             <div style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: "#0A0A0A", fontFamily: "var(--font-mono)" }}>
               Delivered instantly

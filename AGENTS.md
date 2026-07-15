@@ -81,13 +81,13 @@ Standalone TypeScript scripts (`scripts/01-…` → `99-acceptance.ts`) that dri
 
 | Layer | Choice |
 |-------|--------|
-| Frontend | Next.js + Tailwind CSS |
-| Backend | NestJS (modular monolith) |
-| DB | PostgreSQL via Prisma ORM |
+| Frontend | Next.js 16 (App Router) + Tailwind v4 — package manager: **npm** |
+| Backend | NestJS 11 (modular monolith) + Prisma — package manager: **pnpm** |
+| DB | PostgreSQL via Prisma ORM (managed on **Neon**) |
 | Blockchain | Stellar (Soroban RPC primary; Horizon for balances/explorer) |
 | Smart contract | Soroban (Rust) — revenue-split contract only |
 | Asset | USDC on Stellar Testnet (classic asset via the SAC bridge; SAC `CBIELTK6…`) |
-| Deployment | Frontend→Vercel, Backend→Railway, DB→Neon (managed Postgres, dev), chain→Stellar Testnet |
+| Deployment | Self-hosted **VPS** · **Docker Compose** (backend + frontend + **Caddy**, auto-HTTPS) · DB→**Neon** · CI/CD → GitHub Actions (SSH `docker compose up -d --build`) · chain→Stellar Testnet |
 
 ## Source of truth & authority hierarchy
 

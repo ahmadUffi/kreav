@@ -1,5 +1,7 @@
 # Kreav Backend — Security & Reliability Audit
 
+> **⚠️ Historical (point-in-time) audit — 2026-06-26.** Criticals were fixed; remaining items were folded into ROADMAP phases. Kept for the record; platform-specific mentions below (e.g. Vercel→Railway) reflect the deployment target *at audit time* — the current stack is a self-hosted VPS + Docker Compose + Caddy + Neon (see `docs/backend/Deployment-PRD.md`).
+>
 > Full audit conducted 2026-06-26. Covers BE-001/002/003 + planned tasks + PRD v3.1 + CI + config.
 > **4 CRITICAL findings fixed in `fix/audit-critical-fixes` PR.** Remaining 18 recorded here per task owner's choice ("fix critical now, fold rest into tasks").
 

@@ -860,19 +860,23 @@ Example
 
 Frontend:
 
-Vercel
+Docker container (Next.js standalone) behind Caddy — self-hosted VPS
 
 Backend:
 
-Railway
+Docker container (NestJS) behind Caddy — self-hosted VPS
 
 Database:
 
-Railway PostgreSQL
+Neon (managed PostgreSQL)
 
 Blockchain:
 
 Stellar Testnet
+
+Orchestration:
+
+docker-compose (backend + frontend + Caddy auto-HTTPS); deployed via GitHub Actions SSH (`docker compose up -d --build`). See the Deployment PRD.
 
 Required Environment Variables:
 

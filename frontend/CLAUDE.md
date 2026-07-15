@@ -10,7 +10,7 @@
 
 ## Quick Context
 
-- **What it is**: Neobrutalist marketing landing page for Kreav, a digital-product marketplace for Asian creators.
+- **What it is**: The Kreav web app (neobrutalist) — marketing landing **+ creator app surface** (store, product detail, signup/onboarding, wallet connect + cash-out, dashboard, public mini-site). Kreav is a Stellar **settlement layer** for digital-product creators, **not** a marketplace/social platform.
 - **Stack**: Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · GSAP 3 · Three.js 0.184 · Zod v4
 - **Entry point**: `src/app/page.tsx` (Server Component) assembles all section components inside `ThemeProvider`.
 - **Dev server**: `npm run dev` → `http://localhost:3000`

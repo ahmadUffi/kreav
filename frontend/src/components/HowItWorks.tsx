@@ -11,7 +11,7 @@ const STEPS = [
     num: "01",
     color: "#FF4D00",
     title: "Set Up Your Store",
-    body: "Connect your Stellar wallet, upload your ebook or preset, set your price. Your store is live at kreav.com/yourname in minutes.",
+    body: "Connect your Stellar wallet, upload your ebook or preset, set your price. Your store is live at kreav.space/yourname in minutes.",
     icon: (
       <svg width="56" height="56" viewBox="0 0 16 16" shapeRendering="crispEdges">
         <rect x="2" y="3" width="12" height="3" fill="#FF4D00" stroke="#0A0A0A" />
@@ -25,7 +25,7 @@ const STEPS = [
     num: "02",
     color: "#FF3BFF",
     title: "Buyer Pays Their Way",
-    body: "Buyers from Indonesia, Philippines, Vietnam pay with what they already have. QRIS, GCash, VietQR. No signup required.",
+    body: "Buyers worldwide pay with methods they already use — QRIS, GCash, VietQR, and more. No signup required.",
     icon: (
       <svg width="56" height="56" viewBox="0 0 16 16" shapeRendering="crispEdges">
         <rect x="3" y="2" width="10" height="12" fill="#fff" stroke="#0A0A0A" />

@@ -19,7 +19,7 @@
 **WHAT:** The process boots, validates config, wires NestJS modules, connects Postgres, registers crons, and runs a startup recovery job before listening on PORT.
 
 **WHY this order:**
-1. **Config first** — if `DATABASE_URL`/`SOROBAN_RPC_URL` are missing or malformed, the app must fail *before* binding a port (fail fast; no half-alive containers that Railway routes traffic to). Joi `abortEarly: false` reports all errors at once.
+1. **Config first** — if `DATABASE_URL`/`SOROBAN_RPC_URL` are missing or malformed, the app must fail *before* binding a port (fail fast; no half-alive containers that Caddy routes traffic to). Joi `abortEarly: false` reports all errors at once.
 2. **DI before connections** — NestJS instantiates providers in dependency order; Prisma/RPC/Horizon clients are lazy so their constructors are cheap, but the `onModuleInit` hooks connect eagerly where needed.
 3. **Startup recovery before listen** — orders stuck in `PAYMENT_RECEIVED`/`SETTLEMENT_PENDING` (from a crash mid-settlement) must resume *before* new traffic arrives, so the system starts in a consistent state (audit #18). Without this, a crash mid-demo = stuck money.
 4. **Crons last** — retry/notification workers must not fire before recovery completes (they'd compete with the recovery job).
@@ -64,7 +64,7 @@ See Sequence Diagram Bible §20 for the full startup sequence.
 **WHY:**
 - **Eager connect in `OnModuleInit`** — fail fast at boot if Postgres is unreachable, rather than failing on the first request.
 - **Cron registration in bootstrap** — crons need all modules instantiated; bootstrap is the first point where that's guaranteed.
-- **Shutdown hooks** — without them, SIGTERM kills the process before Prisma disconnects, leaking connections (audit #2). Critical on Railway, which sends SIGTERM on redeploy.
+- **Shutdown hooks** — without them, SIGTERM kills the process before Prisma disconnects, leaking connections (audit #2). Critical under Docker Compose, which sends SIGTERM when it recreates a container (`up -d --build`).
 
 ---
 
@@ -74,7 +74,7 @@ See Sequence Diagram Bible §20 for the full startup sequence.
 
 **WHY:**
 - **Migrate before boot** — the app assumes the schema exists; running migrations at boot races with request handling. `prisma migrate deploy` (non-interactive) runs in the release phase / CI.
-- **`emit: 'stdout'`** — Prisma logs to stdout (NOT `'event'`, which caused a memory leak with no listener — audit #3). Stdout logs are captured by Railway's log drain.
+- **`emit: 'stdout'`** — Prisma logs to stdout (NOT `'event'`, which caused a memory leak with no listener — audit #3). Stdout logs are captured by Docker (`docker compose logs`).
 - **Decimal money** — all money columns are `Decimal(18,2)`; Prisma returns `Prisma.Decimal`, which the global `DecimalToStringInterceptor` serializes to `"10.00"` (audit #10). Never float.
 
 ---
@@ -216,7 +216,7 @@ any non-terminal    → CANCELLED
 **WHAT:** `enableShutdownHooks()` → SIGTERM/SIGINT → `OnModuleDestroy` → `PrismaService.$disconnect()`. Crons stop; in-flight HTTP requests drain (NestJS default).
 
 **WHY:**
-- **Connection leak prevention** — without disconnect, SIGTERM kills the process and Postgres connections leak until the pool times out (audit #2). Railway sends SIGTERM on every redeploy.
+- **Connection leak prevention** — without disconnect, SIGTERM kills the process and Postgres connections leak until the pool times out (audit #2). Docker Compose sends SIGTERM on every container recreate (`up -d --build`).
 - **Drain in-flight** — a settlement mid-verify shouldn't be killed abruptly; shutdown hooks give NestJS a chance to finish the current request cycle. Anything not finished is caught by startup recovery on the next boot.
 
 ---
