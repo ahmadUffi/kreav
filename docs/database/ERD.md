@@ -1,6 +1,6 @@
 # Entity Relationship Diagram
 
-> ERD visual untuk schema Kreav. Detail field → [`backend/prisma/schema.prisma`](../../backend/prisma/schema.prisma). 9 models, 9 enums, 3 domains.
+> Visual ERD for the Kreav schema. For complete field details, refer to [`backend/prisma/schema.prisma`](../../backend/prisma/schema.prisma). 9 models, 9 enums, 3 domains.
 
 ## Domain overview
 
@@ -111,4 +111,5 @@ erDiagram
     Settlement ||--o{ Withdrawal : "may fund"
 ```
 
-> Detail konvensi + constraint → [Database Bible](./Database-Bible.md)
+> For conventions and constraints, refer to the [Database Bible](./Database-Bible.md)
+
