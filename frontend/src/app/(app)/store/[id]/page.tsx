@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, Button } from "@/components/ui";
 import { getProduct } from "@/lib/api/products";
-import { checkout, getOrder, simulatePayment } from "@/lib/api/orders";
+import { checkout, getOrderStatus, simulatePayment } from "@/lib/api/orders";
 import { useApiQuery, useApiAction } from "@/lib/api/hooks";
 
 type Buy = "idle" | "paying" | "pending" | "paid" | "failed";
@@ -37,7 +37,7 @@ export default function ProductDetailPage() {
     const id = setInterval(async () => {
       pollsRef.current += 1;
       try {
-        const order = await getOrder(orderId);
+        const order = await getOrderStatus(orderId, email.trim());
         if (order.status === "Paid") {
           setBuy("paid");
           clearInterval(id);
@@ -54,7 +54,7 @@ export default function ProductDetailPage() {
       if (pollsRef.current >= MAX_POLLS) clearInterval(id);
     }, POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [buy, orderId]);
+  }, [buy, orderId, email]);
 
   const onBuy = async () => {
     if (!product) return;

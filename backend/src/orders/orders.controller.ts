@@ -31,6 +31,7 @@ import { JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CheckoutDto } from './dto/checkout.dto';
 import { GcashWebhookDto } from './dto/gcash-webhook.dto';
+import { GetOrderStatusDto } from './dto/get-order-status.dto';
 import { OrdersListQueryDto } from './dto/orders-list-query.dto';
 import { OrdersListResponseDto } from './dto/order-item.dto';
 import { WebhookSignature } from './webhook-signature';
@@ -184,6 +185,31 @@ export class OrdersController {
     }
     this.logger.log(`POST /orders/${id}/simulate-payment (demo)`);
     return this.orders.handleGcashPayment(id, `demo-${id}`);
+  }
+
+  /**
+   * POST /orders/status — public buyer-facing order status polling.
+   *
+   * Validates the buyer via `orderId + buyerEmail` so no auth token is needed.
+   * Returns a minimal status snapshot — the buyer gets enough to drive the UI
+   * (polling until PAID/FAILED) but no settlement details or pricing exposure
+   * beyond what they already know.
+   */
+  @Post('orders/status')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Get order status (buyer)',
+    description:
+      'Public endpoint for buyers to poll their order status after checkout. ' +
+      'Validated via orderId + buyerEmail (no auth required).',
+  })
+  @ApiBody({ type: GetOrderStatusDto })
+  @ApiResponse({ status: 200, description: 'Order status returned' })
+  @ApiResponse({ status: 404, description: 'Order not found or email mismatch' })
+  async getStatus(@Body() dto: GetOrderStatusDto) {
+    this.logger.log(`POST /orders/status orderId=${dto.orderId}`);
+    return this.orders.getOrderStatus(dto.orderId, dto.buyerEmail);
   }
 
   // ── BE-018: Read endpoints ───────────────────────────────────────────────

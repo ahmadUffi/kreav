@@ -278,4 +278,36 @@ export class OrdersService {
         order.createdAt instanceof Date ? order.createdAt.toISOString() : String(order.createdAt),
     };
   }
+
+  /**
+   * POST /orders/status — public buyer-facing order polling.
+   *
+   * Returns a minimal status snapshot (no settlement details, no buyerEmail
+   * exposure to outsiders). Validated via orderId + buyerEmail — both already
+   * held by the buyer from the checkout response — so no auth token is required.
+   */
+  async getOrderStatus(
+    orderId: string,
+    buyerEmail: string,
+  ): Promise<{ status: string; id: string; txHash?: string }> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        status: true,
+        buyerEmail: true,
+        txHash: true,
+      },
+    });
+
+    if (!order || order.buyerEmail !== buyerEmail) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return {
+      id: order.id,
+      status: order.status,
+      txHash: order.txHash ?? undefined,
+    };
+  }
 }
