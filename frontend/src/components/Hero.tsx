@@ -32,7 +32,7 @@ export default function Hero() {
     const type = () => {
       const txt = TYPEWRITER_LINES[li];
       let i = 0;
-      const tick = () => {
+      function tick() {
         span.textContent = txt.slice(0, i);
         i++;
         if (i <= txt.length) {
@@ -40,7 +40,7 @@ export default function Hero() {
         } else {
           timersRef.current.push(setTimeout(erase, 2000));
         }
-      };
+      }
       const erase = () => {
         let j = txt.length;
         const e = () => {
