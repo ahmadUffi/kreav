@@ -1,0 +1,58 @@
+backend/src/stellar/settlement.service.ts
+  s_2bafa2ba7782f3::t_f8b8010b282333 604-610
+  s_2bafa2ba7782f3::t_24ce5fd3ec9509 58
+  s_2bafa2ba7782f3::t_09815861ffb924 1,6
+  s_2bafa2ba7782f3::t_2e99f1820a709e 226-230,232-248
+  s_2bafa2ba7782f3::t_c4a9efe09e1166 252-257,260-309
+  s_2bafa2ba7782f3::t_f1172a29426992 231,258,527-529
+  s_2bafa2ba7782f3::t_2d448a9ecb20ed 500-526,530-556
+  s_2bafa2ba7782f3::t_96ac8f0020b34d 17
+  s_2bafa2ba7782f3::t_e603505fc21c65 259
+  s_2bafa2ba7782f3::t_a35f269309925d 499
+backend/src/stellar/settlement.service.spec.ts
+  s_2bafa2ba7782f3::t_4a5f831b259027 15
+  s_2bafa2ba7782f3::t_2763618b09284c 108
+  s_2bafa2ba7782f3::t_cad27b8626afc7 118-135
+  s_2bafa2ba7782f3::t_908e966110f5ed 514-522
+frontend/src/app/(app)/store/[id]/page.tsx
+  s_2bafa2ba7782f3::t_b6527d0f566c16 234-236
+backend/src/config/configuration.ts
+  s_2bafa2ba7782f3::t_f1172a29426992 53-57
+backend/src/site/site.service.ts
+  s_2bafa2ba7782f3::t_c57abaa40225eb 109-121
+  s_2bafa2ba7782f3::t_cfbcd76ff31af3 1
+backend/src/orders/orders.service.ts
+  s_2bafa2ba7782f3::t_0bf12b2dba0dde 125-131,136-141
+  s_2bafa2ba7782f3::t_e2a4b1a63b02c2 154-160,165-169
+  s_2bafa2ba7782f3::t_f1172a29426992 132-135,161-164
+backend/src/common/startup/startup-recovery.service.ts
+  s_2bafa2ba7782f3::t_5f0bc09cde1eb4 35
+  s_2bafa2ba7782f3::t_ac1de5de2f1497 6
+  s_2bafa2ba7782f3::t_ef7877151ec5a5 156-159,161-170
+backend/src/stellar/soroban-rpc.service.ts
+  s_2bafa2ba7782f3::t_71a40a79e15644 113-130
+  s_2bafa2ba7782f3::t_d3ef57a19b7265 338-345
+  s_2bafa2ba7782f3::t_8889b971f89156 131-133
+  s_2bafa2ba7782f3::t_9c2533fb89d36b 112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a4e4ad591783b7158ef30f503bb04e25e635348f",
+  "prompts": {},
+  "humans": {
+    "h_20649baae43f97": {
+      "author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
