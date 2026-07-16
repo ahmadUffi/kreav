@@ -1,0 +1,27 @@
+backend/package.json
+  s_2bafa2ba7782f3::t_09663822a8f17e 29
+  s_2bafa2ba7782f3::t_167809533aab72 12
+backend/scripts/setup-local-db.sh
+  s_2bafa2ba7782f3::t_fdd558b5ad5644 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f8ecd4ece07ad22bec1f6f5cd5df40df389366a5",
+  "prompts": {},
+  "humans": {
+    "h_20649baae43f97": {
+      "author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
