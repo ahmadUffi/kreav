@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/context/theme";
+import gsap from "gsap";
 
 export default function Nav() {
   const router = useRouter();
