@@ -61,6 +61,18 @@ export async function simulatePayment(orderId: string): Promise<void> {
   await api.post(`/orders/${orderId}/simulate-payment`, {});
 }
 
+/** Public buyer-facing order status — no auth required. */
+export async function getOrderStatus(
+  orderId: string,
+  buyerEmail: string,
+): Promise<{ id: string; status: OrderStatusView; txHash?: string }> {
+  const raw = await api.post<{ id: string; status: OrderStatus; txHash?: string }>(
+    "/orders/status",
+    { orderId, buyerEmail },
+  );
+  return { id: raw.id, status: mapOrderStatus(raw.status), txHash: raw.txHash };
+}
+
 export async function getOrder(id: string): Promise<OrderDetailView> {
   const raw = await api.get<OrderDetailRaw>(`/orders/${id}`);
   return {
