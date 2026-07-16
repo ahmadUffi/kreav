@@ -14,6 +14,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLLS = 20; // ~60s, then leave it in the pending state
 
+const SESSION_KEY = "kreav_checkout";
+
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -30,6 +32,36 @@ export default function ProductDetailPage() {
   const [payErr, setPayErr] = useState<string | null>(null);
   const pollsRef = useRef(0);
 
+  // Restore checkout state from sessionStorage on mount so a page refresh
+  // doesn't lose the order — the buyer can resume tracking.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { orderId: string; email: string; buy: Buy };
+        if (parsed.orderId && parsed.email && parsed.buy === "pending") {
+          setOrderId(parsed.orderId);
+          setEmail(parsed.email);
+          setBuy("pending");
+        }
+      }
+    } catch {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }, []);
+
+  // Persist checkout state so the buyer can refresh without losing their
+  // order during settlement. Cleared on terminal states.
+  const persistCheckout = (state: Buy, oid: string | null, mail: string) => {
+    if (state === "pending" && oid && mail) {
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ orderId: oid, email: mail, buy: state }));
+      } catch { /* storage full — degrade gracefully */ }
+    } else {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  };
+
   // Poll the order for payment/settlement status after checkout.
   useEffect(() => {
     if (buy !== "pending" || !orderId) return;
@@ -40,11 +72,13 @@ export default function ProductDetailPage() {
         const order = await getOrderStatus(orderId, email.trim());
         if (order.status === "Paid") {
           setBuy("paid");
+          persistCheckout("paid", orderId, email);
           clearInterval(id);
           return;
         }
         if (order.status === "Failed") {
           setBuy("failed");
+          persistCheckout("failed", orderId, email);
           clearInterval(id);
           return;
         }
@@ -63,9 +97,9 @@ export default function ProductDetailPage() {
       return;
     }
     setEmailErr(null);
-    const oid = await runCheckout(product.id, email.trim());
-    if (oid) {
-      setOrderId(oid);
+    const result = await runCheckout(product.id, email.trim());
+    if (result) {
+      setOrderId(result.orderId);
       setBuy("paying"); // show the mock local-payment step
     }
   };
@@ -79,6 +113,7 @@ export default function ProductDetailPage() {
     try {
       await simulatePayment(orderId);
       setBuy("pending");
+      persistCheckout("pending", orderId, email);
     } catch (e) {
       setPayErr(e instanceof Error ? e.message : "Payment couldn't be processed.");
     } finally {
@@ -238,7 +273,7 @@ export default function ProductDetailPage() {
               <p style={{ margin: "6px 0 12px", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
                 Order <span style={{ color: "var(--text)" }}>{orderId}</span> didn&apos;t go through.
               </p>
-              <Button variant="primary" onClick={() => setBuy("idle")}>
+              <Button variant="primary" onClick={() => { setBuy("idle"); persistCheckout("idle", null, ""); }}>
                 Try again
               </Button>
             </Card>

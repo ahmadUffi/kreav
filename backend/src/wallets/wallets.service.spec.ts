@@ -1,8 +1,12 @@
 import { Test } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorizonService } from '../stellar/horizon.service';
 import { ExplorerService } from '../stellar/explorer.service';
 import { STELLAR_CONFIG } from '../stellar/stellar.config';
+import { AppEvents } from '../events/event-names';
 import { WalletsService } from './wallets.service';
 
 /**
@@ -20,6 +24,7 @@ describe('WalletsService', () => {
   let service: WalletsService;
   let horizon: { getUsdcBalance: jest.Mock };
   let prisma: {
+    user: { findUnique: jest.Mock };
     settlementRecipient: {
       findMany: jest.Mock;
       count: jest.Mock;
@@ -29,8 +34,14 @@ describe('WalletsService', () => {
     };
     wallet: {
       findFirst: jest.Mock;
+      create: jest.Mock;
+    };
+    order: {
+      findMany: jest.Mock;
+      update: jest.Mock;
     };
   };
+  let emitter: { emit: jest.Mock };
 
   const MOCK_ADDRESS = 'GDA2SQ2PHWIER57TDXKLBSOD3IT4GTAHK5RV2H27LJZAXDBWQ6KYJ72B';
   const MOCK_EXPLORER_URL = 'https://stellar.expert/explorer/testnet';
@@ -43,10 +54,13 @@ describe('WalletsService', () => {
   beforeEach(async () => {
     horizon = { getUsdcBalance: jest.fn() };
     prisma = {
+      user: { findUnique: jest.fn() },
       settlementRecipient: { findMany: jest.fn(), count: jest.fn() },
       withdrawal: { findMany: jest.fn() },
-      wallet: { findFirst: jest.fn() },
+      wallet: { findFirst: jest.fn(), create: jest.fn() },
+      order: { findMany: jest.fn(), update: jest.fn() },
     };
+    emitter = { emit: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -54,6 +68,7 @@ describe('WalletsService', () => {
         { provide: HorizonService, useValue: horizon },
         { provide: PrismaService, useValue: prisma },
         { provide: ExplorerService, useValue: mockExplorerService },
+        { provide: EventEmitter2, useValue: emitter },
         {
           provide: STELLAR_CONFIG,
           useValue: { explorerUrl: MOCK_EXPLORER_URL },
@@ -290,6 +305,138 @@ describe('WalletsService', () => {
         limit: 10,
         total: 1,
       });
+    });
+  });
+
+  // ── connect (BE-020 + C1/C3 fixes) ────────────────────────────────────
+
+  describe('connect', () => {
+    const creatorId = 'u1';
+    const walletAddress = 'GCREATOR1';
+
+    const mockWalletRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
+      id: 'w1',
+      creatorId,
+      walletAddress,
+      provider: 'FREIGHTER',
+      connectedAt: new Date('2026-07-01T12:00:00Z'),
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue({ id: creatorId });
+      prisma.wallet.findFirst.mockResolvedValue(null); // no existing wallet
+      prisma.wallet.create.mockResolvedValue(mockWalletRow());
+      prisma.order.findMany.mockResolvedValue([]); // no WAITING_WALLET orders
+    });
+
+    it('creates a wallet and returns the expected fields', async () => {
+      const result = await service.connect(creatorId, walletAddress, 'FREIGHTER');
+
+      expect(result.id).toBe('w1');
+      expect(result.creatorId).toBe(creatorId);
+      expect(result.walletAddress).toBe(walletAddress);
+      expect(result.provider).toBe('FREIGHTER');
+      expect(result.connectedAt).toBe('2026-07-01T12:00:00.000Z');
+    });
+
+    it('throws NotFoundException when creator does not exist', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.connect(creatorId, walletAddress, 'FREIGHTER')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('throws ConflictException when wallet is already connected (findFirst)', async () => {
+      prisma.wallet.findFirst.mockResolvedValue({ id: 'existing' });
+
+      await expect(service.connect(creatorId, walletAddress, 'FREIGHTER')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('throws ConflictException on P2002 unique violation (TOCTOU guard)', async () => {
+      prisma.wallet.create.mockRejectedValue({ code: 'P2002' });
+
+      await expect(service.connect(creatorId, walletAddress, 'FREIGHTER')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('re-throws non-P2002 errors from create', async () => {
+      const dbErr = new Error('connection refused');
+      prisma.wallet.create.mockRejectedValue(dbErr);
+
+      await expect(service.connect(creatorId, walletAddress, 'FREIGHTER')).rejects.toThrow(
+        'connection refused',
+      );
+    });
+
+    it('resumes WAITING_WALLET orders by emitting payment.received', async () => {
+      const waitingOrders = [
+        {
+          id: 'order-1',
+          amountUsd: new Prisma.Decimal('10.00'),
+          paymentRef: 'gcash-tx-001',
+          product: { creatorId },
+        },
+        {
+          id: 'order-2',
+          amountUsd: new Prisma.Decimal('5.00'),
+          paymentRef: 'gcash-tx-002',
+          product: { creatorId },
+        },
+      ];
+      prisma.order.findMany.mockResolvedValue(waitingOrders);
+
+      await service.connect(creatorId, walletAddress, 'FREIGHTER');
+
+      expect(emitter.emit).toHaveBeenCalledTimes(2);
+      expect(emitter.emit).toHaveBeenCalledWith(
+        AppEvents.PaymentReceived,
+        expect.objectContaining({
+          orderId: 'order-1',
+          amountUsd: '10.00',
+          walletAddress,
+        }),
+      );
+      expect(emitter.emit).toHaveBeenCalledWith(
+        AppEvents.PaymentReceived,
+        expect.objectContaining({
+          orderId: 'order-2',
+          amountUsd: '5.00',
+          walletAddress,
+        }),
+      );
+    });
+
+    it('emits payment.received with fallback paymentRef when null', async () => {
+      prisma.order.findMany.mockResolvedValue([
+        {
+          id: 'order-1',
+          amountUsd: new Prisma.Decimal('10.00'),
+          paymentRef: null,
+          product: { creatorId },
+        },
+      ]);
+
+      await service.connect(creatorId, walletAddress, 'FREIGHTER');
+
+      expect(emitter.emit).toHaveBeenCalledWith(
+        AppEvents.PaymentReceived,
+        expect.objectContaining({
+          paymentRef: 'resume-order-1',
+        }),
+      );
+    });
+
+    it('does not emit when there are no WAITING_WALLET orders', async () => {
+      prisma.order.findMany.mockResolvedValue([]);
+
+      await service.connect(creatorId, walletAddress, 'FREIGHTER');
+
+      expect(emitter.emit).not.toHaveBeenCalled();
     });
   });
 });

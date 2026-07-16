@@ -47,9 +47,9 @@ export interface OrderDetailView {
  * Start a checkout for a product; returns the new order id (PAYMENT_PENDING).
  * `buyerEmail` is where the product download link is sent after settlement.
  */
-export async function checkout(productId: string, buyerEmail: string): Promise<string> {
+export async function checkout(productId: string, buyerEmail: string): Promise<{ orderId: string; amountUsd: string }> {
   const res = await api.post<CheckoutRaw>("/checkout", { productId, buyerEmail });
-  return res.orderId;
+  return { orderId: res.orderId, amountUsd: res.amountUsd };
 }
 
 /**

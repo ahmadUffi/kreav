@@ -159,6 +159,7 @@ export interface OrderDetailRaw extends OrderRaw {
 }
 export interface CheckoutRaw {
   orderId: string;
+  amountUsd: string;
 }
 
 /* ── Wallet ───────────────────────────────────────────────────────────── */

@@ -40,31 +40,35 @@ export class OrdersService {
    * The order is created at CHECKOUT_STARTED, then immediately advanced to
    * PAYMENT_PENDING — modeling the buyer being redirected to the payment
    * provider (GCash). The webhook later drives PAYMENT_PENDING → PAYMENT_RECEIVED.
+   *
+   * Returns `orderId` + `amountUsd` so the buyer sees the price on the
+   * checkout page immediately — no need to know the product price from context.
    */
-  async checkout(productId: string, buyerEmail: string): Promise<{ orderId: string }> {
+  async checkout(
+    productId: string,
+    buyerEmail: string,
+  ): Promise<{ orderId: string; amountUsd: string }> {
     const product = await this.prisma.product.findUnique({
-      where: { id: productId },
+      where: { id: productId, status: 'ACTIVE' },
       select: { priceUsd: true, creatorId: true },
     });
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
+    const amountUsd = product.priceUsd.toFixed(2);
+
     const order = await this.prisma.order.create({
       data: {
         productId,
-        // The buyer's email is captured at checkout — it's where the product
-        // download link is delivered after settlement (product-delivery listener).
         buyerEmail,
-        // Fresh Decimal — do NOT store the product's reference, or a later
-        // mutation could corrupt the source row.
-        amountUsd: new Prisma.Decimal(product.priceUsd.toFixed(2)),
+        amountUsd: new Prisma.Decimal(amountUsd),
         status: OrderStatus.PAYMENT_PENDING,
       },
       select: { id: true },
     });
 
-    return { orderId: order.id };
+    return { orderId: order.id, amountUsd };
   }
 
   /**
@@ -264,7 +268,8 @@ export class OrdersService {
             explorerLink: this.explorer.txUrl(s.txHash),
             totalAmount: money(s.totalAmount),
             status: s.status,
-            createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
+            createdAt:
+              s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
             recipients: s.recipients.map((r) => ({
               walletAddress: r.walletAddress,
               recipientType: r.recipientType,

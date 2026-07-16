@@ -1,8 +1,11 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { WalletProvider } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { OrderStatus, WalletProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorizonService } from '../stellar/horizon.service';
 import { ExplorerService } from '../stellar/explorer.service';
+import { AppEvents } from '../events/event-names';
+import type { PaymentReceivedPayload } from '../events/event-payloads';
 
 /**
  * WalletsService — BE-008 query logic.
@@ -22,6 +25,7 @@ export class WalletsService {
     private readonly prisma: PrismaService,
     private readonly horizon: HorizonService,
     private readonly explorer: ExplorerService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   /**
@@ -206,6 +210,10 @@ export class WalletsService {
    * Validates that the creator exists, checks for duplicate wallet addresses,
    * and creates the wallet record. Non-custodial: stores only the public key.
    *
+   * After connecting, resumes any WAITING_WALLET orders for this creator by
+   * emitting `payment.received` — the SettlementService picks them up and
+   * continues the split (they were deferred when the wallet wasn't connected).
+   *
    * Throws:
    *   NotFoundException — creatorId does not match any user
    *   ConflictException — walletAddress is already connected to a creator
@@ -241,18 +249,37 @@ export class WalletsService {
       );
     }
 
-    const wallet = await this.prisma.wallet.create({
-      data: { creatorId, walletAddress, provider },
-      select: {
-        id: true,
-        creatorId: true,
-        walletAddress: true,
-        provider: true,
-        connectedAt: true,
-      },
-    });
+    let wallet;
+    try {
+      wallet = await this.prisma.wallet.create({
+        data: { creatorId, walletAddress, provider },
+        select: {
+          id: true,
+          creatorId: true,
+          walletAddress: true,
+          provider: true,
+          connectedAt: true,
+        },
+      });
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: string }).code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `Wallet ${walletAddress} is already connected to another account`,
+        );
+      }
+      throw err;
+    }
 
     this.logger.log(`Wallet connected: ${wallet.id} (${walletAddress}, ${provider})`);
+
+    // Resume any WAITING_WALLET orders for this creator — they were deferred
+    // because the wallet wasn't connected at payment time.
+    await this.resumeWaitingWalletOrders(creatorId, walletAddress);
 
     return {
       id: wallet.id,
@@ -264,5 +291,48 @@ export class WalletsService {
           ? wallet.connectedAt.toISOString()
           : String(wallet.connectedAt),
     };
+  }
+
+  /**
+   * Resume settlement for all WAITING_WALLET orders belonging to a creator.
+   *
+   * Each order is advanced to SETTLEMENT_PENDING and a `payment.received`
+   * event is emitted so the SettlementService picks it up and continues the
+   * revenue split.
+   */
+  private async resumeWaitingWalletOrders(creatorId: string, walletAddress: string): Promise<void> {
+    const waitingOrders = await this.prisma.order.findMany({
+      where: {
+        product: { creatorId },
+        status: OrderStatus.WAITING_WALLET,
+      },
+      select: {
+        id: true,
+        amountUsd: true,
+        paymentRef: true,
+        product: { select: { creatorId: true } },
+      },
+    });
+
+    if (waitingOrders.length === 0) return;
+
+    for (const order of waitingOrders) {
+      const orderId = order.id;
+      const amountUsd = order.amountUsd.toFixed(2);
+
+      const payload: PaymentReceivedPayload = {
+        orderId,
+        amountUsd,
+        creatorId: order.product.creatorId,
+        walletAddress,
+        paymentRef: order.paymentRef ?? `resume-${orderId}`,
+      };
+      this.emitter.emit(AppEvents.PaymentReceived, payload);
+
+      this.logger.log(
+        `Emitted payment.received for WAITING_WALLET order=${orderId} ` +
+          `(creator=${creatorId}, amount=${amountUsd})`,
+      );
+    }
   }
 }

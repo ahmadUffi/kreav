@@ -64,15 +64,24 @@ describe('OrdersService', () => {
 
       const createData = prisma.order.create.mock.calls[0][0].data;
       expect(createData.productId).toBe('p1');
-      expect(createData.buyerEmail).toBe('buyer@example.com'); // captured from checkout, not a placeholder
-      expect(createData.amountUsd.toFixed(2)).toBe('10.00'); // value match, not identity
+      expect(createData.buyerEmail).toBe('buyer@example.com');
+      expect(createData.amountUsd.toFixed(2)).toBe('10.00');
       expect(createData.status).toBe(OrderStatus.PAYMENT_PENDING);
-      expect(result).toEqual({ orderId: 'o1' });
+      expect(result).toEqual({ orderId: 'o1', amountUsd: '10.00' });
     });
 
     it('throws NotFoundException when product does not exist', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
       await expect(service.checkout('missing', 'buyer@example.com')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('rejects ARCHIVED products (throws NotFoundException)', async () => {
+      // product exists but is ARCHIVED — filter `where: { id, status: 'ACTIVE' }`
+      // returns null, so checkout rejects with 404.
+      prisma.product.findUnique.mockResolvedValue(null);
+      await expect(service.checkout('p1', 'buyer@example.com')).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });
@@ -84,8 +93,20 @@ describe('OrdersService', () => {
 
       await service.checkout('p1', 'buyer@example.com');
       const stored = prisma.order.create.mock.calls[0][0].data.amountUsd;
-      expect(stored).not.toBe(product.priceUsd); // a NEW Decimal instance
+      expect(stored).not.toBe(product.priceUsd);
       expect(stored.toFixed(2)).toBe('10.00');
+    });
+
+    it('queries product with status: ACTIVE filter', async () => {
+      const product = { id: 'p1', priceUsd: new Prisma.Decimal('10.00'), creatorId: 'u1' };
+      prisma.product.findUnique.mockResolvedValue(product);
+      prisma.order.create.mockResolvedValue({ id: 'o1' });
+
+      await service.checkout('p1', 'buyer@example.com');
+
+      expect(prisma.product.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'p1', status: 'ACTIVE' } }),
+      );
     });
   });
 
