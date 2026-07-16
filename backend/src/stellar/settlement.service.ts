@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OnEvent } from '@nestjs/event-emitter';
 import { OrderStatus, Prisma, RecipientType, SettlementStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { STELLAR_CONFIG, type StellarConfig } from './stellar.config';
 import { AppEvents } from '../events/event-names';
 import type { PaymentReceivedPayload, SettlementCompletedPayload } from '../events/event-payloads';
 import { canTransition } from '../orders/order-state-machine';
@@ -13,6 +14,7 @@ import {
   SettlementSimulationError,
   SettlementSubmissionError,
   SettlementTimeoutError,
+  SettlementNetworkError,
 } from './soroban-rpc.service';
 import { HorizonService } from './horizon.service';
 import { USDC_DECIMALS } from './stellar.config';
@@ -53,6 +55,7 @@ export class SettlementService {
     private readonly emitter: EventEmitter2,
     private readonly sorobanRpc: SorobanRpcService,
     private readonly horizon: HorizonService,
+    @Inject(STELLAR_CONFIG) private readonly config: StellarConfig,
   ) {}
 
   /**
@@ -220,38 +223,90 @@ export class SettlementService {
         return;
       }
 
-      // ── Step 5: Invoke settlement ───────────────────────────────────
-      const result = await this.sorobanRpc.invokeSettle(
-        orderId, // order_ref = Order.id (UUID)
-        totalAmountBase,
-        recipients,
-      );
-
-      // ── Step 6a: SUCCESS — record settlement ────────────────────────
-      if (result.status === 'SUCCESS') {
-        await this.recordSettlementSuccess(
-          orderId,
-          amountUsd,
-          totalAmountBase,
-          result.txHash,
-          recipients,
-          collaborators,
+      // ── Step 4c: Pre-settlement float check ─────────────────────────
+      // Before submitting the tx, verify the platform wallet has enough USDC.
+      // If the float is too low the contract reverts and XLM fees are wasted,
+      // so we fail fast here rather than burning gas on a guaranteed revert.
+      try {
+        const floatBalance = await this.horizon.getUsdcBalance(this.config.platformWalletAddress);
+        const balanceNum = new Prisma.Decimal(floatBalance.balanceUsd);
+        const orderAmount = new Prisma.Decimal(amountUsd);
+        if (balanceNum.lessThan(orderAmount)) {
+          this.logger.error(
+            `INSUFFICIENT_FLOAT (order=${orderId}): float has ${floatBalance.balanceUsd} USDC ` +
+              `but settlement needs ${amountUsd} USDC. Top up the platform wallet.`,
+          );
+          await this.prisma.order.update({
+            where: { id: orderId },
+            data: { status: OrderStatus.SETTLEMENT_FAILED },
+          });
+          return;
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Float check failed (order=${orderId}) — proceeding with settlement: ` +
+            (err instanceof Error ? err.message : String(err)),
         );
-        return;
       }
 
-      // ── Step 6b: FAILED (on-chain revert) ───────────────────────────
-      this.logger.error(
-        `Settlement FAILED on-chain (order=${orderId}, txHash=${result.txHash}): ` +
-          (result.errorResultXdr ?? 'unknown error'),
-      );
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: {
-          status: OrderStatus.SETTLEMENT_FAILED,
-          txHash: result.txHash,
-        },
-      });
+      // ── Step 5: Invoke settlement with retry for transient RPC errors ──
+      const MAX_RETRIES = 3;
+      const RETRY_BACKOFF_MS = [1000, 2000, 4000];
+
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          const result = await this.sorobanRpc.invokeSettle(orderId, totalAmountBase, recipients);
+
+          // ── Step 6a: SUCCESS — record settlement ────────────────────
+          if (result.status === 'SUCCESS') {
+            await this.recordSettlementSuccess(
+              orderId,
+              amountUsd,
+              totalAmountBase,
+              result.txHash,
+              recipients,
+              collaborators,
+            );
+            return;
+          }
+
+          // ── Step 6b: FAILED (on-chain revert) ───────────────────────
+          this.logger.error(
+            `Settlement FAILED on-chain (order=${orderId}, txHash=${result.txHash}): ` +
+              (result.errorResultXdr ?? 'unknown error'),
+          );
+          await this.prisma.order.update({
+            where: { id: orderId },
+            data: {
+              status: OrderStatus.SETTLEMENT_FAILED,
+              txHash: result.txHash,
+            },
+          });
+          return;
+        } catch (err) {
+          if (err instanceof SettlementNetworkError) {
+            if (attempt < MAX_RETRIES - 1) {
+              const delay = RETRY_BACKOFF_MS[attempt];
+              this.logger.warn(
+                `Settlement network error for order ${orderId} (attempt ${attempt + 1}/${MAX_RETRIES}) — ` +
+                  `retrying in ${delay}ms: ${err.message}`,
+              );
+              await new Promise((r) => setTimeout(r, delay));
+              continue;
+            }
+            this.logger.error(
+              `Settlement failed after ${MAX_RETRIES} retries for order ${orderId}: ${err.message}`,
+            );
+            await this.prisma.order.update({
+              where: { id: orderId },
+              data: { status: OrderStatus.SETTLEMENT_FAILED },
+            });
+            return;
+          }
+          // Non-retryable error — rethrow to handleSettlementError.
+          throw err;
+        }
+      }
     } catch (err) {
       await this.handleSettlementError(orderId, err);
     }
@@ -442,6 +497,64 @@ export class SettlementService {
   }
 
   /**
+   * Recover a settlement that was confirmed on-chain but never recorded in the
+   * database — e.g. after a crash between the Soroban confirmation and the
+   * `recordSettlementSuccess` DB write.
+   *
+   * Called by StartupRecoveryService when it finds a SETTLEMENT_PENDING order
+   * whose txHash returns SUCCESS from the RPC but no Settlement row exists.
+   */
+  async recordRecoveredSettlement(orderId: string, txHash: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        amountUsd: true,
+        productId: true,
+      },
+    });
+    if (!order) {
+      this.logger.error(`Cannot recover settlement — order ${orderId} not found`);
+      return;
+    }
+
+    const collaborators = await this.prisma.productCollaborator.findMany({
+      where: { productId: order.productId, status: 'ACTIVE' },
+      select: { walletAddress: true, role: true, revenuePercentage: true },
+    });
+
+    if (collaborators.length === 0) {
+      this.logger.error(
+        `Cannot recover settlement — no collaborators for product ${order.productId}`,
+      );
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.SETTLEMENT_FAILED },
+      });
+      return;
+    }
+
+    const amountUsd = order.amountUsd.toFixed(2);
+    const totalAmountBase = BigInt(
+      new Prisma.Decimal(amountUsd).mul(10 ** USDC_DECIMALS).toFixed(0),
+    );
+    const recipients: RecipientInput[] = collaborators.map((c) => ({
+      address: c.walletAddress,
+      shareBps: c.revenuePercentage.mul(100).toNumber(),
+    }));
+
+    await this.recordSettlementSuccess(
+      orderId,
+      amountUsd,
+      totalAmountBase,
+      txHash,
+      recipients,
+      collaborators,
+    );
+    this.logger.log(`Recovered settlement for order=${orderId} (txHash=${txHash.slice(0, 16)}...)`);
+  }
+
+  /**
    * Handle errors from the settlement pipeline.
    *
    * Maps known error types to the appropriate Order status:
@@ -484,6 +597,13 @@ export class SettlementService {
       this.logger.warn(
         `Settlement poll timeout for order ${orderId}: txHash=${err.txHash} — ` +
           'transaction may still confirm later.',
+      );
+      return;
+    }
+
+    if (err instanceof SettlementNetworkError) {
+      this.logger.error(
+        `Settlement network error for order ${orderId} — leaving as SETTLEMENT_PENDING: ${err.message}`,
       );
       return;
     }

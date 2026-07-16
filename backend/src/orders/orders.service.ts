@@ -122,11 +122,23 @@ export class OrdersService {
 
     if (!wallet) {
       // WAITING_WALLET — defer settlement until the wallet is connected.
-      // Legal because PAYMENT_RECEIVED → WAITING_WALLET (validated above hop).
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.WAITING_WALLET, paymentRef },
-      });
+      try {
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.WAITING_WALLET, paymentRef },
+        });
+      } catch (err: unknown) {
+        if (
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code: string }).code === 'P2002'
+        ) {
+          // Duplicate webhook — another request claimed this paymentRef first.
+          return { status: 'paid', orderId };
+        }
+        throw err;
+      }
 
       const payload: WalletConnectRequiredPayload = {
         orderId,
@@ -139,10 +151,22 @@ export class OrdersService {
     }
 
     // --- Happy path: payment received, wallet present → emit payment.received. ---
-    await this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: OrderStatus.PAYMENT_RECEIVED, paymentRef },
-    });
+    try {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.PAYMENT_RECEIVED, paymentRef },
+      });
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: string }).code === 'P2002'
+      ) {
+        return { status: 'paid', orderId };
+      }
+      throw err;
+    }
 
     const payload: PaymentReceivedPayload = {
       orderId,

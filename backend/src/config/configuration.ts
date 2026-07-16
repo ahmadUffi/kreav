@@ -50,13 +50,11 @@ export const validationSchema = Joi.object({
   GCASH_WEBHOOK_SECRET: Joi.string().optional().allow(''),
   // Session JWT secret. Required in production; dev/test fall back to a
   // clearly-marked default so the app still boots for non-auth work.
-  JWT_SECRET: Joi.string()
-    .min(16)
-    .when('NODE_ENV', {
-      is: 'production',
-      then: Joi.required(),
-      otherwise: Joi.optional(),
-    }),
+  JWT_SECRET: Joi.string().min(16).when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
   // Optional email config — absent key → emails are logged, not sent (dev).
   RESEND_API_KEY: Joi.string().optional().allow(''),
   RESEND_FROM: Joi.string().optional().allow(''),

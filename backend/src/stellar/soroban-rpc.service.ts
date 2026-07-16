@@ -110,6 +110,28 @@ export class SorobanRpcService {
     totalAmountBase: bigint,
     recipients: RecipientInput[],
   ): Promise<InvokeResult> {
+    try {
+      return await this.doInvokeSettle(orderRef, totalAmountBase, recipients);
+    } catch (err) {
+      if (
+        err instanceof SettlementSimulationError ||
+        err instanceof SettlementSubmissionError ||
+        err instanceof SettlementTimeoutError
+      ) {
+        throw err; // known errors, propagate as-is
+      }
+      // Transient network/RPC error — wrap so the caller can retry.
+      throw new SettlementNetworkError(
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
+  private async doInvokeSettle(
+    orderRef: string,
+    totalAmountBase: bigint,
+    recipients: RecipientInput[],
+  ): Promise<InvokeResult> {
     const platformKeypair = this.platformKey.getKeypair();
     const sourceAccount = await this.server.getAccount(platformKeypair.publicKey());
 
@@ -311,5 +333,13 @@ export class SettlementTimeoutError extends Error {
   constructor(public readonly txHash: string) {
     super(`Soroban settlement verification timed out (txHash=${txHash})`);
     this.name = 'SettlementTimeoutError';
+  }
+}
+
+/** Transient network/RPC error — retryable, should not mark the order FAILED. */
+export class SettlementNetworkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SettlementNetworkError';
   }
 }

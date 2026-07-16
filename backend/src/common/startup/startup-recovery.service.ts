@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SorobanRpcService } from '../../stellar/soroban-rpc.service';
+import { SettlementService } from '../../stellar/settlement.service';
 import { AppEvents } from '../../events/event-names';
 import type { PaymentReceivedPayload } from '../../events/event-payloads';
 
@@ -31,6 +32,7 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly emitter: EventEmitter2,
     private readonly sorobanRpc: SorobanRpcService,
+    private readonly settlement: SettlementService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -151,12 +153,21 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
     try {
       const status = await this.sorobanRpc.getTransactionStatus(order.txHash);
       if (status === 'SUCCESS') {
-        // Transaction confirmed while we were down — mark settled.
-        // Settlement records were already created by the original flow.
-        await this.prisma.order.update({
-          where: { id: order.id },
-          data: { status: OrderStatus.SETTLED },
+        // Check if Settlement row already exists (may have been created before crash).
+        const existingSettlement = await this.prisma.settlement.findUnique({
+          where: { orderId: order.id },
+          select: { id: true },
         });
+        if (existingSettlement) {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: { status: OrderStatus.SETTLED },
+          });
+          return true;
+        }
+
+        // Settlement row missing — create it from what we know (amount, collaborators).
+        await this.settlement.recordRecoveredSettlement(order.id, order.txHash);
         return true;
       }
 

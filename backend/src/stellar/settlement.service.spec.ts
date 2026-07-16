@@ -12,6 +12,7 @@ import {
   SettlementTimeoutError,
 } from './soroban-rpc.service';
 import { HorizonService } from './horizon.service';
+import { STELLAR_CONFIG } from './stellar.config';
 import { USDC_DECIMALS } from './stellar.config';
 
 /**
@@ -104,7 +105,7 @@ describe('SettlementService', () => {
     horizon = {
       getUsdcBalance: jest
         .fn()
-        .mockResolvedValue({ balanceUsd: '0', hasUsdcTrustline: true, accountExists: true }),
+        .mockResolvedValue({ balanceUsd: '100.00', hasUsdcTrustline: true, accountExists: true }),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -114,6 +115,24 @@ describe('SettlementService', () => {
         { provide: EventEmitter2, useValue: emitter },
         { provide: SorobanRpcService, useValue: sorobanRpc },
         { provide: HorizonService, useValue: horizon },
+        {
+          provide: STELLAR_CONFIG,
+          useValue: {
+            platformWalletAddress: 'GPLATFORM...',
+            platformWalletSecret: 'SPLATFORM...',
+            sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
+            horizonUrl: 'https://horizon-testnet.stellar.org',
+            usdcIssuer: 'GBBD...',
+            usdcAssetCode: 'USDC',
+            splitContractId: 'CCONT...',
+            networkPassphrase: 'Test SDF Network ; September 2015',
+            explorerUrl: 'https://stellar.expert/explorer/testnet',
+            anchorWebAuthUrl: '',
+            anchorTransferServerUrl: '',
+            anchorHomeDomain: '',
+            anchorEnabled: false,
+          },
+        },
       ],
     }).compile();
 
@@ -492,11 +511,15 @@ describe('SettlementService', () => {
     prisma.order.findUnique.mockResolvedValue(MOCK_ORDER);
     prisma.productCollaborator.findMany.mockResolvedValue(MOCK_COLLABORATORS);
     // GCREATOR_B has no trustline; the other two do.
-    horizon.getUsdcBalance.mockImplementation(async (address: string) => ({
-      balanceUsd: '0',
-      hasUsdcTrustline: address !== 'GCREATOR_B',
-      accountExists: true,
-    }));
+    // Platform wallet returns high balance so the float check passes.
+    horizon.getUsdcBalance.mockImplementation(async (address: string) => {
+      if (address === 'GPLATFORM...') return { balanceUsd: '100.00', hasUsdcTrustline: true, accountExists: true };
+      return {
+        balanceUsd: '0',
+        hasUsdcTrustline: address !== 'GCREATOR_B',
+        accountExists: true,
+      };
+    });
 
     await service.handlePaymentReceived(PAYMENT_PAYLOAD);
 

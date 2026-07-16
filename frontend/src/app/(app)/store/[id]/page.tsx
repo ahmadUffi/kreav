@@ -231,6 +231,9 @@ export default function ProductDetailPage() {
                 link to <span style={{ color: "var(--text)" }}>{email}</span>. Order{" "}
                 <span style={{ color: "var(--text)" }}>{orderId}</span>.
               </p>
+              <p style={{ margin: "8px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
+                Haven&apos;t received it? Check your spam folder.
+              </p>
             </Card>
           ) : buy === "paying" ? (
             <Card style={{ padding: 18 }}>
