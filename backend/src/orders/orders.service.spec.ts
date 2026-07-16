@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ExplorerService } from '../stellar/explorer.service';
 import { OrdersService } from './orders.service';
 import { AppEvents } from '../events/event-names';
 
@@ -28,6 +29,8 @@ describe('OrdersService', () => {
   };
   let emitter: { emit: jest.Mock };
 
+  const MOCK_EXPLORER_URL = 'https://stellar.expert/explorer/testnet';
+
   beforeEach(async () => {
     prisma = {
       product: { findUnique: jest.fn() },
@@ -41,6 +44,10 @@ describe('OrdersService', () => {
         OrdersService,
         { provide: PrismaService, useValue: prisma },
         { provide: EventEmitter2, useValue: emitter },
+        {
+          provide: ExplorerService,
+          useValue: { txUrl: (hash: string) => `${MOCK_EXPLORER_URL}/tx/${hash}` },
+        },
       ],
     }).compile();
 
