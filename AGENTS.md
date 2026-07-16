@@ -83,7 +83,7 @@ Standalone TypeScript scripts (`scripts/01-…` → `99-acceptance.ts`) that dri
 |-------|--------|
 | Frontend | Next.js 16 (App Router) + Tailwind v4 — package manager: **npm** |
 | Backend | NestJS 11 (modular monolith) + Prisma — package manager: **pnpm** |
-| DB | PostgreSQL via Prisma ORM (managed on **Neon**) |
+| DB | PostgreSQL via Prisma ORM (managed on **Neon**) — local dev also supports **SQLite** (zero-config) |
 | Blockchain | Stellar (Soroban RPC primary; Horizon for balances/explorer) |
 | Smart contract | Soroban (Rust) — revenue-split contract only |
 | Asset | USDC on Stellar Testnet (classic asset via the SAC bridge; SAC `CBIELTK6…`) |
@@ -122,6 +122,9 @@ See the [Backend PRD](./docs/backend/Backend-PRD.md) for the full spec.
 
 ```
 DATABASE_URL=
+#   Production (Neon):   postgresql://...
+#   Docker PostgreSQL:   postgresql://kreav:kreav@localhost:5432/kreav?schema=public
+#   Local SQLite:        file:dev.db
 HORIZON_URL=
 SOROBAN_RPC_URL=
 PLATFORM_WALLET_ADDRESS=
@@ -219,7 +222,22 @@ All must be true:
 
 ### Local environment
 
-- `docker compose up -d` → PostgreSQL
+**Option A — PostgreSQL via Docker** (mirrors production):
+- `docker compose up -d` → PostgreSQL on `localhost:5432`
+- Set `DATABASE_URL=postgresql://kreav:kreav@localhost:5432/kreav?schema=public` in `backend/.env`
+- `pnpm prisma:migrate` to apply migrations
+
+**Option B — SQLite (zero-config, no Docker, no Neon):**
+- Reads `prisma/schema.sqlite.prisma` — same models, but `provider = "sqlite"` and no `@db.Decimal` native-type annotations
+- The file is **gitignored** (generated from `schema.prisma` on first use)
+- Set `DATABASE_URL=file:dev.db` in `backend/.env`
+- `pnpm db:local:push` to create the DB and push the schema
+- `pnpm db:local:generate` to regenerate the Prisma client for SQLite
+- `pnpm db:local:studio` to browse data via Prisma Studio
+- The SQLite DB file (`backend/prisma/dev.db`) is **gitignored**
+- Unit tests mock PrismaService (no real DB needed); e2e tests use SQLite when running locally
+
+**General:**
 - `.env` local (gitignored), `.env.example` committed
 - Backend config via the Config Module (`@nestjs/config`) with fail-fast validation.
 - All work happens under `backend/`.
