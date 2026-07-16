@@ -76,7 +76,17 @@ describe('WalletsController (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Cleanup wallets + users created by this suite.
+    // Delete in FK-dependency order: settlement_recipients → settlements → orders → products → wallets → users
+    await prisma.settlementRecipient.deleteMany({
+      where: { settlement: { order: { product: { creatorId: { in: createdUserIds } } } } },
+    });
+    await prisma.settlement.deleteMany({
+      where: { order: { product: { creatorId: { in: createdUserIds } } } },
+    });
+    await prisma.order.deleteMany({
+      where: { product: { creatorId: { in: createdUserIds } } },
+    });
+    await prisma.product.deleteMany({ where: { creatorId: { in: createdUserIds } } });
     await prisma.wallet.deleteMany({ where: { creatorId: { in: createdUserIds } } });
     await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     await app.close();
@@ -160,7 +170,7 @@ describe('WalletsController (e2e)', () => {
           buyerEmail: 'buyer@test.com',
           amountUsd: '10.00',
           status: 'SETTLED',
-          txHash: 'e2e-test-tx-hash-1234567890abcdef',
+          txHash: 'e2e000000000000000000000000000000000000000000000000000000000abcd',
           paymentRef: `wallet-e2e-ref-${Date.now()}`,
         },
       });
