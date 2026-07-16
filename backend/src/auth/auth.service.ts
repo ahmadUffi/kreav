@@ -68,7 +68,7 @@ export class AuthService {
     @Inject(STELLAR_PUBLIC_CONFIG) private readonly stellar: StellarPublicConfig,
     private readonly config: ConfigService<AppConfig>,
   ) {
-    this.homeDomain = this.config.get('SEP10_HOME_DOMAIN', 'kreav.app')!;
+    this.homeDomain = this.config.get('SEP10_HOME_DOMAIN', 'kreav.space')!;
     if (!process.env.JWT_SECRET && process.env.NODE_ENV !== 'production') {
       this.logger.warn(
         'JWT_SECRET not set — using an auto-generated per-process secret. ' +

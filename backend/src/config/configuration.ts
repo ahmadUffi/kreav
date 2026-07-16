@@ -30,7 +30,7 @@ export interface AppConfig {
    * can complete a purchase without a real PSP. Off in production. */
   DEMO_MODE: boolean;
   /** SEP-10 challenge home domain (manage_data op name = `<HOME_DOMAIN> auth`).
-   * Defaults to 'kreav.app'; set to your production domain. */
+   * Defaults to 'kreav.space'; set to your production domain. */
   SEP10_HOME_DOMAIN: string;
 }
 
@@ -64,7 +64,7 @@ export const validationSchema = Joi.object({
   // Boolean-ish; coerces "true"/"false". Off in production unless set.
   DEMO_MODE: Joi.boolean().optional(),
   // SEP-10 WebAuth domain for challenge building + verification.
-  SEP10_HOME_DOMAIN: Joi.string().optional().default('kreav.app'),
+  SEP10_HOME_DOMAIN: Joi.string().optional().default('kreav.space'),
 });
 
 export default () => ({
@@ -79,5 +79,5 @@ export default () => ({
   DEMO_MODE: process.env.DEMO_MODE
     ? process.env.DEMO_MODE === 'true'
     : process.env.NODE_ENV !== 'production',
-  SEP10_HOME_DOMAIN: process.env.SEP10_HOME_DOMAIN || 'kreav.app',
+  SEP10_HOME_DOMAIN: process.env.SEP10_HOME_DOMAIN || 'kreav.space',
 });
