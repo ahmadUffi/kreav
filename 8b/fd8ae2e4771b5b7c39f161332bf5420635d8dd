@@ -1,0 +1,39 @@
+backend/src/auth/current-user.decorator.ts
+  s_2bafa2ba7782f3::t_88b607507d2051 1,12-14,19-22
+backend/src/withdrawals/anchor/withdrawals-anchor.controller.ts
+  s_2bafa2ba7782f3::t_3b530c0cd486fa 126-130
+  s_2bafa2ba7782f3::t_b81e0a338a02a2 146
+  s_2bafa2ba7782f3::t_747531a2cbc4ed 194
+frontend/src/lib/api/session.ts
+  s_2bafa2ba7782f3::t_536532bcad6c41 8-10
+  s_2bafa2ba7782f3::t_616ada157f5e83 21,28-29
+backend/src/common/startup/startup-recovery.service.ts
+  s_2bafa2ba7782f3::t_672a99e718d6df 150-171
+  s_2bafa2ba7782f3::t_d22b30e38fd0f5 47-52
+  s_2bafa2ba7782f3::t_693ad77fcdd8cb 100
+  s_2bafa2ba7782f3::t_abba1879826728 146-147
+  s_2bafa2ba7782f3::t_a1109e9ccf9d06 211-232,234-235,237-248
+backend/src/orders/order-state-machine.ts
+  s_2bafa2ba7782f3::t_b406956647d57e 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8bfd8ae2e4771b5b7c39f161332bf5420635d8dd",
+  "prompts": {},
+  "humans": {
+    "h_20649baae43f97": {
+      "author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
