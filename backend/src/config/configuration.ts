@@ -40,8 +40,8 @@ export const validationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().port().default(3000),
   DATABASE_URL: Joi.string()
-    // PostgreSQL connection string — required now that Prisma/DB is wired (BE-002).
-    .uri({ scheme: ['postgresql', 'postgres'] })
+    // PostgreSQL (production/Docker) or SQLite file: URI (local zero-config dev).
+    .pattern(/^(postgresql:\/\/|postgres:\/\/|file:)/)
     .required(),
   // Optional: when absent, webhook signature verification is skipped (dev/CI).
   GCASH_WEBHOOK_SECRET: Joi.string().optional().allow(''),
