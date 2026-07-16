@@ -1,4 +1,5 @@
 import * as Joi from 'joi';
+import { randomBytes } from 'node:crypto';
 
 /**
  * Typed application configuration.
@@ -30,8 +31,10 @@ export interface AppConfig {
   DEMO_MODE: boolean;
 }
 
-/** Dev-only JWT secret fallback — the auth module warns loudly when active. */
-export const DEV_JWT_SECRET = 'kreav-dev-jwt-secret-do-not-use-in-prod';
+/** Dev-only JWT secret — auto-generated per process start (never committed). */
+export function generateDevJwtSecret(): string {
+  return randomBytes(32).toString('hex');
+}
 
 /** Default From address for outgoing email when RESEND_FROM is unset. */
 export const DEFAULT_RESEND_FROM = 'Kreav <onboarding@resend.dev>';
@@ -52,7 +55,7 @@ export const validationSchema = Joi.object({
     .when('NODE_ENV', {
       is: 'production',
       then: Joi.required(),
-      otherwise: Joi.optional().default(DEV_JWT_SECRET),
+      otherwise: Joi.optional(),
     }),
   // Optional email config — absent key → emails are logged, not sent (dev).
   RESEND_API_KEY: Joi.string().optional().allow(''),
@@ -66,7 +69,7 @@ export default () => ({
   PORT: parseInt(process.env.PORT ?? '3000', 10),
   DATABASE_URL: process.env.DATABASE_URL,
   GCASH_WEBHOOK_SECRET: process.env.GCASH_WEBHOOK_SECRET,
-  JWT_SECRET: process.env.JWT_SECRET ?? DEV_JWT_SECRET,
+  JWT_SECRET: process.env.JWT_SECRET || generateDevJwtSecret(),
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM: process.env.RESEND_FROM || DEFAULT_RESEND_FROM,
   // Explicit "true"/"false" wins; otherwise on everywhere except production.

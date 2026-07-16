@@ -5,13 +5,12 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { WebAuth } from '@stellar/stellar-sdk';
+import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformKeypairService } from '../stellar/platform-keypair.service';
-import { STELLAR_CONFIG, type StellarConfig } from '../stellar/stellar.config';
-import { DEV_JWT_SECRET } from '../config/configuration';
+import { STELLAR_PUBLIC_CONFIG, type StellarPublicConfig } from '../stellar/stellar.config';
 import {
   RegisterDto,
   RegisterResponseDto,
@@ -48,16 +47,19 @@ const CHALLENGE_TIMEOUT_S = 300;
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  /** In-memory nonce store — prevents SEP-10 challenge replay within the validity window. */
+  private readonly usedChallenges = new Map<string, NodeJS.Timeout>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
-    private readonly config: ConfigService,
     private readonly platformKey: PlatformKeypairService,
-    @Inject(STELLAR_CONFIG) private readonly stellar: StellarConfig,
+    @Inject(STELLAR_PUBLIC_CONFIG) private readonly stellar: StellarPublicConfig,
   ) {
-    if (this.config.get<string>('JWT_SECRET') === DEV_JWT_SECRET) {
+    if (!process.env.JWT_SECRET && process.env.NODE_ENV !== 'production') {
       this.logger.warn(
-        'JWT_SECRET not set — using the DEV fallback secret. Set a real JWT_SECRET before any deployment.',
+        'JWT_SECRET not set — using an auto-generated per-process secret. ' +
+          'Tokens are valid only within this process lifetime. Set a real JWT_SECRET before any deployment.',
       );
     }
   }
@@ -142,6 +144,17 @@ export class AuthService {
    * Throws 401 on any verification failure or unknown wallet.
    */
   async verifyChallenge(signedXdr: string): Promise<AuthTokenResponseDto> {
+    // Nonce check: reject replayed challenges within the validity window.
+    const nonce = createHash('sha256').update(signedXdr).digest('hex');
+    if (this.usedChallenges.has(nonce)) {
+      this.logger.warn(`SEP-10 challenge replay rejected (nonce=${nonce.slice(0, 8)}...)`);
+      throw new UnauthorizedException('Challenge already used');
+    }
+    this.usedChallenges.set(
+      nonce,
+      setTimeout(() => this.usedChallenges.delete(nonce), CHALLENGE_TIMEOUT_S * 1000),
+    );
+
     const serverPublicKey = this.platformKey.getPublicKey();
 
     let clientAccountID: string;

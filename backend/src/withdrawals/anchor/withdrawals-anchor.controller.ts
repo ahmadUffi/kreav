@@ -17,9 +17,10 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WalletsService } from '../../wallets/wallets.service';
+import { WithdrawalsService } from '../withdrawals.service';
 import { JwtAuthGuard, type AuthUser } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
-import { STELLAR_CONFIG, type StellarConfig } from '../../stellar/stellar.config';
+import { STELLAR_PUBLIC_CONFIG, type StellarPublicConfig } from '../../stellar/stellar.config';
 import { SponsorshipService } from '../../stellar/sponsorship.service';
 import { AnchorSep24Service } from './anchor-sep24.service';
 import {
@@ -54,9 +55,10 @@ export class WithdrawalsAnchorController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly wallets: WalletsService,
+    private readonly withdrawals: WithdrawalsService,
     private readonly anchor: AnchorSep24Service,
     private readonly sponsorship: SponsorshipService,
-    @Inject(STELLAR_CONFIG) private readonly config: StellarConfig,
+    @Inject(STELLAR_PUBLIC_CONFIG) private readonly config: StellarPublicConfig,
   ) {}
 
   @Post('auth/challenge')
@@ -85,6 +87,16 @@ export class WithdrawalsAnchorController {
     this.assertEnabled();
     const anchorToken = this.requireToken(dto.token);
     const address = await this.wallets.getAddressForCreator(user.userId);
+
+    // Reject withdrawals that exceed the creator's withdrawable balance.
+    const available = await this.withdrawals.getWithdrawableBalance(address);
+    const requested = new Prisma.Decimal(dto.amount);
+    if (available.lessThan(requested)) {
+      throw new ForbiddenException(
+        `Insufficient withdrawable balance. Available: ${available.toFixed(2)} USDC, ` +
+          `Requested: ${requested.toFixed(2)} USDC.`,
+      );
+    }
 
     const { url, id } = await this.anchor.withdrawInteractive(anchorToken, {
       account: address,

@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorizonService } from '../stellar/horizon.service';
 import { ExplorerService } from '../stellar/explorer.service';
-import { STELLAR_CONFIG } from '../stellar/stellar.config';
+import { STELLAR_PUBLIC_CONFIG } from '../stellar/stellar.config';
 import { AppEvents } from '../events/event-names';
 import { WalletsService } from './wallets.service';
 
@@ -70,7 +70,7 @@ describe('WalletsService', () => {
         { provide: ExplorerService, useValue: mockExplorerService },
         { provide: EventEmitter2, useValue: emitter },
         {
-          provide: STELLAR_CONFIG,
+          provide: STELLAR_PUBLIC_CONFIG,
           useValue: { explorerUrl: MOCK_EXPLORER_URL },
         },
       ],
