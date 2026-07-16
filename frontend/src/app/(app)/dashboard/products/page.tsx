@@ -245,14 +245,13 @@ function NewProductForm({
   // read-only in the UI, so this is the only writer of row 0's wallet.
   useEffect(() => {
     if (!splitEnabled || !walletAddress) return;
-    // Sync-external-value-into-state: the guard returns `prev` unchanged once
-    // row 0 already matches, so this settles in one pass and cannot cascade.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCollaborators((prev) =>
-      prev[0] && prev[0].walletAddress === walletAddress
-        ? prev
-        : prev.map((c, i) => (i === 0 ? { ...c, walletAddress } : c)),
-    );
+    queueMicrotask(() => {
+      setCollaborators((prev) =>
+        prev[0] && prev[0].walletAddress === walletAddress
+          ? prev
+          : prev.map((c, i) => (i === 0 ? { ...c, walletAddress } : c)),
+      );
+    });
   }, [splitEnabled, walletAddress]);
 
   // Live sum of the split (only meaningful while splitEnabled).

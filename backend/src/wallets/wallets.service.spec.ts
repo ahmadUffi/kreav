@@ -24,6 +24,12 @@ describe('WalletsService', () => {
       findMany: jest.Mock;
       count: jest.Mock;
     };
+    withdrawal: {
+      findMany: jest.Mock;
+    };
+    wallet: {
+      findFirst: jest.Mock;
+    };
   };
 
   const MOCK_ADDRESS = 'GDA2SQ2PHWIER57TDXKLBSOD3IT4GTAHK5RV2H27LJZAXDBWQ6KYJ72B';
@@ -38,6 +44,8 @@ describe('WalletsService', () => {
     horizon = { getUsdcBalance: jest.fn() };
     prisma = {
       settlementRecipient: { findMany: jest.fn(), count: jest.fn() },
+      withdrawal: { findMany: jest.fn() },
+      wallet: { findFirst: jest.fn() },
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -169,6 +177,7 @@ describe('WalletsService', () => {
         transactions: [
           {
             id: 'rec-1',
+            kind: 'SETTLEMENT',
             orderId: 'order-1',
             txHash: 'abc123',
             explorerLink: `${MOCK_EXPLORER_URL}/tx/abc123`,
@@ -177,11 +186,14 @@ describe('WalletsService', () => {
             recipientType: 'CREATOR',
             role: 'Author',
             percentage: '95.00',
+            direction: 'credit',
+            destination: '',
             status: 'COMPLETED',
             createdAt: '2026-06-29T12:00:00.000Z',
           },
           {
             id: 'rec-2',
+            kind: 'SETTLEMENT',
             orderId: 'order-2',
             txHash: 'def456',
             explorerLink: `${MOCK_EXPLORER_URL}/tx/def456`,
@@ -190,6 +202,8 @@ describe('WalletsService', () => {
             recipientType: 'PLATFORM',
             role: 'Platform Fee',
             percentage: '5.00',
+            direction: 'debit',
+            destination: '',
             status: 'COMPLETED',
             createdAt: '2026-06-29T11:00:00.000Z',
           },
@@ -245,17 +259,37 @@ describe('WalletsService', () => {
     });
 
     it('respects pagination parameters', async () => {
-      prisma.settlementRecipient.findMany.mockResolvedValue([]);
-      prisma.settlementRecipient.count.mockResolvedValue(0);
+      const rows = [
+        {
+          id: 'rec-1',
+          settlementId: 'settle-1',
+          walletAddress: MOCK_ADDRESS,
+          recipientType: 'CREATOR',
+          role: 'Author',
+          percentage: { toFixed: () => '100.00' },
+          amount: { toFixed: () => '10.00' },
+          createdAt: new Date('2026-06-29T12:00:00Z'),
+          settlement: {
+            orderId: 'order-1',
+            txHash: 'abc123',
+            totalAmount: { toFixed: () => '10.00' },
+            status: 'COMPLETED',
+            createdAt: new Date('2026-06-29T12:00:00Z'),
+          },
+        },
+      ];
+      prisma.settlementRecipient.findMany.mockResolvedValue(rows);
+      prisma.settlementRecipient.count.mockResolvedValue(1);
 
-      await service.getTransactions(MOCK_ADDRESS, 3, 10);
+      const result = await service.getTransactions(MOCK_ADDRESS, 3, 10);
 
-      expect(prisma.settlementRecipient.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          skip: 20, // (3-1) * 10
-          take: 10,
-        }),
-      );
+      expect(result).toEqual({
+        address: MOCK_ADDRESS,
+        transactions: [],
+        page: 3,
+        limit: 10,
+        total: 1,
+      });
     });
   });
 });
