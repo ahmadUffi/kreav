@@ -1,0 +1,24 @@
+backend/src/config/configuration.ts
+  s_2bafa2ba7782f3::t_0316e5d6d7922e 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2e81fe8f5a2b4136b3d79ad2cca691bd231ef1e2",
+  "prompts": {},
+  "humans": {
+    "h_20649baae43f97": {
+      "author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
