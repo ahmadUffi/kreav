@@ -21,6 +21,13 @@ import {
 import { JwtAuthGuard, type AuthUser } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 
+function maskEmail(email: string): string {
+  const atIndex = email.indexOf('@');
+  if (atIndex < 0) return email;
+  const visible = Math.min(3, atIndex);
+  return email.slice(0, visible) + '***' + email.slice(atIndex);
+}
+
 /**
  * AuthController — BE-021 + Fase 1 (SEP-10 wallet auth).
  *
@@ -86,7 +93,7 @@ export class AuthController {
     },
   })
   async register(@Body() dto: RegisterDto): Promise<RegisterWithTokenResponseDto> {
-    this.logger.log(`POST /auth/register email=${dto.email} role=${dto.role}`);
+    this.logger.log(`POST /auth/register email=${maskEmail(dto.email)} role=${dto.role}`);
     return this.auth.register(dto);
   }
 

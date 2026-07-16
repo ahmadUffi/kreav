@@ -391,9 +391,10 @@ export class SettlementService {
       data: { status: OrderStatus.SETTLED },
     });
     this.logger.warn(
-      `Order ${orderId} marked SETTLED but no txHash is known — Settlement row NOT created. ` +
-        'Reconcile manually from the contract events (SettlementExecuted).',
+      `Order ${orderId} is already settled on-chain but no txHash is known — ` +
+        'recording settlement with a recovery placeholder.',
     );
+    await this.recordRecoveredSettlement(orderId, `recovery-${orderId.slice(0, 8)}`);
   }
 
   /**

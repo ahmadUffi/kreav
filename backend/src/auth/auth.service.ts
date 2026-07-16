@@ -5,12 +5,14 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { WebAuth } from '@stellar/stellar-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformKeypairService } from '../stellar/platform-keypair.service';
 import { STELLAR_PUBLIC_CONFIG, type StellarPublicConfig } from '../stellar/stellar.config';
+import type { AppConfig } from '../config/configuration';
 import {
   RegisterDto,
   RegisterResponseDto,
@@ -19,11 +21,15 @@ import {
   AuthTokenResponseDto,
 } from './dto';
 
-/** SEP-10 domain constants (challenge manage_data op name = `<HOME_DOMAIN> auth`). */
-const HOME_DOMAIN = 'kreav.app';
-const WEB_AUTH_DOMAIN = 'kreav.app';
 /** Challenge validity window (seconds). */
 const CHALLENGE_TIMEOUT_S = 300;
+
+function maskEmail(email: string): string {
+  const atIndex = email.indexOf('@');
+  if (atIndex < 0) return email;
+  const visible = Math.min(3, atIndex);
+  return email.slice(0, visible) + '***' + email.slice(atIndex);
+}
 
 /**
  * AuthService — BE-021 registration + Fase 1 SEP-10 wallet auth.
@@ -53,12 +59,16 @@ export class AuthService {
   /** In-memory revoked JWT set — tokens invalidated via /auth/logout. */
   private readonly revokedTokens = new Set<string>();
 
+  private readonly homeDomain: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly platformKey: PlatformKeypairService,
     @Inject(STELLAR_PUBLIC_CONFIG) private readonly stellar: StellarPublicConfig,
+    private readonly config: ConfigService<AppConfig>,
   ) {
+    this.homeDomain = this.config.get('SEP10_HOME_DOMAIN', 'kreav.app')!;
     if (!process.env.JWT_SECRET && process.env.NODE_ENV !== 'production') {
       this.logger.warn(
         'JWT_SECRET not set — using an auto-generated per-process secret. ' +
@@ -77,7 +87,7 @@ export class AuthService {
       select: { id: true },
     });
     if (existing) {
-      this.logger.warn(`Registration failed — email already in use: ${dto.email}`);
+      this.logger.warn(`Registration failed — email already in use: ${maskEmail(dto.email)}`);
       throw new ConflictException(`Email ${dto.email} is already registered`);
     }
 
@@ -96,7 +106,7 @@ export class AuthService {
       },
     });
 
-    this.logger.log(`User registered: ${user.id} (${user.email}, ${user.role})`);
+    this.logger.log(`User registered: ${user.id} (${maskEmail(user.email)}, ${user.role})`);
 
     return {
       ...this.toProfile(user),
@@ -128,10 +138,10 @@ export class AuthService {
     const transaction = WebAuth.buildChallengeTx(
       serverKeypair,
       walletAddress,
-      HOME_DOMAIN,
+      this.homeDomain,
       CHALLENGE_TIMEOUT_S,
       this.stellar.networkPassphrase,
-      WEB_AUTH_DOMAIN,
+      this.homeDomain,
     );
     this.logger.log(`SEP-10 challenge issued for ${walletAddress.slice(0, 8)}...`);
     return { transaction, networkPassphrase: this.stellar.networkPassphrase };
@@ -166,8 +176,8 @@ export class AuthService {
         signedXdr,
         serverPublicKey,
         this.stellar.networkPassphrase,
-        HOME_DOMAIN,
-        WEB_AUTH_DOMAIN,
+        this.homeDomain,
+        this.homeDomain,
       );
       clientAccountID = challenge.clientAccountID;
 
@@ -177,8 +187,8 @@ export class AuthService {
         serverPublicKey,
         this.stellar.networkPassphrase,
         [clientAccountID],
-        HOME_DOMAIN,
-        WEB_AUTH_DOMAIN,
+        this.homeDomain,
+        this.homeDomain,
       );
     } catch (err) {
       this.logger.warn(

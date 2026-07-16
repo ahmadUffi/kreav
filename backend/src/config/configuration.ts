@@ -29,6 +29,9 @@ export interface AppConfig {
   /** When true, exposes the in-app payment simulation endpoint so buyers/judges
    * can complete a purchase without a real PSP. Off in production. */
   DEMO_MODE: boolean;
+  /** SEP-10 challenge home domain (manage_data op name = `<HOME_DOMAIN> auth`).
+   * Defaults to 'kreav.app'; set to your production domain. */
+  SEP10_HOME_DOMAIN: string;
 }
 
 /** Dev-only JWT secret — auto-generated per process start (never committed). */
@@ -60,6 +63,8 @@ export const validationSchema = Joi.object({
   RESEND_FROM: Joi.string().optional().allow(''),
   // Boolean-ish; coerces "true"/"false". Off in production unless set.
   DEMO_MODE: Joi.boolean().optional(),
+  // SEP-10 WebAuth domain for challenge building + verification.
+  SEP10_HOME_DOMAIN: Joi.string().optional().default('kreav.app'),
 });
 
 export default () => ({
@@ -74,4 +79,5 @@ export default () => ({
   DEMO_MODE: process.env.DEMO_MODE
     ? process.env.DEMO_MODE === 'true'
     : process.env.NODE_ENV !== 'production',
+  SEP10_HOME_DOMAIN: process.env.SEP10_HOME_DOMAIN || 'kreav.app',
 });

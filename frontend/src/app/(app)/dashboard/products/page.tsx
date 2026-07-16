@@ -29,8 +29,15 @@ const PLATFORM_FEE_BPS = 500; // 5% — mirrors the smart contract + settlement 
  * by share — the LAST recipient absorbs the rounding remainder, exactly like the
  * contract's `calculate_creator_amounts`.
  */
+function toCents(usd: string): number {
+  const parts = usd.split(".");
+  const whole = parseInt(parts[0], 10) || 0;
+  const frac = parts.length > 1 ? parseInt((parts[1] + "00").slice(0, 2), 10) : 0;
+  return whole * 100 + frac;
+}
+
 function computeSplit(priceUsd: string, shares: number[]) {
-  const totalCents = Math.round(Number(priceUsd) * 100);
+  const totalCents = toCents(priceUsd);
   const feeCents = Math.floor((totalCents * PLATFORM_FEE_BPS) / 10000);
   const poolCents = totalCents - feeCents;
   let distributed = 0;

@@ -54,7 +54,6 @@ export function useApiQuery<T>(
   }, [enabled, nonce, ...deps]);
 
   const refetch = useCallback(() => {
-    setData(null);
     setError(null);
     setNonce((n) => n + 1);
   }, []);

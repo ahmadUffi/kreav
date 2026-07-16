@@ -453,10 +453,8 @@ function AnchorWithdrawFlow({
       if (popup && !popup.closed) {
         popup.location.href = url;
         popup.focus?.();
-      } else {
-        // Popup was blocked → the "Re-open anchor form" link is the fallback.
-        window.open(url, "kreav-anchor", features);
       }
+      // If the popup was blocked the “Re-open anchor form” link below is the fallback.
       setPhase("interactive");
     } catch (e) {
       if (popup && !popup.closed) popup.close();
