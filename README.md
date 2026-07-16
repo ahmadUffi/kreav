@@ -29,6 +29,7 @@ A buyer pays for a digital product → a Soroban smart contract automatically sp
 |---|---|
 | **App (frontend)** | https://kreav.space |
 | **API (backend)** | https://api.kreav.space |
+| **X / Twitter** | https://x.com/kreavapp |
 | **Settlement contract** | `CCP3KJSVEO5B7XJICHI2FK4AHXIHRWSYBA5B7DJUYY57GFCW5DGCJDCZ` — [view on explorer](https://stellar.expert/explorer/testnet/contract/CCP3KJSVEO5B7XJICHI2FK4AHXIHRWSYBA5B7DJUYY57GFCW5DGCJDCZ) |
 | **Network** | Stellar Testnet |
 | **Asset** | USDC (classic, via SAC) · issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` |
