@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,9 +10,6 @@ import type {
 } from '../events/event-payloads';
 import { canTransition } from './order-state-machine';
 import { InvalidStateTransitionException } from './invalid-transition.exception';
-
-const ABANDONED_ORDER_MAX_AGE_HOURS = 1;
-const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
 
 /**
  * OrdersService — checkout + mock GCash payment webhook (BE-005).
@@ -31,35 +28,12 @@ const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
  */
 @Injectable()
 export class OrdersService {
-  private readonly logger = new Logger(OrdersService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly emitter: EventEmitter2,
     private readonly explorer: ExplorerService,
-  ) {
-    const timer = setInterval(() => this.cleanupAbandonedOrders(), CLEANUP_INTERVAL_MS);
-    timer.unref();
-  }
-
-  private async cleanupAbandonedOrders(): Promise<void> {
-    try {
-      const cutoff = new Date(Date.now() - ABANDONED_ORDER_MAX_AGE_HOURS * 60 * 60 * 1000);
-      const result = await this.prisma.order.deleteMany({
-        where: {
-          status: OrderStatus.PAYMENT_PENDING,
-          createdAt: { lt: cutoff },
-        },
-      });
-      if (result.count > 0) {
-        this.logger.log(`Cleaned ${result.count} abandoned PAYMENT_PENDING orders`);
-      }
-    } catch (err) {
-      this.logger.error(
-        `Abandoned order cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
+  ) {}
 
   /**
    * POST /checkout — create an order for a product.

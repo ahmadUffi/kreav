@@ -67,9 +67,6 @@ http.interceptors.response.use(
     if (error.response) {
       if (error.response.status === 401) {
         clearSession();
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
         return Promise.reject(
           new ApiError("UNAUTHORIZED", "Session expired. Please sign in again.", 401),
         );

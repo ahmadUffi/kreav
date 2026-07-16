@@ -81,7 +81,7 @@ Buyer (Philippines) → Checkout → Soroban Smart Contract → Creator Wallet (
       `.trim(),
     )
     .setVersion('1.0.0')
-    .setContact('Kreav Team', 'https://kreav.space', 'kreavapp@gmail.com')
+    .setContact('Kreav Team', 'https://kreav.space', 'hello@kreav.space')
     .setLicense('MIT', 'https://opensource.org/licenses/MIT')
     .addServer('http://localhost:3000', 'Local development')
     .addServer('https://kreav-backend.railway.app', 'Production (Railway)')

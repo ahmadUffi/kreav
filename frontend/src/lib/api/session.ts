@@ -18,15 +18,15 @@ const USERNAME_KEY = "kreav.username";
 
 function read(key: string): string | null {
   if (typeof window === "undefined") return null;
-  return window.sessionStorage.getItem(key);
+  return window.localStorage.getItem(key);
 }
 /** Custom event so same-tab subscribers (useSession) react to session writes. */
 export const SESSION_EVENT = "kreav-session";
 
 function write(key: string, value: string | null): void {
   if (typeof window === "undefined") return;
-  if (value === null) window.sessionStorage.removeItem(key);
-  else window.sessionStorage.setItem(key, value);
+  if (value === null) window.localStorage.removeItem(key);
+  else window.localStorage.setItem(key, value);
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
