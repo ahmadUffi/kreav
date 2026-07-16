@@ -5,6 +5,9 @@
  * / `username` are kept only for UI display — identity on the server always
  * comes from the token.
  *
+ * Uses sessionStorage (cleared on tab close) instead of localStorage to reduce
+ * XSS theft risk — a compromised script can't steal tokens across sessions.
+ *
  * All accessors are SSR-safe (return null on the server).
  */
 
@@ -15,15 +18,15 @@ const USERNAME_KEY = "kreav.username";
 
 function read(key: string): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(key);
+  return window.sessionStorage.getItem(key);
 }
 /** Custom event so same-tab subscribers (useSession) react to session writes. */
 export const SESSION_EVENT = "kreav-session";
 
 function write(key: string, value: string | null): void {
   if (typeof window === "undefined") return;
-  if (value === null) window.localStorage.removeItem(key);
-  else window.localStorage.setItem(key, value);
+  if (value === null) window.sessionStorage.removeItem(key);
+  else window.sessionStorage.setItem(key, value);
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 

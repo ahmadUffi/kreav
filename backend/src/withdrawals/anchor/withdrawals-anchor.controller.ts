@@ -123,7 +123,11 @@ export class WithdrawalsAnchorController {
   @Get('transaction/:id')
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
   @ApiOperation({ summary: 'Poll a SEP-24 transaction and persist its status' })
-  async transaction(@Param('id') id: string, @Query('token') token: string | undefined) {
+  async transaction(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('token') token: string | undefined,
+  ) {
     this.assertEnabled();
     const anchorToken = this.requireToken(token);
     const tx = await this.anchor.getTransaction(anchorToken, id);
@@ -139,7 +143,7 @@ export class WithdrawalsAnchorController {
     };
     if (tx.amountIn) data.amount = new Prisma.Decimal(tx.amountIn);
     await this.prisma.withdrawal.updateMany({
-      where: { anchorTransactionId: id },
+      where: { anchorTransactionId: id, creatorId: user.userId },
       data,
     });
 
@@ -187,7 +191,7 @@ export class WithdrawalsAnchorController {
     const txHash = await this.sponsorship.submitWithdrawPayment(dto.signedXdr, address);
     // Record the on-chain send hash so it surfaces in the wallet's Recent transactions.
     await this.prisma.withdrawal.updateMany({
-      where: { anchorTransactionId: dto.id },
+      where: { anchorTransactionId: dto.id, creatorId: user.userId },
       data: { txHash },
     });
     return { txHash };

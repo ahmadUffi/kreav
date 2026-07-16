@@ -39,6 +39,7 @@ const TRANSITIONS: Readonly<Record<OrderStatus, ReadonlyArray<OrderStatus>>> = {
     OrderStatus.SETTLED,
     OrderStatus.SETTLEMENT_FAILED,
     OrderStatus.CANCELLED,
+    OrderStatus.PAYMENT_RECEIVED, // recovery: tx dropped from mempool, retry settlement
   ],
   [OrderStatus.SETTLED]: [OrderStatus.WITHDRAW_PENDING],
   [OrderStatus.WITHDRAW_PENDING]: [
