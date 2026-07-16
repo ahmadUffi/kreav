@@ -1,0 +1,69 @@
+backend/src/products/products.service.spec.ts
+  s_2bafa2ba7782f3::t_c45380f6889bde 56-60,127-130
+backend/src/config/configuration.ts
+  s_2bafa2ba7782f3::t_dedbc7cdf69753 34-37
+  s_2bafa2ba7782f3::t_65aeddfa75a107 72
+  s_2bafa2ba7782f3::t_f0f6bad637f7c2 58
+  s_2bafa2ba7782f3::t_eb47dd2a520f1e 2
+backend/src/wallets/wallets.service.spec.ts
+  s_2bafa2ba7782f3::t_771017e01ea2b2 8
+  s_2bafa2ba7782f3::t_21ed0b2049b8b4 73
+backend/src/withdrawals/withdrawals.service.spec.ts
+  s_2bafa2ba7782f3::t_3c019fff90ba54 54
+  s_2bafa2ba7782f3::t_2be295bbb22551 5
+backend/src/products/products.controller.ts
+  s_2bafa2ba7782f3::t_c45380f6889bde 146
+backend/src/orders/webhook-signature.ts
+  s_2bafa2ba7782f3::t_df1fdef92d3083 30-32,34
+backend/src/stellar/stellar.config.ts
+  s_2bafa2ba7782f3::t_621cd7f8b12c10 45-47
+  s_2bafa2ba7782f3::t_4a89ef6fef1c09 13-15
+backend/src/auth/auth.service.ts
+  s_2bafa2ba7782f3::t_e2be280daed184 10
+  s_2bafa2ba7782f3::t_4f66bd557a824d 59,61-62
+  s_2bafa2ba7782f3::t_6cd88a5b9999b9 13
+  s_2bafa2ba7782f3::t_7da843fd778f68 57
+  s_2bafa2ba7782f3::t_82d7bbc2b7a980 147-157
+  s_2bafa2ba7782f3::t_1d4a3b49b6416d 50-52
+backend/test/orders.e2e-spec.ts
+  s_2bafa2ba7782f3::t_c45380f6889bde 153-156
+backend/src/withdrawals/anchor/anchor-sep24.service.ts
+  s_2bafa2ba7782f3::t_1f4eb0afd86308 9
+  s_2bafa2ba7782f3::t_a6b291460795e4 53
+backend/src/stellar/stellar.module.ts
+  s_2bafa2ba7782f3::t_a404757b0e7dc7 44-45
+  s_2bafa2ba7782f3::t_99e8148d25648e 38-43,46-48,58
+  s_2bafa2ba7782f3::t_ac411d1123e362 3-9
+backend/src/orders/orders.controller.ts
+  s_2bafa2ba7782f3::t_aa20d9a99c0af4 140-152
+backend/src/orders/webhook-signature.spec.ts
+  s_2bafa2ba7782f3::t_13f70b0b4f6dec 40-42
+  s_2bafa2ba7782f3::t_857aa2773be857 6-7
+backend/src/withdrawals/anchor/withdrawals-anchor.controller.ts
+  s_2bafa2ba7782f3::t_ab8ac9773e78cd 58
+  s_2bafa2ba7782f3::t_d19e4bbced2e0e 20
+  s_2bafa2ba7782f3::t_c4d78a971c500c 23
+  s_2bafa2ba7782f3::t_a90d43f1b11a1e 61
+  s_2bafa2ba7782f3::t_e46536f84b6d35 91-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8c07db155e2c58c6abb960f286cfa779ceb5f87e",
+  "prompts": {},
+  "humans": {
+    "h_20649baae43f97": {
+      "author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
