@@ -1,0 +1,87 @@
+backend/src/stellar/soroban-rpc.service.spec.ts
+  s_2bafa2ba7782f3::t_44e9e56fa2aacc 8
+frontend/src/lib/api/client.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 12,68-76
+backend/src/stellar/soroban-rpc.service.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 79,125
+backend/src/notifications/product-delivery.listener.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 51-52,54
+backend/src/stellar/horizon.service.spec.ts
+  s_2bafa2ba7782f3::t_a1a1e0533eab5b 44
+  s_a037b9f6b4ca80::t_bdddf60f774f24 7
+backend/src/orders/order-state-machine.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 17,29
+backend/src/auth/auth.controller.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 1,10,21-22,157-181
+  s_a037b9f6b4ca80::t_82f1e3dae25b18 182
+backend/src/stellar/float-monitor.service.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 69-75
+backend/src/stellar/sponsorship.service.ts
+  s_a037b9f6b4ca80::t_d6ac74cebe91b8 342
+  s_a037b9f6b4ca80::t_bdddf60f774f24 138-139,153-171,173-176,326-341
+backend/src/auth/jwt-auth.guard.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 4,14-15,22,34-37,55-59
+backend/src/stellar/horizon.service.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 48
+frontend/src/components/AppNav.tsx
+  s_a037b9f6b4ca80::t_bdddf60f774f24 86
+frontend/src/app/(app)/dashboard/wallet/page.tsx
+  s_92ccdb5f0c2e7c::t_56d722368072fc 423
+  s_a037b9f6b4ca80::t_bdddf60f774f24 169,195-198,293-311,387,420-422,558-574
+backend/src/auth/auth.service.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 10,53-55,215,217-228
+backend/src/orders/orders.service.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 1,14-16,34-35,40-62,136,140-147
+  s_a037b9f6b4ca80::t_1290ddaf5d2b2f 148
+backend/src/common/startup/startup-recovery.service.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 216-218
+backend/src/analytics/analytics.service.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 2,91,131
+frontend/src/app/(app)/dashboard/products/page.tsx
+  s_a037b9f6b4ca80::t_bdddf60f774f24 23,219,307,310,366-368
+backend/src/wallets/wallets.service.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 90,108,129
+backend/src/stellar/settlement.service.spec.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 516-517
+frontend/src/app/(app)/store/[id]/page.tsx
+  s_a037b9f6b4ca80::t_bdddf60f774f24 33,89-92,267-290
+frontend/src/lib/api/types.ts
+  s_a037b9f6b4ca80::t_bdddf60f774f24 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b37e8b879eb851ad68081fe27d2d5962f60e7c6c",
+  "prompts": {},
+  "humans": {
+    "h_20649baae43f97": {
+      "author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2bafa2ba7782f3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0a8f14253ffeaJZttZ8JWkDoCW",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    },
+    "s_92ccdb5f0c2e7c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_094499a94ffeRCrqWNbFDUvmQx",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": null
+    },
+    "s_a037b9f6b4ca80": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_09449c257ffeDtaABDBfQcHEaS",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
