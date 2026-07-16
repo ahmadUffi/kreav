@@ -1,0 +1,68 @@
+backend/src/auth/auth.service.ts
+  s_2ab9c27dddb85c::t_19104f6ada56f8 62-63,69,71
+  s_2ab9c27dddb85c::t_98b2d1895d0510 109
+  s_2ab9c27dddb85c::t_14d7061445a99c 179-180
+  s_2ab9c27dddb85c::t_2e7ffd00c95a75 141,144
+  s_2ab9c27dddb85c::t_b1b1975bb6cfc0 190-191
+  s_2ab9c27dddb85c::t_e29af2ca1cc5e9 90
+  s_2ab9c27dddb85c::t_1026ef71db2a65 8,15,27-32
+  s_2ab9c27dddb85c::t_2b2cc20996f7e9 33
+frontend/src/app/(app)/dashboard/wallet/page.tsx
+  s_8bd10100d78c2d::t_d33e92aa485fb2 457
+backend/src/products/dto/create-product.dto.ts
+  s_2ab9c27dddb85c::t_7e0a374451d6ca 96,101
+  s_2ab9c27dddb85c::t_a18cd38e48973f 102-103
+backend/src/users/users.service.ts
+  s_2ab9c27dddb85c::t_f5beb45cef25a8 14
+backend/src/stellar/settlement.service.ts
+  s_2ab9c27dddb85c::t_e4193b683efe14 394-395,397
+frontend/src/lib/api/sep24.ts
+  s_8bd10100d78c2d::t_f1b9110d204b99 1
+  s_8bd10100d78c2d::t_43f5f97c302254 82-87
+  s_8bd10100d78c2d::t_3278dd7bffbf7f 92
+  s_8bd10100d78c2d::t_c8a17708173200 97
+  s_8bd10100d78c2d::t_4cf4837ad9fefe 50-76
+  s_8bd10100d78c2d::t_d447a2c85e7b6e 110-117
+backend/src/auth/auth.controller.ts
+  s_2ab9c27dddb85c::t_74283d915a763d 96
+  s_2ab9c27dddb85c::t_1b1cd893a27c67 24-30
+backend/src/config/configuration.ts
+  s_2ab9c27dddb85c::t_c1c7dc64370906 66-67
+  s_2ab9c27dddb85c::t_0028389ae584c3 82
+  s_2ab9c27dddb85c::t_cd207ec457f6d1 32-34
+backend/src/products/products.service.ts
+  s_2ab9c27dddb85c::t_a34fc219b9fa4b 207-214
+backend/src/stellar/explorer.service.ts
+  s_2ab9c27dddb85c::t_991cd18e801143 19,22,25-27
+frontend/src/app/(app)/dashboard/products/page.tsx
+  s_8bd10100d78c2d::t_f04da4ee347e31 32-38,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "856330504282f5309b1bb919369dfd2d6580ff79",
+  "prompts": {},
+  "humans": {
+    "h_20649baae43f97": {
+      "author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2ab9c27dddb85c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_094402543ffeBVpMH2Nxqiz9r5",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    },
+    "s_8bd10100d78c2d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0943ffde5ffeGZQddomWPFNZA4",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
