@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -20,6 +20,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
  *
  * Source: Kreav Backend PRD v3 — §6 Auth Module + ROADMAP Fase 1.
  */
+@Global()
 @Module({
   imports: [
     PrismaModule,
