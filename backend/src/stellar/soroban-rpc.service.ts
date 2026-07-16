@@ -76,6 +76,7 @@ export class SorobanRpcService {
   private get server(): rpc.Server {
     if (!this._server) {
       this._server = new rpc.Server(this.config.sorobanRpcUrl);
+      this._server.httpClient.defaults.timeout = 30000;
     }
     return this._server;
   }
@@ -121,9 +122,7 @@ export class SorobanRpcService {
         throw err; // known errors, propagate as-is
       }
       // Transient network/RPC error — wrap so the caller can retry.
-      throw new SettlementNetworkError(
-        err instanceof Error ? err.message : String(err),
-      );
+      throw new SettlementNetworkError(err instanceof Error ? err.message : String(err));
     }
   }
 

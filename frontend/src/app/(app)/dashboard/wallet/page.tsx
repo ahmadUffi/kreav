@@ -166,6 +166,7 @@ function WithdrawForm({
   const [phase, setPhase] = useState<"form" | "processing" | "done" | "failed">("form");
   const [receipt, setReceipt] = useState<WithdrawalReceipt | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
   const pollsRef = useRef(0);
 
   // Poll the withdrawal until it settles.
@@ -191,7 +192,10 @@ function WithdrawForm({
       } catch {
         /* transient — keep polling */
       }
-      if (pollsRef.current >= 20) clearInterval(id);
+      if (pollsRef.current >= 20) {
+        clearInterval(id);
+        setPollTimedOut(true);
+      }
     }, 3000);
     return () => clearInterval(id);
   }, [phase, receipt, onDone]);
@@ -286,11 +290,25 @@ function WithdrawForm({
 
           {phase === "processing" && (
             <div className="text-center" style={{ padding: "12px 0" }}>
-              <div className="kv-blink" style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>Processing withdrawal…</div>
-              <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--muted)" }}>
-                {receipt ? `Reference ${receipt.reference}` : "Submitting request…"}
-              </p>
+              {pollTimedOut ? (
+                <>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: "var(--muted)" }}>
+                    Taking longer than expected
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
+                    The transaction may still be processing on Stellar. You can close this
+                    page and check back later.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="kv-blink" style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>Processing withdrawal…</div>
+                  <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--muted)" }}>
+                    {receipt ? `Reference ${receipt.reference}` : "Submitting request…"}
+                  </p>
+                </>
+              )}
             </div>
           )}
 
@@ -366,6 +384,7 @@ function AnchorWithdrawFlow({
   const [anchorStatus, setAnchorStatus] = useState<string>("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
   const pollsRef = useRef(0);
 
   const dismissable = phase === "form" || phase === "done" || phase === "failed";
@@ -398,7 +417,10 @@ function AnchorWithdrawFlow({
       } catch {
         /* transient — keep polling */
       }
-      if (pollsRef.current >= 80) clearInterval(timer);
+      if (pollsRef.current >= 80) {
+        clearInterval(timer);
+        setPollTimedOut(true);
+      }
     }, 3000);
     return () => clearInterval(timer);
   }, [phase, token, txId, onDone]);
@@ -533,11 +555,23 @@ function AnchorWithdrawFlow({
           )}
 
           {(phase === "sending" || phase === "polling") && (
-            <StepNote
-              emoji="⏳"
-              title={phase === "sending" ? "Submitting your transfer…" : "Waiting for the anchor to pay out…"}
-              note={anchorStatus ? `Status: ${anchorStatus}` : "This can take a moment."}
-            />
+            pollTimedOut ? (
+              <div className="text-center" style={{ padding: "12px 0" }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: "var(--muted)" }}>
+                  Taking longer than expected
+                </div>
+                <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
+                  The transaction may still be processing on Stellar. You can close this
+                  page and check back later.
+                </p>
+              </div>
+            ) : (
+              <StepNote
+                emoji="⏳"
+                title={phase === "sending" ? "Submitting your transfer…" : "Waiting for the anchor to pay out…"}
+                note={anchorStatus ? `Status: ${anchorStatus}` : "This can take a moment."}
+              />
+            )
           )}
 
           {(phase === "done" || phase === "failed") && (

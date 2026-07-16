@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsResponseDto } from './dto';
 
@@ -87,7 +88,7 @@ export class AnalyticsService {
    */
   private async getActiveProductCount(creatorId: string): Promise<number> {
     return this.prisma.product.count({
-      where: { creatorId },
+      where: { creatorId, status: 'ACTIVE' },
     });
   }
 
@@ -127,7 +128,7 @@ export class AnalyticsService {
       productId: r.product_id,
       productTitle: r.title,
       sales: Number(r.sales),
-      revenue: r.revenue ? String(Number(r.revenue).toFixed(2)) : '0.00',
+      revenue: new Prisma.Decimal(r.revenue || 0).toFixed(2),
     }));
   }
 

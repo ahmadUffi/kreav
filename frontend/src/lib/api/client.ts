@@ -9,7 +9,7 @@
  *   modules and pages keep working as-is.
  */
 import axios, { AxiosError, type AxiosInstance } from "axios";
-import { getToken } from "./session";
+import { getToken, clearSession } from "./session";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -65,6 +65,15 @@ http.interceptors.response.use(
   (response) => response,
   (error: AxiosError<BackendError>) => {
     if (error.response) {
+      if (error.response.status === 401) {
+        clearSession();
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        return Promise.reject(
+          new ApiError("UNAUTHORIZED", "Session expired. Please sign in again.", 401),
+        );
+      }
       const data = error.response.data ?? {};
       return Promise.reject(
         new ApiError(

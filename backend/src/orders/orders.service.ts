@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,6 +10,9 @@ import type {
 } from '../events/event-payloads';
 import { canTransition } from './order-state-machine';
 import { InvalidStateTransitionException } from './invalid-transition.exception';
+
+const ABANDONED_ORDER_MAX_AGE_HOURS = 1;
+const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
 
 /**
  * OrdersService — checkout + mock GCash payment webhook (BE-005).
@@ -28,11 +31,35 @@ import { InvalidStateTransitionException } from './invalid-transition.exception'
  */
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly emitter: EventEmitter2,
     private readonly explorer: ExplorerService,
-  ) {}
+  ) {
+    const timer = setInterval(() => this.cleanupAbandonedOrders(), CLEANUP_INTERVAL_MS);
+    timer.unref();
+  }
+
+  private async cleanupAbandonedOrders(): Promise<void> {
+    try {
+      const cutoff = new Date(Date.now() - ABANDONED_ORDER_MAX_AGE_HOURS * 60 * 60 * 1000);
+      const result = await this.prisma.order.deleteMany({
+        where: {
+          status: OrderStatus.PAYMENT_PENDING,
+          createdAt: { lt: cutoff },
+        },
+      });
+      if (result.count > 0) {
+        this.logger.log(`Cleaned ${result.count} abandoned PAYMENT_PENDING orders`);
+      }
+    } catch (err) {
+      this.logger.error(
+        `Abandoned order cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
 
   /**
    * POST /checkout — create an order for a product.
@@ -104,21 +131,20 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    // --- Transition guard: the primary webhook transition is PAYMENT_PENDING →
-    // PAYMENT_RECEIVED. WAITING_WALLET is a deferral *from* PAYMENT_RECEIVED,
-    // so we validate the primary hop here and then write the final state. ---
-    if (!canTransition(order.status, OrderStatus.PAYMENT_RECEIVED)) {
-      throw new InvalidStateTransitionException(order.status, OrderStatus.PAYMENT_RECEIVED);
+    // --- Does the creator have a connected wallet? ---
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { creatorId: order.product.creatorId },
+      select: { walletAddress: true },
+    });
+
+    const targetState = wallet ? OrderStatus.PAYMENT_RECEIVED : OrderStatus.WAITING_WALLET;
+
+    if (!canTransition(order.status, targetState)) {
+      throw new InvalidStateTransitionException(order.status, targetState);
     }
 
     const amountUsd = order.amountUsd.toFixed(2);
     const creatorId = order.product.creatorId;
-
-    // --- Does the creator have a connected wallet? ---
-    const wallet = await this.prisma.wallet.findFirst({
-      where: { creatorId },
-      select: { walletAddress: true },
-    });
 
     if (!wallet) {
       // WAITING_WALLET — defer settlement until the wallet is connected.

@@ -14,6 +14,7 @@ import { OrderStatus } from '@prisma/client';
  *
  * Failure / deferral branches:
  *   PAYMENT_PENDING     → PAYMENT_FAILED
+ *   PAYMENT_PENDING     → WAITING_WALLET  (creator has no wallet at payment time; settlement deferred)
  *   PAYMENT_RECEIVED    → WAITING_WALLET  (creator has no wallet; settlement deferred)
  *   WAITING_WALLET      → SETTLEMENT_PENDING  (wallet connected; resume)
  *   SETTLEMENT_PENDING  → SETTLEMENT_FAILED
@@ -25,6 +26,7 @@ const TRANSITIONS: Readonly<Record<OrderStatus, ReadonlyArray<OrderStatus>>> = {
   [OrderStatus.CHECKOUT_STARTED]: [OrderStatus.PAYMENT_PENDING, OrderStatus.CANCELLED],
   [OrderStatus.PAYMENT_PENDING]: [
     OrderStatus.PAYMENT_RECEIVED,
+    OrderStatus.WAITING_WALLET,
     OrderStatus.PAYMENT_FAILED,
     OrderStatus.CANCELLED,
   ],

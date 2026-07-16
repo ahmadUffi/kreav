@@ -87,6 +87,7 @@ export class WalletsService {
     total: number;
   }> {
     const skip = (page - 1) * limit;
+    const boundedTake = page * limit * 2;
 
     // toFixed(2) matches the DecimalToStringInterceptor convention — "9.50" not "9.5".
     const fmt = (d: { toFixed?: (n: number) => string } | null | undefined): string =>
@@ -104,6 +105,7 @@ export class WalletsService {
     const [settlementRows, withdrawalRows] = await Promise.all([
       this.prisma.settlementRecipient.findMany({
         where: { walletAddress: address },
+        take: boundedTake,
         include: {
           settlement: {
             select: {
@@ -124,6 +126,7 @@ export class WalletsService {
             // up as a transaction — matches the balance ledger, which also only
             // counts COMPLETED withdrawals.
             where: { creatorId: walletRow.creatorId, status: 'COMPLETED' },
+            take: boundedTake,
             orderBy: { createdAt: 'desc' },
           })
         : Promise.resolve([]),

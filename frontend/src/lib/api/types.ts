@@ -46,6 +46,7 @@ export interface AuthUserRaw {
   id: string;
   email: string;
   name: string;
+  username?: string;
   role: UserRole;
   createdAt: string;
 }

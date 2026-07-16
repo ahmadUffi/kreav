@@ -30,6 +30,7 @@ export default function ProductDetailPage() {
   const [emailErr, setEmailErr] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [payErr, setPayErr] = useState<string | null>(null);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
   const pollsRef = useRef(0);
 
   // Restore checkout state from sessionStorage on mount so a page refresh
@@ -85,7 +86,10 @@ export default function ProductDetailPage() {
       } catch {
         // transient — keep polling
       }
-      if (pollsRef.current >= MAX_POLLS) clearInterval(id);
+      if (pollsRef.current >= MAX_POLLS) {
+        clearInterval(id);
+        setPollTimedOut(true);
+      }
     }, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [buy, orderId, email]);
@@ -260,13 +264,30 @@ export default function ProductDetailPage() {
             </Card>
           ) : buy === "pending" ? (
             <Card style={{ padding: 18 }}>
-              <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>
-                <span className="kv-blink">⏳</span> Settling on Stellar…
-              </div>
-              <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
-                Payment confirmed for order <span style={{ color: "var(--text)" }}>{orderId}</span>.
-                Splitting revenue to the creator on-chain — this page updates automatically.
-              </p>
+              {pollTimedOut ? (
+                <>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: "var(--muted)" }}>
+                    Taking longer than expected
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
+                    The transaction may still be processing on Stellar. You can close this
+                    page and check back later.
+                  </p>
+                  <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
+                    Order: <span style={{ color: "var(--text)" }}>{orderId}</span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>
+                    <span className="kv-blink">⏳</span> Settling on Stellar…
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
+                    Payment confirmed for order <span style={{ color: "var(--text)" }}>{orderId}</span>.
+                    Splitting revenue to the creator on-chain — this page updates automatically.
+                  </p>
+                </>
+              )}
             </Card>
           ) : buy === "failed" ? (
             <Card style={{ padding: 18, background: "var(--tone-danger-bg, rgba(255,77,0,.14))" }}>

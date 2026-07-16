@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { WebAuth } from '@stellar/stellar-sdk';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformKeypairService } from '../stellar/platform-keypair.service';
 import { STELLAR_PUBLIC_CONFIG, type StellarPublicConfig } from '../stellar/stellar.config';
@@ -49,6 +49,9 @@ export class AuthService {
 
   /** In-memory nonce store — prevents SEP-10 challenge replay within the validity window. */
   private readonly usedChallenges = new Map<string, NodeJS.Timeout>();
+
+  /** In-memory revoked JWT set — tokens invalidated via /auth/logout. */
+  private readonly revokedTokens = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -209,9 +212,20 @@ export class AuthService {
     };
   }
 
-  /** Sign a session JWT. Payload: { sub, role, email }. */
+  /** Sign a session JWT. Payload: { sub, role, email, jti }. */
   private signToken(userId: string, role: string, email: string): string {
-    return this.jwt.sign({ sub: userId, role, email });
+    return this.jwt.sign({ sub: userId, role, email, jti: randomUUID() });
+  }
+
+  /** Revoke a token by its JWT ID (jti). */
+  revokeToken(jti: string): void {
+    this.revokedTokens.add(jti);
+    this.logger.log(`Token revoked: jti=${jti.slice(0, 8)}...`);
+  }
+
+  /** Check whether a token has been revoked. */
+  isTokenRevoked(jti: string): boolean {
+    return this.revokedTokens.has(jti);
   }
 
   private toProfile(user: {

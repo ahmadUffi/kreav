@@ -213,7 +213,9 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
       try {
         const retryStatus = await this.sorobanRpc.getTransactionStatus(order.txHash);
         if (retryStatus === 'SUCCESS') {
-          this.logger.log(`  ✅ Tx ${order.txHash.slice(0, 16)}... confirmed on re-check — recovering`);
+          this.logger.log(
+            `  ✅ Tx ${order.txHash.slice(0, 16)}... confirmed on re-check — recovering`,
+          );
           await this.settlement.recordRecoveredSettlement(order.id, order.txHash);
           return true;
         }

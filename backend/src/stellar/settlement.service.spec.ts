@@ -513,7 +513,8 @@ describe('SettlementService', () => {
     // GCREATOR_B has no trustline; the other two do.
     // Platform wallet returns high balance so the float check passes.
     horizon.getUsdcBalance.mockImplementation(async (address: string) => {
-      if (address === 'GPLATFORM...') return { balanceUsd: '100.00', hasUsdcTrustline: true, accountExists: true };
+      if (address === 'GPLATFORM...')
+        return { balanceUsd: '100.00', hasUsdcTrustline: true, accountExists: true };
       return {
         balanceUsd: '0',
         hasUsdcTrustline: address !== 'GCREATOR_B',
