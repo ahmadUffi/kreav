@@ -104,15 +104,15 @@ export class AnalyticsService {
     const rows: Array<{
       product_id: string;
       title: string;
-      sales: bigint;
-      revenue: string;
+      sales: number | bigint;
+      revenue: number | string | null;
     }> = await this.prisma.$queryRawUnsafe(
       `
       SELECT
         p.id AS product_id,
         p.title,
-        COUNT(o.id)::bigint AS sales,
-        SUM(o.amount_usd)::text AS revenue
+        COUNT(o.id) AS sales,
+        SUM(o.amount_usd) AS revenue
       FROM orders o
       JOIN products p ON p.id = o.product_id
       WHERE o.status = 'SETTLED'
@@ -128,7 +128,7 @@ export class AnalyticsService {
       productId: r.product_id,
       productTitle: r.title,
       sales: Number(r.sales),
-      revenue: new Prisma.Decimal(r.revenue || 0).toFixed(2),
+      revenue: new Prisma.Decimal(r.revenue ?? 0).toFixed(2),
     }));
   }
 

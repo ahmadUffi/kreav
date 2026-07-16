@@ -21,7 +21,7 @@ describe('WithdrawalsController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
-  const WALLET_ADDRESS = 'GCHOG4QF27OG5WHBY4AIBGEI4LSOTCY3Y4VX22AUNLHTDBWMLZW5OBU3';
+  const WALLET_ADDRESS = 'GD76WTN7LGHUKWT4JNSEXVFIZYTVPXZH6S3WDKI7LQXYXTL6ALUTSRFA';
   let creatorId: string;
   /** Session JWT for the test creator (minted directly via JwtService). */
   let token: string;
@@ -68,60 +68,55 @@ describe('WithdrawalsController (e2e)', () => {
       .get(JwtService)
       .sign({ sub: creatorId, role: 'CREATOR', email: 'withdrawal-e2e@kreav.test' });
 
-    // Ensure wallet exists
-    const existingWallet = await prisma.wallet.findFirst({
-      where: { walletAddress: WALLET_ADDRESS },
+    // Clean up leftovers from previous runs, then connect wallet.
+    await prisma.wallet.deleteMany({ where: { walletAddress: WALLET_ADDRESS } });
+    await prisma.wallet.create({
+      data: {
+        creatorId,
+        walletAddress: WALLET_ADDRESS,
+        provider: 'FREIGHTER',
+      },
     });
 
-    if (!existingWallet) {
-      await prisma.wallet.create({
-        data: {
-          creatorId,
-          walletAddress: WALLET_ADDRESS,
-          provider: 'FREIGHTER',
-        },
-      });
+    // Create a settlement + recipient so there's withdrawable balance
+    const product = await prisma.product.create({
+      data: {
+        title: 'WD E2E Product',
+        priceUsd: '10.00',
+        creatorId,
+      },
+    });
 
-      // Create a settlement + recipient so there's withdrawable balance
-      const product = await prisma.product.create({
-        data: {
-          title: 'WD E2E Product',
-          priceUsd: '10.00',
-          creatorId,
-        },
-      });
+    const order = await prisma.order.create({
+      data: {
+        productId: product.id,
+        buyerEmail: 'wde2e-buyer@test.com',
+        amountUsd: '10.00',
+        status: 'SETTLED',
+        txHash: 'wd-e2e-tx-hash',
+        paymentRef: `wd-e2e-${Date.now()}`,
+      },
+    });
 
-      const order = await prisma.order.create({
-        data: {
-          productId: product.id,
-          buyerEmail: 'wde2e-buyer@test.com',
-          amountUsd: '10.00',
-          status: 'SETTLED',
-          txHash: 'wd-e2e-tx-hash',
-          paymentRef: `wd-e2e-${Date.now()}`,
-        },
-      });
+    const settlement = await prisma.settlement.create({
+      data: {
+        orderId: order.id,
+        totalAmount: '10.00',
+        txHash: 'wd-e2e-tx-hash',
+        status: 'COMPLETED',
+      },
+    });
 
-      const settlement = await prisma.settlement.create({
-        data: {
-          orderId: order.id,
-          totalAmount: '10.00',
-          txHash: 'wd-e2e-tx-hash',
-          status: 'COMPLETED',
-        },
-      });
-
-      await prisma.settlementRecipient.create({
-        data: {
-          settlementId: settlement.id,
-          walletAddress: WALLET_ADDRESS,
-          recipientType: 'CREATOR',
-          role: 'Author',
-          percentage: '95.00',
-          amount: '9.50',
-        },
-      });
-    }
+    await prisma.settlementRecipient.create({
+      data: {
+        settlementId: settlement.id,
+        walletAddress: WALLET_ADDRESS,
+        recipientType: 'CREATOR',
+        role: 'Author',
+        percentage: '95.00',
+        amount: '9.50',
+      },
+    });
   });
 
   afterAll(async () => {
