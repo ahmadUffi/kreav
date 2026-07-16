@@ -1,0 +1,54 @@
+backend/src/common/startup/startup-recovery.service.spec.ts
+  s_d6e6489c3770d5::t_9c438448cc4e81 1-206,217-242
+  s_d6e6489c3770d5::t_71e13cd13cf5ec 207-216
+backend/src/site/site.service.spec.ts
+  s_b7bd6853cab015::t_e4724abde56456 1-52,54-150
+  s_b7bd6853cab015::t_e53c4a12ed3a95 53
+backend/src/auth/auth.service.spec.ts
+  s_d6e6489c3770d5::t_c2143d8da22fcc 1-95,97-125
+  s_b7bd6853cab015::t_e53c4a12ed3a95 96
+backend/src/analytics/analytics.service.spec.ts
+  s_b7bd6853cab015::t_7eb392984b6edc 1-27,29-134
+  s_b7bd6853cab015::t_e53c4a12ed3a95 28
+backend/src/withdrawals/anchor/withdrawals-anchor.controller.spec.ts
+  s_a7d35132aaef2b::t_094ca01b047a0d 1-2,4-5,7-54,57-67,75-79,84-87,93-141
+  s_b7bd6853cab015::t_e53c4a12ed3a95 68-74,80-83,88-92
+  s_a7d35132aaef2b::t_3390c49cc68526 3,6,55-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e36e129bc5efb048de65fef76f1ca295c1d4d1f1",
+  "prompts": {},
+  "humans": {
+    "h_20649baae43f97": {
+      "author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a7d35132aaef2b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_094047801ffenofT43c179bNZc",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    },
+    "s_b7bd6853cab015": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_09404b6d9ffeS2OXDPLcX6u77z",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    },
+    "s_d6e6489c3770d5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_09404e8ccffe2zS7iTPhvpqdF3",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Maulana Anjari Anggorokasih <maulana17anjari@gmail.com>"
+    }
+  }
+}
