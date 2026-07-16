@@ -28,7 +28,6 @@ import { InvalidStateTransitionException } from './invalid-transition.exception'
  */
 @Injectable()
 export class OrdersService {
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly emitter: EventEmitter2,
