@@ -24,32 +24,25 @@ export default function ProductDetailPage() {
   const notFound = error?.statusCode === 404;
 
   const { run: runCheckout, pending: creating, error: checkoutErr } = useApiAction(checkout);
-  const [buy, setBuy] = useState<Buy>("idle");
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
+  const readSession = () => {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { orderId: string; email: string; buy: Buy };
+        if (parsed.orderId && parsed.email && parsed.buy === "pending") return parsed;
+      }
+    } catch {}
+    return null;
+  };
+
+  const [buy, setBuy] = useState<Buy>(readSession()?.buy ?? "idle");
+  const [orderId, setOrderId] = useState<string | null>(readSession()?.orderId ?? null);
+  const [email, setEmail] = useState(readSession()?.email ?? "");
   const [emailErr, setEmailErr] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [payErr, setPayErr] = useState<string | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const pollsRef = useRef(0);
-
-  // Restore checkout state from sessionStorage on mount so a page refresh
-  // doesn't lose the order — the buyer can resume tracking.
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(SESSION_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as { orderId: string; email: string; buy: Buy };
-        if (parsed.orderId && parsed.email && parsed.buy === "pending") {
-          setOrderId(parsed.orderId);
-          setEmail(parsed.email);
-          setBuy("pending");
-        }
-      }
-    } catch {
-      sessionStorage.removeItem(SESSION_KEY);
-    }
-  }, []);
 
   // Persist checkout state so the buyer can refresh without losing their
   // order during settlement. Cleared on terminal states.
