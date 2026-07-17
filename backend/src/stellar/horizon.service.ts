@@ -45,6 +45,7 @@ export class HorizonService {
   private get server(): Horizon.Server {
     if (!this._server) {
       this._server = new Horizon.Server(this.config.horizonUrl);
+      this._server.httpClient.defaults.timeout = 30000;
     }
     return this._server;
   }

@@ -5,6 +5,9 @@
  * / `username` are kept only for UI display — identity on the server always
  * comes from the token.
  *
+ * Uses sessionStorage (cleared on tab close) instead of localStorage to reduce
+ * XSS theft risk — a compromised script can't steal tokens across sessions.
+ *
  * All accessors are SSR-safe (return null on the server).
  */
 

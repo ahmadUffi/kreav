@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, ApiError } from "./client";
 
 /**
  * SEP-24 off-ramp client (Fase 2A) — talks to the Kreav backend proxy at
@@ -47,25 +47,54 @@ async function signXdr(xdr: string, networkPassphrase: string, address: string):
   return signed.signedTxXdr;
 }
 
+/** Runs an anchor API call and surfaces a friendly message when the SEP-10
+ *  token expires (or the anchor otherwise rejects auth), instead of bubbling
+ *  up a generic "transfer failed" error. */
+async function anchorCall<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof ApiError) {
+      if (e.statusCode === 401 || e.statusCode === 403) {
+        throw new ApiError(
+          "ANCHOR_AUTH_EXPIRED",
+          "Your session with the withdrawal provider has expired. Please start again.",
+          401,
+        );
+      }
+      if (e.code === "TOKEN_EXPIRED" || e.code === "ANCHOR_AUTH_ERROR") {
+        throw new ApiError(
+          "ANCHOR_AUTH_EXPIRED",
+          "Your session with the withdrawal provider has expired. Please start again.",
+          401,
+        );
+      }
+    }
+    throw e;
+  }
+}
+
 /**
  * SEP-10 against the anchor: challenge → Freighter sign → verify → anchor token.
  * The token is short-lived and used only for this withdrawal's anchor calls.
  */
 export async function authenticateAnchor(walletAddress: string): Promise<string> {
-  const challenge = await api.post<ChallengeRes>("/withdrawals/anchor/auth/challenge", {});
-  const signedXdr = await signXdr(challenge.transaction, challenge.networkPassphrase, walletAddress);
-  const { token } = await api.post<{ token: string }>("/withdrawals/anchor/auth/verify", { signedXdr });
-  return token;
+  return anchorCall(async () => {
+    const challenge = await api.post<ChallengeRes>("/withdrawals/anchor/auth/challenge", {});
+    const signedXdr = await signXdr(challenge.transaction, challenge.networkPassphrase, walletAddress);
+    const { token } = await api.post<{ token: string }>("/withdrawals/anchor/auth/verify", { signedXdr });
+    return token;
+  });
 }
 
 /** SEP-24: start an interactive USDC withdrawal; returns the hosted URL + ids. */
 export async function startAnchorWithdrawal(token: string, amount: number): Promise<InteractiveRes> {
-  return api.post<InteractiveRes>("/withdrawals/anchor/interactive", { amount, token });
+  return anchorCall(() => api.post<InteractiveRes>("/withdrawals/anchor/interactive", { amount, token }));
 }
 
 /** SEP-24: poll a transaction's status (also persisted server-side). */
 export async function pollAnchorTx(id: string, token: string): Promise<AnchorTxStatus> {
-  return api.get<AnchorTxStatus>(`/withdrawals/anchor/transaction/${id}`, { token });
+  return anchorCall(() => api.get<AnchorTxStatus>(`/withdrawals/anchor/transaction/${id}`, { token }));
 }
 
 /**
@@ -78,11 +107,13 @@ export async function sendUsdcToAnchor(
   id: string,
   token: string,
 ): Promise<string> {
-  const built = await api.post<BuildPaymentRes>("/withdrawals/anchor/build-payment", { id, token });
-  const signedXdr = await signXdr(built.xdr, built.networkPassphrase, walletAddress);
-  const { txHash } = await api.post<{ txHash: string }>("/withdrawals/anchor/submit-payment", {
-    signedXdr,
-    id,
+  return anchorCall(async () => {
+    const built = await api.post<BuildPaymentRes>("/withdrawals/anchor/build-payment", { id, token });
+    const signedXdr = await signXdr(built.xdr, built.networkPassphrase, walletAddress);
+    const { txHash } = await api.post<{ txHash: string }>("/withdrawals/anchor/submit-payment", {
+      signedXdr,
+      id,
+    });
+    return txHash;
   });
-  return txHash;
 }

@@ -1,4 +1,5 @@
 import * as Joi from 'joi';
+import { randomBytes } from 'node:crypto';
 
 /**
  * Typed application configuration.
@@ -28,10 +29,15 @@ export interface AppConfig {
   /** When true, exposes the in-app payment simulation endpoint so buyers/judges
    * can complete a purchase without a real PSP. Off in production. */
   DEMO_MODE: boolean;
+  /** SEP-10 challenge home domain (manage_data op name = `<HOME_DOMAIN> auth`).
+   * Defaults to 'kreav.space'; set to your production domain. */
+  SEP10_HOME_DOMAIN: string;
 }
 
-/** Dev-only JWT secret fallback — the auth module warns loudly when active. */
-export const DEV_JWT_SECRET = 'kreav-dev-jwt-secret-do-not-use-in-prod';
+/** Dev-only JWT secret — auto-generated per process start (never committed). */
+export function generateDevJwtSecret(): string {
+  return randomBytes(32).toString('hex');
+}
 
 /** Default From address for outgoing email when RESEND_FROM is unset. */
 export const DEFAULT_RESEND_FROM = 'Kreav <onboarding@resend.dev>';
@@ -40,25 +46,25 @@ export const validationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().port().default(3000),
   DATABASE_URL: Joi.string()
-    // PostgreSQL connection string — required now that Prisma/DB is wired (BE-002).
-    .uri({ scheme: ['postgresql', 'postgres'] })
+    // PostgreSQL (production/Docker) or SQLite file: URI (local zero-config dev).
+    .pattern(/^(postgresql:\/\/|postgres:\/\/|file:)/)
     .required(),
   // Optional: when absent, webhook signature verification is skipped (dev/CI).
   GCASH_WEBHOOK_SECRET: Joi.string().optional().allow(''),
   // Session JWT secret. Required in production; dev/test fall back to a
   // clearly-marked default so the app still boots for non-auth work.
-  JWT_SECRET: Joi.string()
-    .min(16)
-    .when('NODE_ENV', {
-      is: 'production',
-      then: Joi.required(),
-      otherwise: Joi.optional().default(DEV_JWT_SECRET),
-    }),
+  JWT_SECRET: Joi.string().min(16).when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
   // Optional email config — absent key → emails are logged, not sent (dev).
   RESEND_API_KEY: Joi.string().optional().allow(''),
   RESEND_FROM: Joi.string().optional().allow(''),
   // Boolean-ish; coerces "true"/"false". Off in production unless set.
   DEMO_MODE: Joi.boolean().optional(),
+  // SEP-10 WebAuth domain for challenge building + verification.
+  SEP10_HOME_DOMAIN: Joi.string().optional().default('kreav.space'),
 });
 
 export default () => ({
@@ -66,11 +72,12 @@ export default () => ({
   PORT: parseInt(process.env.PORT ?? '3000', 10),
   DATABASE_URL: process.env.DATABASE_URL,
   GCASH_WEBHOOK_SECRET: process.env.GCASH_WEBHOOK_SECRET,
-  JWT_SECRET: process.env.JWT_SECRET ?? DEV_JWT_SECRET,
+  JWT_SECRET: process.env.JWT_SECRET || generateDevJwtSecret(),
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM: process.env.RESEND_FROM || DEFAULT_RESEND_FROM,
   // Explicit "true"/"false" wins; otherwise on everywhere except production.
   DEMO_MODE: process.env.DEMO_MODE
     ? process.env.DEMO_MODE === 'true'
     : process.env.NODE_ENV !== 'production',
+  SEP10_HOME_DOMAIN: process.env.SEP10_HOME_DOMAIN || 'kreav.space',
 });

@@ -58,6 +58,11 @@ describe('ProductsController (e2e)', () => {
 
     prisma = app.get(PrismaService);
 
+    const TEST_WALLET = 'GCHOG4QF27OG5WHBY4AIBGEI4LSOTCY3Y4VX22AUNLHTDBWMLZW5OBU3';
+
+    // Clean up leftovers from previous runs (C3 unique constraint on wallet_address).
+    await prisma.wallet.deleteMany({ where: { walletAddress: TEST_WALLET } });
+
     // Create a fresh creator for this test run.
     const creator = await prisma.user.create({
       data: {
@@ -67,14 +72,23 @@ describe('ProductsController (e2e)', () => {
       },
     });
     creatorId = creator.id;
+
+    // BE-027: product creation auto-creates the creator as the sole collaborator,
+    // which requires a connected wallet. Create one for the test creator.
+    await prisma.wallet.create({
+      data: {
+        creatorId,
+        walletAddress: TEST_WALLET,
+        provider: 'FREIGHTER',
+      },
+    });
+
     token = app.get(JwtService).sign({ sub: creatorId, role: 'CREATOR', email: creator.email });
   });
 
   afterAll(async () => {
-    // Clean up everything this run created (products cascade nothing here, but
-    // delete explicitly to be safe; user delete RESTRICTs on products, so drop
-    // products first).
     await prisma.product.deleteMany({ where: { creatorId } });
+    await prisma.wallet.deleteMany({ where: { creatorId } });
     await prisma.user.delete({ where: { id: creatorId } });
     await app.close();
   });

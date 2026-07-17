@@ -8,10 +8,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { WebAuth } from '@stellar/stellar-sdk';
+import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformKeypairService } from '../stellar/platform-keypair.service';
-import { STELLAR_CONFIG, type StellarConfig } from '../stellar/stellar.config';
-import { DEV_JWT_SECRET } from '../config/configuration';
+import { STELLAR_PUBLIC_CONFIG, type StellarPublicConfig } from '../stellar/stellar.config';
+import type { AppConfig } from '../config/configuration';
 import {
   RegisterDto,
   RegisterResponseDto,
@@ -20,11 +21,15 @@ import {
   AuthTokenResponseDto,
 } from './dto';
 
-/** SEP-10 domain constants (challenge manage_data op name = `<HOME_DOMAIN> auth`). */
-const HOME_DOMAIN = 'kreav.app';
-const WEB_AUTH_DOMAIN = 'kreav.app';
 /** Challenge validity window (seconds). */
 const CHALLENGE_TIMEOUT_S = 300;
+
+function maskEmail(email: string): string {
+  const atIndex = email.indexOf('@');
+  if (atIndex < 0) return email;
+  const visible = Math.min(3, atIndex);
+  return email.slice(0, visible) + '***' + email.slice(atIndex);
+}
 
 /**
  * AuthService — BE-021 registration + Fase 1 SEP-10 wallet auth.
@@ -48,16 +53,26 @@ const CHALLENGE_TIMEOUT_S = 300;
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  /** In-memory nonce store — prevents SEP-10 challenge replay within the validity window. */
+  private readonly usedChallenges = new Map<string, NodeJS.Timeout>();
+
+  /** In-memory revoked JWT set — tokens invalidated via /auth/logout. */
+  private readonly revokedTokens = new Set<string>();
+
+  private readonly homeDomain: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
-    private readonly config: ConfigService,
     private readonly platformKey: PlatformKeypairService,
-    @Inject(STELLAR_CONFIG) private readonly stellar: StellarConfig,
+    @Inject(STELLAR_PUBLIC_CONFIG) private readonly stellar: StellarPublicConfig,
+    private readonly config: ConfigService<AppConfig>,
   ) {
-    if (this.config.get<string>('JWT_SECRET') === DEV_JWT_SECRET) {
+    this.homeDomain = this.config.get('SEP10_HOME_DOMAIN', 'kreav.space')!;
+    if (!process.env.JWT_SECRET && process.env.NODE_ENV !== 'production') {
       this.logger.warn(
-        'JWT_SECRET not set — using the DEV fallback secret. Set a real JWT_SECRET before any deployment.',
+        'JWT_SECRET not set — using an auto-generated per-process secret. ' +
+          'Tokens are valid only within this process lifetime. Set a real JWT_SECRET before any deployment.',
       );
     }
   }
@@ -72,7 +87,7 @@ export class AuthService {
       select: { id: true },
     });
     if (existing) {
-      this.logger.warn(`Registration failed — email already in use: ${dto.email}`);
+      this.logger.warn(`Registration failed — email already in use: ${maskEmail(dto.email)}`);
       throw new ConflictException(`Email ${dto.email} is already registered`);
     }
 
@@ -91,7 +106,7 @@ export class AuthService {
       },
     });
 
-    this.logger.log(`User registered: ${user.id} (${user.email}, ${user.role})`);
+    this.logger.log(`User registered: ${user.id} (${maskEmail(user.email)}, ${user.role})`);
 
     return {
       ...this.toProfile(user),
@@ -123,10 +138,10 @@ export class AuthService {
     const transaction = WebAuth.buildChallengeTx(
       serverKeypair,
       walletAddress,
-      HOME_DOMAIN,
+      this.homeDomain,
       CHALLENGE_TIMEOUT_S,
       this.stellar.networkPassphrase,
-      WEB_AUTH_DOMAIN,
+      this.homeDomain,
     );
     this.logger.log(`SEP-10 challenge issued for ${walletAddress.slice(0, 8)}...`);
     return { transaction, networkPassphrase: this.stellar.networkPassphrase };
@@ -142,6 +157,17 @@ export class AuthService {
    * Throws 401 on any verification failure or unknown wallet.
    */
   async verifyChallenge(signedXdr: string): Promise<AuthTokenResponseDto> {
+    // Nonce check: reject replayed challenges within the validity window.
+    const nonce = createHash('sha256').update(signedXdr).digest('hex');
+    if (this.usedChallenges.has(nonce)) {
+      this.logger.warn(`SEP-10 challenge replay rejected (nonce=${nonce.slice(0, 8)}...)`);
+      throw new UnauthorizedException('Challenge already used');
+    }
+    this.usedChallenges.set(
+      nonce,
+      setTimeout(() => this.usedChallenges.delete(nonce), CHALLENGE_TIMEOUT_S * 1000),
+    );
+
     const serverPublicKey = this.platformKey.getPublicKey();
 
     let clientAccountID: string;
@@ -150,8 +176,8 @@ export class AuthService {
         signedXdr,
         serverPublicKey,
         this.stellar.networkPassphrase,
-        HOME_DOMAIN,
-        WEB_AUTH_DOMAIN,
+        this.homeDomain,
+        this.homeDomain,
       );
       clientAccountID = challenge.clientAccountID;
 
@@ -161,8 +187,8 @@ export class AuthService {
         serverPublicKey,
         this.stellar.networkPassphrase,
         [clientAccountID],
-        HOME_DOMAIN,
-        WEB_AUTH_DOMAIN,
+        this.homeDomain,
+        this.homeDomain,
       );
     } catch (err) {
       this.logger.warn(
@@ -196,9 +222,20 @@ export class AuthService {
     };
   }
 
-  /** Sign a session JWT. Payload: { sub, role, email }. */
+  /** Sign a session JWT. Payload: { sub, role, email, jti }. */
   private signToken(userId: string, role: string, email: string): string {
-    return this.jwt.sign({ sub: userId, role, email });
+    return this.jwt.sign({ sub: userId, role, email, jti: randomUUID() });
+  }
+
+  /** Revoke a token by its JWT ID (jti). */
+  revokeToken(jti: string): void {
+    this.revokedTokens.add(jti);
+    this.logger.log(`Token revoked: jti=${jti.slice(0, 8)}...`);
+  }
+
+  /** Check whether a token has been revoked. */
+  isTokenRevoked(jti: string): boolean {
+    return this.revokedTokens.has(jti);
   }
 
   private toProfile(user: {

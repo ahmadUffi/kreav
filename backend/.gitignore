@@ -27,3 +27,8 @@ coverage/
 
 # Prisma (BE-002) — generated client is reproducible from schema
 prisma/generated/
+
+# SQLite for local dev (not committed — production uses Neon PostgreSQL)
+prisma/*.db
+prisma/*.db-journal
+prisma/schema.sqlite.prisma

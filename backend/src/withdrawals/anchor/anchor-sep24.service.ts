@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { WithdrawalStatus } from '@prisma/client';
-import { STELLAR_CONFIG, type StellarConfig } from '../../stellar/stellar.config';
+import { STELLAR_PUBLIC_CONFIG, type StellarPublicConfig } from '../../stellar/stellar.config';
 
 /** SEP-10 challenge handed to the creator's wallet to sign. */
 export interface AnchorChallenge {
@@ -50,7 +50,7 @@ export interface AnchorTransaction {
 export class AnchorSep24Service {
   private readonly logger = new Logger(AnchorSep24Service.name);
 
-  constructor(@Inject(STELLAR_CONFIG) private readonly config: StellarConfig) {}
+  constructor(@Inject(STELLAR_PUBLIC_CONFIG) private readonly config: StellarPublicConfig) {}
 
   /** SEP-10: fetch a challenge tx for `account` (the creator signs it). */
   async getAuthChallenge(account: string): Promise<AnchorChallenge> {

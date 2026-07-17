@@ -3,9 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 /**
- * DB connectivity e2e — requires a running Postgres (docker compose up -d kreav-db).
- * Verifies the PrismaService can actually reach the database and run a query,
- * not just that the module compiles.
+ * DB connectivity e2e — uses the DATABASE_URL from .env (SQLite for local dev,
+ * PostgreSQL for CI/production). Verifies the PrismaService can actually reach
+ * the database and run a query, not just that the module compiles.
  */
 describe('PrismaService DB connectivity (e2e)', () => {
   let moduleRef: TestingModule;

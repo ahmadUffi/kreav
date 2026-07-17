@@ -11,7 +11,7 @@ import {
  * UsersService — BE-022 profile read/update logic.
  *
  * Handles GET /users/me and PATCH /users/me for the creator profile.
- * No auth middleware for MVP — uses `userId` query param.
+ * Identity comes from the session JWT via JwtAuthGuard — never from query params.
  *
  * Source: BE-022 — Creator Profile API.
  */

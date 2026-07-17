@@ -204,6 +204,14 @@ export class ProductsService {
           `Collaborator revenue percentages must sum to 100.00 (got ${sum.toString()}).`,
         );
       }
+      // Every collaborator must have a positive share.
+      for (const c of parsed) {
+        if (c.revenuePercentage.lessThanOrEqualTo(0)) {
+          throw new BadRequestException(
+            `Each collaborator must have a revenue share greater than 0% (got ${c.revenuePercentage.toString()} for ${c.walletAddress.slice(0, 8)}…).`,
+          );
+        }
+      }
       // Every collaborator must be a payable recipient: registered on Kreav AND
       // holding a USDC trustline. Otherwise the on-chain settle would revert
       // (op_no_trust) and burn the fee for everyone. Fail fast at add-time.

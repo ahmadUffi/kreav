@@ -3,6 +3,8 @@ import { WebhookSignature } from './webhook-signature';
 
 /**
  * Audit #11 — HMAC webhook signature verification.
+ * The dev escape hatch (no-secret → accept) now lives in the controller;
+ * `WebhookSignature.verify` always requires a real signature when a secret is set.
  */
 describe('WebhookSignature (audit #11)', () => {
   const secret = 'super-secret-key';
@@ -35,8 +37,8 @@ describe('WebhookSignature (audit #11)', () => {
     expect(WebhookSignature.verify(body, 'too-short', secret)).toBe(false);
   });
 
-  it('accepts when no secret is configured (dev/CI escape hatch)', () => {
-    expect(WebhookSignature.verify(body, undefined, undefined)).toBe(true);
-    expect(WebhookSignature.verify(body, 'garbage', undefined)).toBe(true);
+  it('rejects when no secret is configured (escape hatch moved to controller)', () => {
+    expect(WebhookSignature.verify(body, undefined, undefined)).toBe(false);
+    expect(WebhookSignature.verify(body, 'garbage', undefined)).toBe(false);
   });
 });

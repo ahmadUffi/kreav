@@ -143,7 +143,7 @@ export class ProductsController {
     description:
       'Patches the given fields. If `collaborators` is provided, the revenue-split ' +
       'set is replaced wholesale (same validation as create). 404 if the product is ' +
-      "not found or not owned by the caller.",
+      'not found or not owned by the caller.',
   })
   @ApiParam({ name: 'id', description: 'Product ID (UUID)' })
   @ApiBody({ type: UpdateProductDto })

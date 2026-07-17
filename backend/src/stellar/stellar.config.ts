@@ -10,6 +10,9 @@
 /** Injection token for the StellarConfig (it's an interface, not a class). */
 export const STELLAR_CONFIG = Symbol('STELLAR_CONFIG');
 
+/** Injection token for the public Stellar config — exported to other modules. */
+export const STELLAR_PUBLIC_CONFIG = Symbol('STELLAR_PUBLIC_CONFIG');
+
 export interface StellarConfig {
   /** Soroban RPC endpoint — primary for contract invoke/verify (ADR-005). */
   sorobanRpcUrl: string;
@@ -38,6 +41,9 @@ export interface StellarConfig {
   /** Feature flag: enable the real SEP-24 off-ramp path (else simulation). */
   anchorEnabled: boolean;
 }
+
+/** Public subset of StellarConfig — safe to export to other modules. */
+export type StellarPublicConfig = Omit<StellarConfig, 'platformWalletSecret'>;
 
 /** Default Stellar.expert explorer URL for testnet. */
 export const EXPLORER_TESTNET_URL = 'https://stellar.expert/explorer/testnet';

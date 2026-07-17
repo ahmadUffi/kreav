@@ -137,19 +137,25 @@ export class OrdersController {
     @Body() dto: GcashWebhookDto,
   ) {
     const secret = this.config.get<string>('GCASH_WEBHOOK_SECRET');
+    const nodeEnv = this.config.get<string>('NODE_ENV');
+
+    if (!secret) {
+      if (nodeEnv === 'production') {
+        this.logger.error('GCASH_WEBHOOK_SECRET is not set in production — rejecting webhook');
+        throw new ForbiddenException('Webhook secret not configured');
+      }
+      this.logger.warn(
+        'GCASH_WEBHOOK_SECRET not set — webhook signature NOT enforced (dev mode). ' +
+          'Set it before on-stage demo.',
+      );
+      return this.orders.handleGcashPayment(dto.orderId, dto.paymentRef);
+    }
 
     // req.rawBody is populated by NestJS when rawBody: true is configured.
     const rawBody: Buffer | undefined = (req as { rawBody?: Buffer }).rawBody;
     if (!WebhookSignature.verify(rawBody ?? Buffer.alloc(0), signature, secret)) {
       this.logger.warn(`webhook/gcash rejected: invalid signature (order=${dto.orderId})`);
       throw new UnauthorizedException('Invalid webhook signature');
-    }
-
-    if (!secret) {
-      // Escape hatch active — make the demo security posture visible in logs.
-      this.logger.warn(
-        'GCASH_WEBHOOK_SECRET not set — webhook signature NOT enforced. Set it before on-stage demo.',
-      );
     }
 
     return this.orders.handleGcashPayment(dto.orderId, dto.paymentRef);

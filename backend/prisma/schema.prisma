@@ -300,6 +300,7 @@ model Wallet {
 
   creator User @relation(fields: [creatorId], references: [id])
 
+  @@unique([walletAddress])
   @@index([creatorId])
   @@map("wallets")
 }

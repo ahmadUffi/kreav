@@ -27,9 +27,11 @@ export class WebhookSignature {
     signatureHeader: string | undefined,
     secret: string | undefined,
   ): boolean {
-    // Dev/demo escape hatch: no secret configured → accept but warn.
+    // No secret configured → refuse. The controller guards the dev escape
+    // hatch — this function always requires a real signature when a secret
+    // is set. We never silently accept an unsigned webhook.
     if (!secret) {
-      return true;
+      return false;
     }
     if (!signatureHeader) {
       return false;

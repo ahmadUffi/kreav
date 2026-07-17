@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { Prisma, WithdrawalStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExplorerService } from '../stellar/explorer.service';
-import { STELLAR_CONFIG } from '../stellar/stellar.config';
+import { STELLAR_PUBLIC_CONFIG } from '../stellar/stellar.config';
 import { WithdrawalsService } from './withdrawals.service';
 
 describe('WithdrawalsService', () => {
@@ -51,7 +51,7 @@ describe('WithdrawalsService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: ExplorerService, useValue: mockExplorerService },
         {
-          provide: STELLAR_CONFIG,
+          provide: STELLAR_PUBLIC_CONFIG,
           useValue: { explorerUrl: 'https://stellar.expert/explorer/testnet' },
         },
       ],

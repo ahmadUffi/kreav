@@ -4,6 +4,7 @@ jest.mock('@stellar/stellar-sdk', () => ({
   Horizon: {
     Server: jest.fn().mockImplementation(() => ({
       loadAccount: jest.fn(),
+      httpClient: { defaults: {} },
     })),
   },
 }));
@@ -40,6 +41,7 @@ describe('HorizonService', () => {
     loadAccountMock = jest.fn();
     jest.mocked(Horizon.Server).mockReturnValue({
       loadAccount: loadAccountMock,
+      httpClient: { defaults: {} },
     } as unknown as InstanceType<typeof Horizon.Server>);
 
     const moduleRef = await Test.createTestingModule({

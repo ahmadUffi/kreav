@@ -40,31 +40,35 @@ export class OrdersService {
    * The order is created at CHECKOUT_STARTED, then immediately advanced to
    * PAYMENT_PENDING — modeling the buyer being redirected to the payment
    * provider (GCash). The webhook later drives PAYMENT_PENDING → PAYMENT_RECEIVED.
+   *
+   * Returns `orderId` + `amountUsd` so the buyer sees the price on the
+   * checkout page immediately — no need to know the product price from context.
    */
-  async checkout(productId: string, buyerEmail: string): Promise<{ orderId: string }> {
+  async checkout(
+    productId: string,
+    buyerEmail: string,
+  ): Promise<{ orderId: string; amountUsd: string }> {
     const product = await this.prisma.product.findUnique({
-      where: { id: productId },
+      where: { id: productId, status: 'ACTIVE' },
       select: { priceUsd: true, creatorId: true },
     });
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
+    const amountUsd = product.priceUsd.toFixed(2);
+
     const order = await this.prisma.order.create({
       data: {
         productId,
-        // The buyer's email is captured at checkout — it's where the product
-        // download link is delivered after settlement (product-delivery listener).
         buyerEmail,
-        // Fresh Decimal — do NOT store the product's reference, or a later
-        // mutation could corrupt the source row.
-        amountUsd: new Prisma.Decimal(product.priceUsd.toFixed(2)),
+        amountUsd: new Prisma.Decimal(amountUsd),
         status: OrderStatus.PAYMENT_PENDING,
       },
       select: { id: true },
     });
 
-    return { orderId: order.id };
+    return { orderId: order.id, amountUsd };
   }
 
   /**
@@ -100,29 +104,40 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    // --- Transition guard: the primary webhook transition is PAYMENT_PENDING →
-    // PAYMENT_RECEIVED. WAITING_WALLET is a deferral *from* PAYMENT_RECEIVED,
-    // so we validate the primary hop here and then write the final state. ---
-    if (!canTransition(order.status, OrderStatus.PAYMENT_RECEIVED)) {
-      throw new InvalidStateTransitionException(order.status, OrderStatus.PAYMENT_RECEIVED);
+    // --- Does the creator have a connected wallet? ---
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { creatorId: order.product.creatorId },
+      select: { walletAddress: true },
+    });
+
+    const targetState = wallet ? OrderStatus.PAYMENT_RECEIVED : OrderStatus.WAITING_WALLET;
+
+    if (!canTransition(order.status, targetState)) {
+      throw new InvalidStateTransitionException(order.status, targetState);
     }
 
     const amountUsd = order.amountUsd.toFixed(2);
     const creatorId = order.product.creatorId;
 
-    // --- Does the creator have a connected wallet? ---
-    const wallet = await this.prisma.wallet.findFirst({
-      where: { creatorId },
-      select: { walletAddress: true },
-    });
-
     if (!wallet) {
       // WAITING_WALLET — defer settlement until the wallet is connected.
-      // Legal because PAYMENT_RECEIVED → WAITING_WALLET (validated above hop).
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.WAITING_WALLET, paymentRef },
-      });
+      try {
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.WAITING_WALLET, paymentRef },
+        });
+      } catch (err: unknown) {
+        if (
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code: string }).code === 'P2002'
+        ) {
+          // Duplicate webhook — another request claimed this paymentRef first.
+          return { status: 'paid', orderId };
+        }
+        throw err;
+      }
 
       const payload: WalletConnectRequiredPayload = {
         orderId,
@@ -135,10 +150,22 @@ export class OrdersService {
     }
 
     // --- Happy path: payment received, wallet present → emit payment.received. ---
-    await this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: OrderStatus.PAYMENT_RECEIVED, paymentRef },
-    });
+    try {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.PAYMENT_RECEIVED, paymentRef },
+      });
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: string }).code === 'P2002'
+      ) {
+        return { status: 'paid', orderId };
+      }
+      throw err;
+    }
 
     const payload: PaymentReceivedPayload = {
       orderId,
@@ -264,7 +291,8 @@ export class OrdersService {
             explorerLink: this.explorer.txUrl(s.txHash),
             totalAmount: money(s.totalAmount),
             status: s.status,
-            createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
+            createdAt:
+              s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
             recipients: s.recipients.map((r) => ({
               walletAddress: r.walletAddress,
               recipientType: r.recipientType,
