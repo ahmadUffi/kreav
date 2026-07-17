@@ -83,7 +83,7 @@ export default function AppNav() {
         const session = await loginWithFreighter(address);
         setToken(session.token);
         setUserId(session.user.id);
-        setUsername(session.user.name);
+        setUsername(session.user.username ?? session.user.name.split(" ")[0].toLowerCase());
         setWalletAddress(address);
         router.push("/dashboard");
       } else {

@@ -66,6 +66,13 @@ export class FloatMonitorService implements OnApplicationBootstrap {
 
       const balanceNum = parseFloat(result.balanceUsd);
 
+      if (isNaN(balanceNum)) {
+        this.logger.error(
+          `[FLOAT] Failed to parse USDC balance "${result.balanceUsd}" — check Horizon response`,
+        );
+        return;
+      }
+
       if (!result.accountExists) {
         this.logger.warn(
           `[FLOAT] Platform account ${this.config.platformWalletAddress.slice(0, 8)}... does not exist on network. Fund it with XLM first.`,

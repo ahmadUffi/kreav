@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
+import { AuthService } from './auth.service';
 
 /** JWT payload shape attached to the request as `req.user`. */
 export interface AuthUser {
@@ -10,12 +11,15 @@ export interface AuthUser {
   role: string;
   /** Email at token-issue time (informational). */
   email?: string;
+  /** JWT ID — used for revocation. */
+  jti?: string;
 }
 
 interface JwtPayload {
   sub: string;
   role: string;
   email?: string;
+  jti?: string;
 }
 
 /**
@@ -27,7 +31,10 @@ interface JwtPayload {
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly auth: AuthService,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request & { user?: AuthUser }>();
@@ -45,7 +52,11 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    req.user = { userId: payload.sub, role: payload.role, email: payload.email };
+    if (payload.jti && this.auth.isTokenRevoked(payload.jti)) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
+
+    req.user = { userId: payload.sub, role: payload.role, email: payload.email, jti: payload.jti };
     return true;
   }
 }

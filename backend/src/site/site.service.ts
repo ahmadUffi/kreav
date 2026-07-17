@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SiteDto } from './dto';
 
@@ -106,6 +106,19 @@ export class SiteService {
       // Replace featured products.
       await tx.featuredProduct.deleteMany({ where: { userId } });
       if (dto.featuredProductIds && dto.featuredProductIds.length > 0) {
+        // Validate ownership: every featured product must belong to this creator.
+        for (const productId of dto.featuredProductIds) {
+          const product = await tx.product.findFirst({
+            where: { id: productId, creatorId: userId },
+            select: { id: true },
+          });
+          if (!product) {
+            throw new ForbiddenException(
+              `Product ${productId} does not belong to you and cannot be featured.`,
+            );
+          }
+        }
+
         await tx.featuredProduct.createMany({
           data: dto.featuredProductIds.map((productId, i) => ({
             userId,

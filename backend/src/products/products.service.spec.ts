@@ -53,7 +53,11 @@ describe('ProductsService', () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: HorizonService,
-          useValue: { getUsdcBalance: jest.fn().mockResolvedValue({ hasUsdcTrustline: true, balanceUsd: '0', accountExists: true }) },
+          useValue: {
+            getUsdcBalance: jest
+              .fn()
+              .mockResolvedValue({ hasUsdcTrustline: true, balanceUsd: '0', accountExists: true }),
+          },
         },
       ],
     }).compile();
@@ -120,7 +124,10 @@ describe('ProductsService', () => {
 
       const result = await service.findOne('p1');
       expect(prisma.product.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'p1' }, include: expect.objectContaining(EXPECTED_INCLUDE) }),
+        expect.objectContaining({
+          where: { id: 'p1' },
+          include: expect.objectContaining(EXPECTED_INCLUDE),
+        }),
       );
       expect(result).toBe(product);
     });

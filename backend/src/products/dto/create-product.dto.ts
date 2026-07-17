@@ -93,13 +93,14 @@ export class CreateProductDto {
   fileUrl!: string;
 
   @ApiProperty({
-    description: 'Price in USD (string with 0-2 decimal places)',
+    description: 'Price in USD (string with 0-2 decimal places, minimum $0.01)',
     required: true,
     example: '18.00',
   })
   @IsString()
-  @Matches(/^\d+(\.\d{1,2})?$/, {
-    message: 'priceUsd must be a decimal string with up to 2 fractional digits (e.g. "10.00")',
+  @Matches(/^(?!0(\.0{1,2})?$)\d+(\.\d{1,2})?$/, {
+    message:
+      'priceUsd must be a positive decimal string with up to 2 fractional digits (e.g. "10.00"), minimum $0.01',
   })
   priceUsd!: string;
 

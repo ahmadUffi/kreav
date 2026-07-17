@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, Button } from "@/components/ui";
 import { getProduct } from "@/lib/api/products";
-import { checkout, getOrder, simulatePayment } from "@/lib/api/orders";
+import { checkout, getOrderStatus, simulatePayment } from "@/lib/api/orders";
 import { useApiQuery, useApiAction } from "@/lib/api/hooks";
 
 type Buy = "idle" | "paying" | "pending" | "paid" | "failed";
@@ -13,6 +13,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLLS = 20; // ~60s, then leave it in the pending state
+
+const SESSION_KEY = "kreav_checkout";
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
@@ -28,7 +30,38 @@ export default function ProductDetailPage() {
   const [emailErr, setEmailErr] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [payErr, setPayErr] = useState<string | null>(null);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
   const pollsRef = useRef(0);
+
+  // Restore checkout state from sessionStorage on mount so a page refresh
+  // doesn't lose the order — the buyer can resume tracking.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { orderId: string; email: string; buy: Buy };
+        if (parsed.orderId && parsed.email && parsed.buy === "pending") {
+          setOrderId(parsed.orderId);
+          setEmail(parsed.email);
+          setBuy("pending");
+        }
+      }
+    } catch {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }, []);
+
+  // Persist checkout state so the buyer can refresh without losing their
+  // order during settlement. Cleared on terminal states.
+  const persistCheckout = (state: Buy, oid: string | null, mail: string) => {
+    if (state === "pending" && oid && mail) {
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ orderId: oid, email: mail, buy: state }));
+      } catch { /* storage full — degrade gracefully */ }
+    } else {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  };
 
   // Poll the order for payment/settlement status after checkout.
   useEffect(() => {
@@ -37,24 +70,29 @@ export default function ProductDetailPage() {
     const id = setInterval(async () => {
       pollsRef.current += 1;
       try {
-        const order = await getOrder(orderId);
+        const order = await getOrderStatus(orderId, email.trim());
         if (order.status === "Paid") {
           setBuy("paid");
+          persistCheckout("paid", orderId, email);
           clearInterval(id);
           return;
         }
         if (order.status === "Failed") {
           setBuy("failed");
+          persistCheckout("failed", orderId, email);
           clearInterval(id);
           return;
         }
       } catch {
         // transient — keep polling
       }
-      if (pollsRef.current >= MAX_POLLS) clearInterval(id);
+      if (pollsRef.current >= MAX_POLLS) {
+        clearInterval(id);
+        setPollTimedOut(true);
+      }
     }, POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [buy, orderId]);
+  }, [buy, orderId, email]);
 
   const onBuy = async () => {
     if (!product) return;
@@ -63,9 +101,9 @@ export default function ProductDetailPage() {
       return;
     }
     setEmailErr(null);
-    const oid = await runCheckout(product.id, email.trim());
-    if (oid) {
-      setOrderId(oid);
+    const result = await runCheckout(product.id, email.trim());
+    if (result) {
+      setOrderId(result.orderId);
       setBuy("paying"); // show the mock local-payment step
     }
   };
@@ -79,6 +117,7 @@ export default function ProductDetailPage() {
     try {
       await simulatePayment(orderId);
       setBuy("pending");
+      persistCheckout("pending", orderId, email);
     } catch (e) {
       setPayErr(e instanceof Error ? e.message : "Payment couldn't be processed.");
     } finally {
@@ -196,6 +235,9 @@ export default function ProductDetailPage() {
                 link to <span style={{ color: "var(--text)" }}>{email}</span>. Order{" "}
                 <span style={{ color: "var(--text)" }}>{orderId}</span>.
               </p>
+              <p style={{ margin: "8px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
+                Haven&apos;t received it? Check your spam folder.
+              </p>
             </Card>
           ) : buy === "paying" ? (
             <Card style={{ padding: 18 }}>
@@ -222,13 +264,30 @@ export default function ProductDetailPage() {
             </Card>
           ) : buy === "pending" ? (
             <Card style={{ padding: 18 }}>
-              <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>
-                <span className="kv-blink">⏳</span> Settling on Stellar…
-              </div>
-              <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
-                Payment confirmed for order <span style={{ color: "var(--text)" }}>{orderId}</span>.
-                Splitting revenue to the creator on-chain — this page updates automatically.
-              </p>
+              {pollTimedOut ? (
+                <>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: "var(--muted)" }}>
+                    Taking longer than expected
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
+                    The transaction may still be processing on Stellar. You can close this
+                    page and check back later.
+                  </p>
+                  <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
+                    Order: <span style={{ color: "var(--text)" }}>{orderId}</span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700 }}>
+                    <span className="kv-blink">⏳</span> Settling on Stellar…
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
+                    Payment confirmed for order <span style={{ color: "var(--text)" }}>{orderId}</span>.
+                    Splitting revenue to the creator on-chain — this page updates automatically.
+                  </p>
+                </>
+              )}
             </Card>
           ) : buy === "failed" ? (
             <Card style={{ padding: 18, background: "var(--tone-danger-bg, rgba(255,77,0,.14))" }}>
@@ -238,7 +297,7 @@ export default function ProductDetailPage() {
               <p style={{ margin: "6px 0 12px", fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
                 Order <span style={{ color: "var(--text)" }}>{orderId}</span> didn&apos;t go through.
               </p>
-              <Button variant="primary" onClick={() => setBuy("idle")}>
+              <Button variant="primary" onClick={() => { setBuy("idle"); persistCheckout("idle", null, ""); }}>
                 Try again
               </Button>
             </Card>

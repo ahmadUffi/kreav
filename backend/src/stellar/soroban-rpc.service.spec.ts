@@ -5,6 +5,7 @@ const mockRpcServer = {
   simulateTransaction: jest.fn(),
   sendTransaction: jest.fn(),
   getTransaction: jest.fn(),
+  httpClient: { defaults: {} },
 };
 
 jest.mock('@stellar/stellar-sdk', () => ({

@@ -20,6 +20,7 @@ import type { Product } from "@/lib/types";
 const PRICE_RE = /^\d+(\.\d{1,2})?$/;
 const PCT_RE = /^\d+(\.\d{1,2})?$/;
 const STELLAR_RE = /^G[A-Z2-7]{55}$/;
+const FILE_URL_RE = /^https:\/\/.+/i;
 const PLATFORM_FEE_BPS = 500; // 5% — mirrors the smart contract + settlement service
 
 /**
@@ -28,8 +29,15 @@ const PLATFORM_FEE_BPS = 500; // 5% — mirrors the smart contract + settlement 
  * by share — the LAST recipient absorbs the rounding remainder, exactly like the
  * contract's `calculate_creator_amounts`.
  */
+function toCents(usd: string): number {
+  const parts = usd.split(".");
+  const whole = parseInt(parts[0], 10) || 0;
+  const frac = parts.length > 1 ? parseInt((parts[1] + "00").slice(0, 2), 10) : 0;
+  return whole * 100 + frac;
+}
+
 function computeSplit(priceUsd: string, shares: number[]) {
-  const totalCents = Math.round(Number(priceUsd) * 100);
+  const totalCents = toCents(priceUsd);
   const feeCents = Math.floor((totalCents * PLATFORM_FEE_BPS) / 10000);
   const poolCents = totalCents - feeCents;
   let distributed = 0;
@@ -215,6 +223,7 @@ function NewProductForm({
       ? seededCollabs.map((c) => ({ ...c }))
       : [{ walletAddress: "", role: "", revenuePercentage: "" }],
   );
+  const [fileUrlErr, setFileUrlErr] = useState<string | null>(null);
   const [localErr, setLocalErr] = useState<string | null>(null);
   const { run, pending, error } = useApiAction(
     isEdit ? (body: CreateProductBody) => updateProduct(editing!.id, body) : createProduct,
@@ -302,8 +311,10 @@ function NewProductForm({
 
   const submit = async () => {
     setLocalErr(null);
+    setFileUrlErr(null);
     if (!title.trim()) return setLocalErr("Title is required.");
     if (!fileUrl.trim()) return setLocalErr("A file URL is required.");
+    if (!FILE_URL_RE.test(fileUrl.trim())) return setFileUrlErr("URL must start with https:// for security.");
     if (!PRICE_RE.test(priceUsd)) return setLocalErr("Price must be a number like 18 or 18.00.");
 
     // Revenue split is optional. When off, the backend auto-adds the creator
@@ -359,6 +370,9 @@ function NewProductForm({
             <Input id="title" label="Title" placeholder="Lightroom Sunset Presets" value={title} onChange={(e) => setTitle(e.target.value)} />
             <Input id="desc" label="Description (optional)" placeholder="Short description" value={description} onChange={(e) => setDescription(e.target.value)} />
             <Input id="fileUrl" label="File URL" placeholder="https://…/download.zip" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} />
+            {fileUrlErr && (
+              <p style={{ margin: "-10px 0 0", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tone-danger-fg, #b23a00)" }}>{fileUrlErr}</p>
+            )}
             <Input id="price" label="Price (USD)" placeholder="18.00" value={priceUsd} onChange={(e) => setPriceUsd(e.target.value)} />
 
             {/* Optional revenue split. Off → backend gives the creator 100%. */}

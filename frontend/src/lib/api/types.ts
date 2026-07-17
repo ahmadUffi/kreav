@@ -46,6 +46,7 @@ export interface AuthUserRaw {
   id: string;
   email: string;
   name: string;
+  username?: string;
   role: UserRole;
   createdAt: string;
 }
@@ -159,6 +160,7 @@ export interface OrderDetailRaw extends OrderRaw {
 }
 export interface CheckoutRaw {
   orderId: string;
+  amountUsd: string;
 }
 
 /* ── Wallet ───────────────────────────────────────────────────────────── */

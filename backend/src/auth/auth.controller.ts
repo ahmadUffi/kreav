@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Logger, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Logger, Post, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
@@ -7,6 +7,7 @@ import {
   ApiCreatedResponse,
   ApiQuery,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import {
@@ -17,6 +18,15 @@ import {
   VerifyRequestDto,
   AuthTokenResponseDto,
 } from './dto';
+import { JwtAuthGuard, type AuthUser } from './jwt-auth.guard';
+import { CurrentUser } from './current-user.decorator';
+
+function maskEmail(email: string): string {
+  const atIndex = email.indexOf('@');
+  if (atIndex < 0) return email;
+  const visible = Math.min(3, atIndex);
+  return email.slice(0, visible) + '***' + email.slice(atIndex);
+}
 
 /**
  * AuthController — BE-021 + Fase 1 (SEP-10 wallet auth).
@@ -83,7 +93,7 @@ export class AuthController {
     },
   })
   async register(@Body() dto: RegisterDto): Promise<RegisterWithTokenResponseDto> {
-    this.logger.log(`POST /auth/register email=${dto.email} role=${dto.role}`);
+    this.logger.log(`POST /auth/register email=${maskEmail(dto.email)} role=${dto.role}`);
     return this.auth.register(dto);
   }
 
@@ -150,5 +160,31 @@ export class AuthController {
   async verify(@Body() dto: VerifyRequestDto): Promise<AuthTokenResponseDto> {
     this.logger.log('POST /auth/verify');
     return this.auth.verifyChallenge(dto.transaction);
+  }
+
+  /**
+   * POST /auth/logout — revoke the current session token.
+   */
+  @Post('logout')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Logout / revoke current session token',
+    description:
+      'Revokes the current session JWT. After this call, the token can no longer ' +
+      'be used to access protected endpoints. The client should discard the token.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Token revoked',
+    schema: { example: { success: true } },
+  })
+  @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
+  logout(@CurrentUser() user: AuthUser): { success: boolean } {
+    if (user.jti) {
+      this.auth.revokeToken(user.jti);
+    }
+    return { success: true };
   }
 }

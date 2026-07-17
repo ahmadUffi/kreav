@@ -48,12 +48,10 @@ export class ProductDeliveryListener {
       }
 
       const { buyerEmail, product } = order;
-      if (!product.fileUrl) {
-        this.logger.error(`Order ${orderId} product has no fileUrl — nothing to deliver`);
-        return;
-      }
+      const effectiveFileUrl =
+        product.fileUrl ?? 'No download URL was configured for this product. Contact the creator.';
       const explorerUrl = this.explorer.txUrl(txHash);
-      const html = this.buildEmail(product.title, product.fileUrl, explorerUrl);
+      const html = this.buildEmail(product.title, effectiveFileUrl, explorerUrl);
 
       const result = await this.mailer.send({
         to: buyerEmail,

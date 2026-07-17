@@ -47,9 +47,9 @@ export interface OrderDetailView {
  * Start a checkout for a product; returns the new order id (PAYMENT_PENDING).
  * `buyerEmail` is where the product download link is sent after settlement.
  */
-export async function checkout(productId: string, buyerEmail: string): Promise<string> {
+export async function checkout(productId: string, buyerEmail: string): Promise<{ orderId: string; amountUsd: string }> {
   const res = await api.post<CheckoutRaw>("/checkout", { productId, buyerEmail });
-  return res.orderId;
+  return { orderId: res.orderId, amountUsd: res.amountUsd };
 }
 
 /**
@@ -59,6 +59,18 @@ export async function checkout(productId: string, buyerEmail: string): Promise<s
  */
 export async function simulatePayment(orderId: string): Promise<void> {
   await api.post(`/orders/${orderId}/simulate-payment`, {});
+}
+
+/** Public buyer-facing order status — no auth required. */
+export async function getOrderStatus(
+  orderId: string,
+  buyerEmail: string,
+): Promise<{ id: string; status: OrderStatusView; txHash?: string }> {
+  const raw = await api.post<{ id: string; status: OrderStatus; txHash?: string }>(
+    "/orders/status",
+    { orderId, buyerEmail },
+  );
+  return { id: raw.id, status: mapOrderStatus(raw.status), txHash: raw.txHash };
 }
 
 export async function getOrder(id: string): Promise<OrderDetailView> {

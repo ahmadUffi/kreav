@@ -1,4 +1,4 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AuthUser } from './jwt-auth.guard';
 
@@ -9,11 +9,16 @@ import type { AuthUser } from './jwt-auth.guard';
  *   @UseGuards(JwtAuthGuard)
  *   @Get('me')
  *   me(@CurrentUser() user: AuthUser) { ... }
+ *
+ * Throws UnauthorizedException when used on an unguarded route — preventing
+ * silent access with an empty user when the guard is accidentally omitted.
  */
 export const CurrentUser = createParamDecorator(
   (_data: unknown, context: ExecutionContext): AuthUser => {
     const req = context.switchToHttp().getRequest<Request & { user?: AuthUser }>();
-    // Guard guarantees presence; the fallback keeps types honest if misused.
-    return req.user ?? { userId: '', role: '' };
+    if (!req.user) {
+      throw new UnauthorizedException('No authenticated user — guard missing on this route');
+    }
+    return req.user;
   },
 );

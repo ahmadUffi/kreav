@@ -1,6 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { loadStellarConfig, STELLAR_CONFIG, type StellarConfig } from './stellar.config';
+import {
+  loadStellarConfig,
+  STELLAR_CONFIG,
+  STELLAR_PUBLIC_CONFIG,
+  type StellarConfig,
+  type StellarPublicConfig,
+} from './stellar.config';
 import { ExplorerService } from './explorer.service';
 import { FloatMonitorService } from './float-monitor.service';
 import { PlatformKeypairService } from './platform-keypair.service';
@@ -29,6 +35,17 @@ import { SponsorshipService } from './sponsorship.service';
       useFactory: (config: ConfigService): StellarConfig =>
         loadStellarConfig((key: string) => config.get<string>(key)),
     },
+    {
+      // Public subset — safe to export. Excludes platformWalletSecret.
+      provide: STELLAR_PUBLIC_CONFIG,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService): StellarPublicConfig => {
+        const full = loadStellarConfig((key: string) => config.get<string>(key));
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { platformWalletSecret, ...publicConfig } = full;
+        return publicConfig;
+      },
+    },
     PlatformKeypairService,
     HorizonService,
     SorobanRpcService,
@@ -38,7 +55,7 @@ import { SponsorshipService } from './sponsorship.service';
     FloatMonitorService,
   ],
   exports: [
-    STELLAR_CONFIG,
+    STELLAR_PUBLIC_CONFIG,
     SorobanRpcService,
     HorizonService,
     PlatformKeypairService,

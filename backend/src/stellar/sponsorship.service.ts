@@ -135,6 +135,8 @@ export class SponsorshipService {
 
   /**
    * Validate the creator-signed XDR is the tx we prepared, then relay it.
+   * Retries up to 3 times with exponential backoff on sequence-number errors
+   * (tx_bad_seq) — see M14.
    *
    * Returns the on-chain transaction hash on success.
    */
@@ -148,17 +150,30 @@ export class SponsorshipService {
 
     this.assertIsOurSponsoredTrustline(tx, expectedCreator);
 
-    try {
-      const result = await this.server.submitTransaction(tx);
-      this.logger.log(
-        `Submitted sponsored trustline for ${expectedCreator.slice(0, 8)}...: ${result.hash}`,
-      );
-      return result.hash;
-    } catch (err: unknown) {
-      const detail = this.extractHorizonError(err);
-      this.logger.error(`Sponsored trustline submission failed: ${detail}`);
-      throw new BadRequestException(`Trustline submission failed: ${detail}`);
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await this.server.submitTransaction(tx);
+        this.logger.log(
+          `Submitted sponsored trustline for ${expectedCreator.slice(0, 8)}...: ${result.hash}${attempt > 0 ? ` (attempt ${attempt + 1})` : ''}`,
+        );
+        return result.hash;
+      } catch (err: unknown) {
+        lastError = err;
+        if (this.isBadSeqError(err) && attempt < 2) {
+          this.logger.warn(
+            `tx_bad_seq on attempt ${attempt + 1} for ${expectedCreator.slice(0, 8)}..., retrying`,
+          );
+          await new Promise((r) => setTimeout(r, Math.pow(2, attempt) * 100));
+          continue;
+        }
+        break;
+      }
     }
+
+    const detail = this.extractHorizonError(lastError!);
+    this.logger.error(`Sponsored trustline submission failed: ${detail}`);
+    throw new BadRequestException(`Trustline submission failed: ${detail}`);
   }
 
   /**
@@ -307,5 +322,22 @@ export class SponsorshipService {
       if (msg) return msg;
     }
     return String(err);
+  }
+
+  /** Detect a tx_bad_seq (sequence number) error in a Horizon submission result. */
+  private isBadSeqError(err: unknown): boolean {
+    if (typeof err === 'object' && err !== null) {
+      const codes = (err as { response?: { data?: { extras?: { result_codes?: unknown } } } })
+        .response?.data?.extras?.result_codes;
+      if (codes) {
+        const codeStr = typeof codes === 'string' ? codes : JSON.stringify(codes);
+        return codeStr.includes('tx_bad_seq');
+      }
+      const msg = (err as { message?: string }).message;
+      if (msg && (msg.includes('tx_bad_seq') || msg.includes('bad sequence'))) {
+        return true;
+      }
+    }
+    return false;
   }
 }

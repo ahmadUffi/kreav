@@ -87,7 +87,7 @@ describe('OrdersController (e2e)', () => {
     const product = await prisma.product.create({
       data: {
         title: 'E2E Product',
-        priceUsd: 10.0,
+        priceUsd: '10.00',
         creatorId,
       },
     });
@@ -95,8 +95,6 @@ describe('OrdersController (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Orders reference products (FK RESTRICT) and products reference the user,
-    // so delete in dependency order: orders → products → user.
     const productIds = (
       await prisma.product.findMany({
         where: { creatorId },
@@ -104,10 +102,25 @@ describe('OrdersController (e2e)', () => {
       })
     ).map((p) => p.id);
     if (productIds.length) {
+      const orderIds = (
+        await prisma.order.findMany({
+          where: { productId: { in: productIds } },
+          select: { id: true },
+        })
+      ).map((o) => o.id);
+      if (orderIds.length) {
+        await prisma.settlementRecipient.deleteMany({
+          where: { settlement: { orderId: { in: orderIds } } },
+        });
+        await prisma.settlement.deleteMany({
+          where: { orderId: { in: orderIds } },
+        });
+      }
       await prisma.order.deleteMany({ where: { productId: { in: productIds } } });
     }
     await prisma.product.deleteMany({ where: { creatorId } });
     await prisma.user.delete({ where: { id: creatorId } });
+    jest.restoreAllMocks();
     await app.close();
   });
 
@@ -150,12 +163,10 @@ describe('OrdersController (e2e)', () => {
     });
 
     it('404 — product does not exist', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/checkout')
-        .send({
-          productId: '00000000-0000-0000-0000-000000000000',
-          buyerEmail: 'buyer@example.com',
-        });
+      const res = await request(app.getHttpServer()).post('/checkout').send({
+        productId: '00000000-0000-0000-0000-000000000000',
+        buyerEmail: 'buyer@example.com',
+      });
       expect(res.status).toBe(404);
     });
   });

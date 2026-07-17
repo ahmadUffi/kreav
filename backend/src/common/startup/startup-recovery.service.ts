@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SorobanRpcService } from '../../stellar/soroban-rpc.service';
+import { SettlementService } from '../../stellar/settlement.service';
 import { AppEvents } from '../../events/event-names';
 import type { PaymentReceivedPayload } from '../../events/event-payloads';
 
@@ -31,6 +32,7 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly emitter: EventEmitter2,
     private readonly sorobanRpc: SorobanRpcService,
+    private readonly settlement: SettlementService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -42,7 +44,12 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
           in: [OrderStatus.PAYMENT_RECEIVED, OrderStatus.SETTLEMENT_PENDING],
         },
       },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        amountUsd: true,
+        paymentRef: true,
+        txHash: true,
         product: {
           select: { creatorId: true, title: true },
         },
@@ -90,7 +97,7 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
     amountUsd: Prisma.Decimal;
     paymentRef: string | null;
     txHash: string | null;
-    product: { creatorId: string } | null;
+    product: { creatorId: string; title: string } | null;
   }): Promise<boolean> {
     if (order.status === OrderStatus.PAYMENT_RECEIVED) {
       return this.recoverPaymentReceived(order);
@@ -136,9 +143,32 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
   private async recoverSettlementPending(order: {
     id: string;
     txHash: string | null;
+    amountUsd: { toFixed: (n: number) => string };
+    product: { creatorId: string } | null;
   }): Promise<boolean> {
     if (!order.txHash) {
-      // No txHash — settlement was never submitted. Move to SETTLEMENT_FAILED.
+      // No txHash — settlement may have completed but the txHash was never
+      // persisted (crash between Soroban confirmation and the DB update).
+      // Check the contract's is_settled before marking as failed.
+      try {
+        const alreadySettled = await this.sorobanRpc.isSettled(order.id);
+        if (alreadySettled) {
+          this.logger.warn(
+            `  🔁 Order ${order.id} has no txHash but is_settled() returned true — recovering Settlement row`,
+          );
+          await this.settlement.recordRecoveredSettlement(
+            order.id,
+            `unknown-${order.id.slice(0, 8)}`, // txHash unknown, generate a placeholder
+          );
+          return true;
+        }
+      } catch (checkErr) {
+        this.logger.warn(
+          `  ⚠️  is_settled check failed for order ${order.id} — proceeding to mark FAILED: ` +
+            (checkErr instanceof Error ? checkErr.message : String(checkErr)),
+        );
+      }
+
       await this.prisma.order.update({
         where: { id: order.id },
         data: { status: OrderStatus.SETTLEMENT_FAILED },
@@ -151,12 +181,21 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
     try {
       const status = await this.sorobanRpc.getTransactionStatus(order.txHash);
       if (status === 'SUCCESS') {
-        // Transaction confirmed while we were down — mark settled.
-        // Settlement records were already created by the original flow.
-        await this.prisma.order.update({
-          where: { id: order.id },
-          data: { status: OrderStatus.SETTLED },
+        // Check if Settlement row already exists (may have been created before crash).
+        const existingSettlement = await this.prisma.settlement.findUnique({
+          where: { orderId: order.id },
+          select: { id: true },
         });
+        if (existingSettlement) {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: { status: OrderStatus.SETTLED },
+          });
+          return true;
+        }
+
+        // Settlement row missing — create it from what we know (amount, collaborators).
+        await this.settlement.recordRecoveredSettlement(order.id, order.txHash);
         return true;
       }
 
@@ -169,12 +208,46 @@ export class StartupRecoveryService implements OnApplicationBootstrap {
         return false;
       }
 
-      // NOT_FOUND — tx not in ledger yet (may have been dropped).
-      // Leave as SETTLEMENT_PENDING for manual or future retry.
+      // NOT_FOUND — tx may have been dropped from the mempool.
+      // Give it one more check (the RPC may just be lagging), then retry.
+      try {
+        const retryStatus = await this.sorobanRpc.getTransactionStatus(order.txHash);
+        if (retryStatus === 'SUCCESS') {
+          this.logger.log(
+            `  ✅ Tx ${order.txHash.slice(0, 16)}... confirmed on re-check — recovering`,
+          );
+          await this.settlement.recordRecoveredSettlement(order.id, order.txHash);
+          return true;
+        }
+        if (retryStatus === 'FAILED') {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: { status: OrderStatus.SETTLEMENT_FAILED },
+          });
+          return false;
+        }
+      } catch {
+        // RPC unavailable — leave for next startup.
+      }
+
+      // Still NOT_FOUND after re-check — tx was likely dropped. Clear the stale
+      // txHash, roll back to PAYMENT_RECEIVED, and re-emit so settlement retries.
       this.logger.warn(
-        `  ℹ️  Tx ${order.txHash.slice(0, 16)}... for order ${order.id} not found on-chain — leaving as SETTLEMENT_PENDING`,
+        `  🔁 Tx ${order.txHash.slice(0, 16)}... for order ${order.id} still NOT_FOUND — ` +
+          'retrying settlement',
       );
-      return false;
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { status: OrderStatus.PAYMENT_RECEIVED, txHash: null },
+      });
+      this.emitter.emit(AppEvents.PaymentReceived, {
+        orderId: order.id,
+        amountUsd: order.amountUsd.toFixed(2),
+        creatorId: order.product?.creatorId ?? '',
+        walletAddress: undefined,
+        paymentRef: `recovery-${order.id.slice(0, 8)}`,
+      });
+      return true;
     } catch {
       // Can't verify (RPC down, network error) — leave as SETTLEMENT_PENDING.
       // A future startup or manual intervention will retry.
