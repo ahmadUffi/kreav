@@ -305,6 +305,7 @@ describe('WalletsService', () => {
         limit: 10,
         total: 1,
       });
+      );
     });
   });
 

@@ -28,6 +28,10 @@ export const metadata: Metadata = {
   title: "Kreav — Sell Your Digital Work Everywhere",
   description:
     "Sell your ebooks, presets, and templates worldwide. Get paid instantly, in your own currency.",
+  icons: {
+    icon: "/icon.ico",
+    shortcut: "/icon.ico",
+  },
 };
 
 export default function RootLayout({
