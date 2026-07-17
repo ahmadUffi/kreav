@@ -120,6 +120,19 @@ describe('WithdrawalsController (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prisma.withdrawal.deleteMany({ where: { creatorId } });
+    await prisma.settlementRecipient.deleteMany({
+      where: { settlement: { order: { product: { creatorId } } } },
+    });
+    await prisma.settlement.deleteMany({
+      where: { order: { product: { creatorId } } },
+    });
+    await prisma.order.deleteMany({
+      where: { product: { creatorId } },
+    });
+    await prisma.product.deleteMany({ where: { creatorId } });
+    await prisma.wallet.deleteMany({ where: { creatorId } });
+    await prisma.user.deleteMany({ where: { id: creatorId } });
     await app.close();
   });
 
